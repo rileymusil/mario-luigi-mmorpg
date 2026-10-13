@@ -1,0 +1,252 @@
+{
+  "toad": {
+    "branches": [
+      {"if": {"side": "evil"}, "say": ["Eek! You're one of Bowser's bunch! Stay back!"]},
+      {"say": ["Going out to the Outskirts? It's dangerous out there..."],
+       "choices": [{"text": "Ask to join", "do": "recruit"}, {"text": "Never mind"}]}
+    ]
+  },
+  "pianta": {
+    "branches": [
+      {"if": {"side": "evil"}, "say": ["Eek! You're one of Bowser's bunch! Stay back!"]},
+      {"say": ["Going out to the Outskirts? It's dangerous out there..."],
+       "choices": [{"text": "Ask to join", "do": "recruit"}, {"text": "Never mind"}]}
+    ]
+  },
+
+  "palace_guard": {
+    "branches": [
+      {"if": {"side": "evil"}, "say": ["Halt! We know one of Bowser's lot when we see one.", "...Fine, go in. But the whole castle guard will be watching you, {character}!"]},
+      {"say": ["Welcome to Beanbean Castle, {name}! Walk up the steps to go in.", "Queen Bean holds court in the throne room, through the great hall."]}
+    ]
+  },
+  "town_gate": {
+    "branches": [
+      {"if": {"min_level": 8}, "say": ["You look tough! Head east through the Outskirts to Stardust Fields.", "Past the fields is Hoohoo Village. Folks say the view from the deck is amazing."]},
+      {"say": ["Both town gates lead out to the Beanbean Outskirts.", "Towns are safe. Out there, monsters roam, and Bowser's side can challenge good players to a duel!"]}
+    ]
+  },
+  "town_kid": {
+    "branches": [
+      {"random": true, "say": [
+        "Jump on a monster before it touches you and you get the first hit!",
+        "In battle, press Z right as you land a hit for extra damage!",
+        "I saw a Koopa Troop near the east bridge. Bowser's Castle is over there!",
+        "Mushrooms heal 10 HP. My mom always makes me carry three."
+      ]}
+    ]
+  },
+  "town_girl": {
+    "branches": [
+      {"say": ["The Mushroom Shop is right over there!", "Always carry a few Mushrooms before you head out of town!"]}
+    ]
+  },
+  "toadsworth": {
+    "branches": [
+      {"if": {"side": "evil"}, "say": ["Wh-what?! A villain in Castle Town? Guards! GUARDS!", "...Oh dear, they're on their tea break."]},
+      {"say": ["Goodness me! I've come all the way from the Mushroom Kingdom.", "If you're worn out, Dr. Toad's clinic in the south-east corner of town will patch you right up!"]}
+    ]
+  },
+  "town_gossip": {
+    "branches": [
+      {"random": true, "say": [
+        "Have you tried the Starbeans Cafe in the south of town? A cup of bean coffee perks you right up!",
+        "The Elder lives in the house just west of here. He lets tired travellers rest by his fire.",
+        "The Toads in the square are looking for adventure. Ask one to join you!",
+        "Town Hall has two doors, up on the north-east side. The Mayor loves visitors."
+      ]}
+    ]
+  },
+
+  "koopa_guard": {
+    "branches": [
+      {"if": {"side": "good"}, "say": ["Hey! What's a goody-goody like you doing in Bowser's Castle?", "...Don't touch anything."]},
+      {"say": ["Welcome home, {name}! King Bowser's castle is your castle.", "Want minions? In battle, ask a weakened enemy to join your side!"]}
+    ]
+  },
+  "koopa_shop": {
+    "name": "Koopa Troop",
+    "branches": [
+      {"if": {"side": "good"},
+       "say": ["Heh. A hero wants to shop at Bowser's place? Fine, but heroes pay extra."],
+       "choices": [{"text": "Buy", "do": "shop"}, {"text": "No thanks"}],
+       "shop": [
+         {"item": "mushroom", "count": 1, "price": 12, "thanks": "Pleasure doing business. Now scram!"},
+         {"item": "mushroom", "count": 3, "price": 33, "thanks": "Pleasure doing business. Now scram!"}
+       ]},
+      {"say": ["Psst. Bowser's Mushroom stash. Cheap. Don't tell the boss."],
+       "choices": [{"text": "Buy", "do": "shop"}, {"text": "No thanks"}],
+       "shop": [
+         {"item": "mushroom", "count": 1, "price": 8, "thanks": "Heh heh. Eat it before the boss sees!"},
+         {"item": "mushroom", "count": 3, "price": 21, "thanks": "Heh heh. Eat it before the boss sees!"}
+       ]}
+    ]
+  },
+  "bowser_gatekeeper": {
+    "branches": [
+      {"if": {"side": "good"}, "say": ["Border check! ...A hero, huh? Bowser won't like this.", "Move along before he wakes up from his nap."]},
+      {"say": ["Cross the bridge south to reach the Beanbean Outskirts.", "Castle Town is to the south-west. Stardust Fields lies to the east, past the cliffs."]}
+    ]
+  },
+
+  "elder_rest": {
+    "branches": [
+      {"if": {"side": "evil"}, "say": ["Even Bowser's folk get tired, I suppose. Sit by the fire a while?"],
+       "choices": [{"text": "Rest", "do": "heal", "done": "You rested by the fire. HP and SP are full!"}, {"text": "No thanks"}]},
+      {"say": ["Ho ho, a traveller! You look tired. Sit by the fire a while?"],
+       "choices": [{"text": "Rest", "do": "heal", "done": "You rested by the fire. HP and SP are full!"}, {"text": "No thanks"}]}
+    ]
+  },
+  "house_bean": {
+    "branches": [
+      {"random": true, "say": [
+        "This is my house! Please wipe your feet on the mat.",
+        "My cousin lives in Hoohoo Village, past Stardust Fields. He says the monsters there are tough!"
+      ]}
+    ]
+  },
+  "lodge_toad": {
+    "branches": [
+      {"if": {"side": "evil"}, "say": ["A-are you here to cause trouble? This is a Toad lodge!"]},
+      {"if": {"party_full": true}, "say": ["You've already got a full party! Send someone home from the Enter menu if you want new friends."]},
+      {"say": ["We Toads came over from the Mushroom Kingdom to help out.", "A Toad and a Pianta are waiting in the town square. Ask them to join you!"]}
+    ]
+  },
+  "dr_toad": {
+    "branches": [
+      {"say": ["Welcome to my clinic! Let me take a look at you."],
+       "choices": [{"text": "Get healed", "do": "heal", "done": "Dr. Toad patched you up. HP and SP are full!"}, {"text": "I'm fine"}]}
+    ]
+  },
+  "mayor": {
+    "name": "Mayor",
+    "branches": [
+      {"if": {"side": "evil"}, "say": ["Ahem. Even visitors from Bowser's Castle must follow the town rules.", "No fighting in town! ...Please."]},
+      {"if": {"min_level": 8}, "say": ["{name}! The whole town is talking about you.", "Hoohoo Village, past Stardust Fields, could use a hero like you."]},
+      {"say": ["Welcome to Town Hall! Castle Town is the heart of the Beanbean Kingdom.", "The castle is up north, the shops are around the square, and the Outskirts are past the gates."]}
+    ]
+  },
+  "town_hall_kid": {
+    "branches": [
+      {"say": ["I'm waiting for my mom. She's been talking to the Mayor for HOURS."]}
+    ]
+  },
+  "mushroom_shop": {
+    "name": "Shopkeeper",
+    "branches": [
+      {"if": {"side": "evil"},
+       "say": ["Oh! One of Bowser's... Well, your coins are still coins. But it costs more for you!"],
+       "choices": [{"text": "Buy", "do": "shop"}, {"text": "Just looking"}],
+       "shop": [
+         {"item": "mushroom", "count": 1, "price": 12},
+         {"item": "mushroom", "count": 3, "price": 33}
+       ]},
+      {"say": ["Welcome to the Mushroom Shop! What can I get you?"],
+       "choices": [{"text": "Buy", "do": "shop"}, {"text": "Just looking"}],
+       "shop": [
+         {"item": "mushroom", "count": 1, "price": 8, "thanks": "Thank you! Eat it from the Enter menu when your HP is low."},
+         {"item": "mushroom", "count": 3, "price": 21, "thanks": "Thank you! Eat them from the Enter menu when your HP is low."}
+       ]}
+    ]
+  },
+  "badge_shop": {
+    "name": "Shopkeeper",
+    "branches": [
+      {"say": ["Welcome to the Badge Shop! Badges are sold out until the next delivery...", "But I do have Mushrooms! Want some?"],
+       "choices": [{"text": "Buy", "do": "shop"}, {"text": "Just looking"}],
+       "shop": [
+         {"item": "mushroom", "count": 1, "price": 8},
+         {"item": "mushroom", "count": 3, "price": 21}
+       ]}
+    ]
+  },
+  "cafe_barista": {
+    "name": "Barista",
+    "branches": [
+      {"say": ["Welcome to Starbeans Cafe! A cup of bean coffee will perk you right up. On the house!"],
+       "choices": [{"text": "Have a coffee", "do": "heal", "done": "Mmm, bean coffee! HP and SP are full again!"}, {"text": "Maybe later"}]}
+    ]
+  },
+  "cafe_customer": {
+    "branches": [
+      {"random": true, "say": [
+        "I come here every day. The beans are grown out in Stardust Fields!",
+        "Shh, I'm people-watching. That one's a hero. That one's... a Koopa?"
+      ]}
+    ]
+  },
+  "castle_guard": {
+    "branches": [
+      {"if": {"side": "evil"}, "say": ["We've got our eyes on you, {character}. One wrong move..."]},
+      {"say": ["The throne room is up through the arch. Mind your manners in front of Her Majesty!"]}
+    ]
+  },
+  "lady_lima": {
+    "branches": [
+      {"if": {"side": "evil"}, "say": ["Hmph! Bowser's lackeys are not welcome in this castle!", "...But Queen Bean insists that every visitor be treated politely. Behave yourself."]},
+      {"say": ["I am Lady Lima, adviser to Queen Bean.", "The kingdom welcomes travellers. Do be careful out in the Outskirts and Stardust Fields."]}
+    ]
+  },
+  "queen_bean": {
+    "branches": [
+      {"if": {"side": "evil"}, "say": ["WHAT?! One of Bowser's minions in MY throne room?!", "...Very well. Even villains may visit. But no funny business!"]},
+      {"if": {"min_level": 10}, "say": ["{name}! Word of your deeds has reached my throne.", "The Beanbean Kingdom thanks you. Keep my people safe!"]},
+      {"say": ["Welcome to Beanbean Castle, {name}!", "Monsters roam the Outskirts and Stardust Fields. Help my people, and grow strong!"]}
+    ]
+  },
+  "throne_guard": {
+    "branches": [
+      {"say": ["Her Majesty loves visitors. Just don't stare at her crown. It's very shiny."]}
+    ]
+  },
+
+  "border_bro": {
+    "branches": [
+      {"if": {"side": "evil"}, "say": ["Border check! Bowser's folk, eh? Hoohoo Village is a peaceful place.", "Behave, or you'll answer to the Border Bros!"]},
+      {"say": ["Border check! ...All clear. Hoohoo Village is just up this path.", "There's another way in from the east side of the fields, too."]}
+    ]
+  },
+  "stardust_traveler": {
+    "branches": [
+      {"say": ["Hoo! Stardust Fields. The monsters here are tougher than in the Outskirts.", "Follow the path north to reach Hoohoo Village. It's a town, so you'll be safe there."]}
+    ]
+  },
+  "hoohoo_greeter": {
+    "branches": [
+      {"say": ["Hoohoo! Welcome to Hoohoo Village, home of the finest stone carvers in the kingdom!", "Rest in our huts if you're tired. Hoo!"]}
+    ]
+  },
+  "hoohoo_deck": {
+    "branches": [
+      {"random": true, "say": [
+        "Hoo! The view from this deck is the best in the village.",
+        "Hoohoo Mountain is just up there. Hoo... it's a long climb."
+      ]}
+    ]
+  },
+  "hoohoo_mountain": {
+    "branches": [
+      {"say": ["Sorry, hoo! The path up Hoohoo Mountain is closed until the rockslides are cleared."]}
+    ]
+  },
+  "hoohoo_cave": {
+    "branches": [
+      {"say": ["That cave runs deep under the mountain. Much too dangerous! It's blocked off for now, hoo."]}
+    ]
+  },
+  "hut_rest": {
+    "branches": [
+      {"say": ["Hoohoo! Tired from your trip? Have a rest."],
+       "choices": [{"text": "Rest", "do": "heal", "done": "You had a good rest. HP and SP are full!"}, {"text": "No thanks"}]}
+    ]
+  },
+  "hut_lore": {
+    "branches": [
+      {"random": true, "say": [
+        "Long ago, a great treasure called the Beanstar was hidden somewhere in this kingdom... or so they say. Hoo!",
+        "Our blocks are carved from Hoohoo Mountain stone. Strong as anything!",
+        "Have you met the Border Bros? They check everyone who comes through the fields."
+      ]}
+    ]
+  }
+}

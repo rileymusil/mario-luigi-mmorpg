@@ -11,6 +11,7 @@ const TOUCH_DISTANCE := 14.0
 const TALK_DISTANCE := 26.0
 const FOOT_HALF_WIDTH := 5.0  # everyone's feet are 10px wide
 const FOOT_DEPTH := 3.0
+const FACINGS := {"down": Vector2.DOWN, "up": Vector2.UP, "left": Vector2.LEFT, "right": Vector2.RIGHT}
 
 var map_id := ""
 var map_info: Dictionary
@@ -54,8 +55,7 @@ func _ready() -> void:
 	props.load_props(map_id)
 	props.build(actors, art)
 	rebuild_collision()
-	camera.limit_right = int(map_size.x)
-	camera.limit_bottom = int(map_size.y)
+	_fit_camera()
 
 	player = _spawn_character(Game.player["character"])
 	var pos: Vector2
@@ -85,8 +85,10 @@ func _ready() -> void:
 		if _in_party(n["id"]):
 			continue
 		var node := _spawn_character(n["id"])
-		node.position = nearest_walkable(n["pos"])
-		npcs.append({"node": node, "id": n["id"]})
+		node.position = n["pos"] if n.get("fixed", false) else nearest_walkable(n["pos"])
+		node.facing = FACINGS.get(n.get("face", "down"), Vector2.DOWN)
+		npcs.append({"node": node, "id": n["id"], "talk": n.get("talk", n["id"]),
+			"reach": n.get("reach", TALK_DISTANCE), "face": node.facing})
 
 	online = OnlinePlayers.new()
 	add_child(online)
@@ -102,6 +104,24 @@ func _ready() -> void:
 	else:
 		area_name.modulate.a = 0.0
 	Game.save()
+
+
+## Keeps the camera inside the map. A room smaller than the screen is shown
+## centred on black.
+func _fit_camera() -> void:
+	var pad := ((get_viewport_rect().size - map_size) / 2.0).max(Vector2.ZERO).ceil()
+	camera.limit_left = -int(pad.x)
+	camera.limit_top = -int(pad.y)
+	camera.limit_right = int(map_size.x + pad.x)
+	camera.limit_bottom = int(map_size.y + pad.y)
+	if pad != Vector2.ZERO:
+		var backdrop := ColorRect.new()
+		backdrop.color = Color.BLACK
+		backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		backdrop.position = -pad - Vector2(8, 8)
+		backdrop.size = map_size + pad * 2.0 + Vector2(16, 16)
+		backdrop.z_index = -2
+		add_child(backdrop)
 
 
 func _spawn_character(id: String) -> CharacterSprite:
@@ -198,7 +218,8 @@ func _process(delta: float) -> void:
 		_pause_menu()
 
 	for exit in map_info["exits"]:
-		if exit["rect"].has_point(player.position):
+		# Doors open when you walk up into them, not when you pass in front.
+		if exit["rect"].has_point(player.position) and (not exit.get("door", false) or input.y < -0.3):
 			busy = true
 			Game.go_to_map(exit["to"], exit["spawn"])
 			return
@@ -256,10 +277,14 @@ func _start_battle(e: Dictionary) -> void:
 # --- Talking and menus ---------------------------------------------------------
 
 func _nearest_npc():
+	var best = null
+	var best_d := INF
 	for n in npcs:
-		if n["node"].position.distance_to(player.position) < TALK_DISTANCE:
-			return n
-	return null
+		var d: float = n["node"].position.distance_to(player.position)
+		if d < n["reach"] and d < best_d:
+			best = n
+			best_d = d
+	return best
 
 
 ## Shows a speech balloon until Z or X. speaker/anchor: who is talking (name
@@ -272,34 +297,118 @@ func say(text: String, speaker := "", anchor: Node2D = null) -> void:
 	busy = was_busy
 
 
+## Talks to an NPC using its lines in res://data/dialogue.json (see
+## dialogue_data.gd): pages, then an optional choice that can recruit, open a
+## shop or heal.
 func _talk_to(n: Dictionary) -> void:
-	var info: Dictionary = Game.PARTNERS[n["id"]]
 	var node: CharacterSprite = n["node"]
-	if Game.player["side"] == "evil":
-		await say("Eek! You're one of Bowser's bunch! Stay back!", info["name"], node)
-		return
+	var branch := DialogueData.pick(n["talk"], Game.player)
+	var speaker := DialogueData.speaker(n["talk"], n["id"])
+	var pages := DialogueData.pages(branch)
+	var choices: Array = branch.get("choices", [])
 	busy = true
-	dialog.open("Going out to the Outskirts? It's dangerous out there...", info["name"], node)
+	node.facing = (player.position - node.position).normalized()  # turn to whoever is talking
+	for i in pages.size():
+		if i == pages.size() - 1 and not choices.is_empty():
+			break  # the last page stays up as the question
+		await say(DialogueData.fill(pages[i]), speaker, node)
+	var joined := false
+	if not choices.is_empty():
+		var question: String = DialogueData.fill(pages.back()) if not pages.is_empty() else ""
+		joined = await _ask(n, branch, question, speaker)
+	if not joined:
+		node.facing = n["face"]
+	await get_tree().process_frame
+	busy = false
+
+
+func _place_menu() -> void:
 	menu.position = Vector2(270, dialog.box.position.y - 52 if dialog.box.position.y > 100 else dialog.box.position.y + dialog.box.size.y + 4)
-	var i := await menu.choose(["Ask to join", "Never mind"], "", true)
+
+
+## Shows the question with the branch's choices and does what the pick says.
+## Returns true if the NPC joined your party.
+func _ask(n: Dictionary, branch: Dictionary, question: String, speaker: String) -> bool:
+	var node: CharacterSprite = n["node"]
+	var choices: Array = branch["choices"]
+	dialog.open(question, speaker, node)
+	_place_menu()
+	var labels := choices.map(func(c): return str(c["text"]))
+	var i := await menu.choose(labels, "", true)
 	dialog.close()
-	if i != 0:
-		await get_tree().process_frame
-		busy = false
-		return
+	if i < 0:
+		return false
+	var choice: Dictionary = choices[i]
+	for page in choice.get("say", []):
+		await say(DialogueData.fill(page), speaker, node)
+	match choice.get("do", ""):
+		"recruit":
+			return await _recruit(n, speaker)
+		"shop":
+			await _shop(branch.get("shop", []), speaker, node)
+		"heal":
+			_heal_party()
+			await say(DialogueData.fill(choice.get("done", "Your HP and SP are full again!")))
+	return false
+
+
+func _recruit(n: Dictionary, speaker: String) -> bool:
+	var node: CharacterSprite = n["node"]
+	if not Game.PARTNERS.has(n["id"]):
+		push_warning("%s can't join a party (not in Game.PARTNERS)" % n["id"])
+		return false
+	var info: Dictionary = Game.PARTNERS[n["id"]]
 	if not Game.can_recruit():
 		await say("Your party is full. Send someone home from the menu (Enter) first.")
-		busy = false
-		return
+		return false
 	if randf() < info["recruit"]:
 		Game.player["party"].append(Game.make_member("partner", n["id"]))
 		npcs.erase(n)
 		followers.append(node)
 		Game.save()
 		await say("%s joined your party!" % info["name"])
-	else:
-		await say("Hmm... I'm not sure yet. Ask me again?", info["name"], node)
-	busy = false
+		return true
+	await say("Hmm... I'm not sure yet. Ask me again?", speaker, node)
+	return false
+
+
+## A shop counter: buy from `stock` ([{item, count, price}]) until Done.
+func _shop(stock: Array, speaker: String, node: Node2D) -> void:
+	var p: Dictionary = Game.player
+	while true:
+		var labels := []
+		var enabled := []
+		var infos := []
+		for s in stock:
+			var item: Dictionary = Game.ITEMS[s["item"]]
+			var count := int(s.get("count", 1))
+			labels.append("%s%s  %d coins" % [item["name"], " x%d" % count if count > 1 else "", int(s["price"])])
+			enabled.append(p["coins"] >= int(s["price"]))
+			infos.append("%s You have %d." % [item["info"], p.get(item["key"], 0)])
+		labels.append("Done")
+		enabled.append(true)
+		infos.append("You have %d coins." % p["coins"])
+		dialog.open("You have %d coins. What would you like?" % p["coins"], speaker, node)
+		_place_menu()
+		var i := await menu.choose(labels, "", true, enabled, infos)
+		dialog.close()
+		if i < 0 or i >= stock.size():
+			break
+		var s: Dictionary = stock[i]
+		var item: Dictionary = Game.ITEMS[s["item"]]
+		p["coins"] -= int(s["price"])
+		p[item["key"]] = int(p.get(item["key"], 0)) + int(s.get("count", 1))
+		Game.save()
+		await say(DialogueData.fill(s.get("thanks", "Thank you! Come again!")), speaker, node)
+
+
+func _heal_party() -> void:
+	var p: Dictionary = Game.player
+	p["hp"] = p["max_hp"]
+	p["sp"] = p["max_sp"]
+	for member in p["party"]:
+		member["hp"] = member["max_hp"]
+	Game.save()
 
 
 func _pause_menu() -> void:

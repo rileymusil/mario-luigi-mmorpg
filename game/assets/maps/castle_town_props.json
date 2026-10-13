@@ -1,5 +1,5 @@
 {"props": [
-{"name":"palace","shape":"rect","rect":[208,0,274,146],"base":145},
+{"name":"palace","shape":"rect","rect":[208,0,274,118],"base":118},
 {"name":"house_nw","shape":"rect","rect":[35,126,128,138],"base":262,"foot":[37,208,124,54]},
 {"name":"shop_badge","shape":"rect","rect":[466,159,130,143],"base":300,"foot":[468,244,126,56]},
 {"name":"hedge_arch_n","shape":"rect","rect":[275,160,128,96],"base":255,"foot":[277,211,124,44]},
