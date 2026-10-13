@@ -20,6 +20,7 @@ var npcs: Array = []      # [{node, id}]
 var busy := false         # true while a menu or dialog is open
 var _grace := 1.5         # seconds after arriving before enemies can start a battle
 var _trail: Array[Vector2] = []
+var others := {}          # online players in this map: id -> {node, target, velocity}
 
 @onready var actors: Node2D = $Actors
 @onready var camera: Camera2D = $Camera2D
@@ -74,12 +75,85 @@ func _ready() -> void:
 		node.position = nearest_walkable(n["pos"])
 		npcs.append({"node": node, "id": n["id"]})
 
+	_join_online()
+
 	dialog.visible = false
 	if arriving:
 		_show_area_name()
 	else:
 		area_name.modulate.a = 0.0
 	Game.save()
+
+
+# --- Other players online -----------------------------------------------------
+
+func _join_online() -> void:
+	Net.player_joined.connect(_on_player_joined)
+	Net.player_moved.connect(_on_player_moved)
+	Net.player_jumped.connect(_on_player_jumped)
+	Net.player_left.connect(_on_player_left)
+	Net.zone_reset.connect(_clear_others)
+	# Coming back from a battle keeps the connection, so draw who is already here.
+	for p in Net.players.values():
+		_on_player_joined(p)
+	Net.join_zone(map_id, Game.player["character"], Game.character_name(), player.position)
+
+
+func _on_player_joined(p: Dictionary) -> void:
+	if others.has(p["id"]) or not Game.CHARACTERS.has(p["character"]):
+		return
+	var node := _spawn_character(p["character"])
+	node.position = Vector2(p["x"], p["y"])
+	var tag := Label.new()
+	tag.text = p["name"]
+	tag.add_theme_font_size_override("font_size", 8)
+	tag.add_theme_color_override("font_outline_color", Color.BLACK)
+	tag.add_theme_constant_override("outline_size", 3)
+	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tag.size = Vector2(80, 10)
+	tag.position = Vector2(-40, -node.height() - 12)
+	node.add_child(tag)
+	others[p["id"]] = {"node": node, "target": node.position, "velocity": Vector2.ZERO}
+
+
+func _on_player_moved(id: String, pos: Vector2, velocity: Vector2) -> void:
+	if others.has(id):
+		others[id]["target"] = pos
+		others[id]["velocity"] = velocity
+
+
+func _on_player_jumped(id: String) -> void:
+	if others.has(id):
+		others[id]["node"].jump()
+
+
+func _on_player_left(id: String) -> void:
+	if others.has(id):
+		others[id]["node"].queue_free()
+		others.erase(id)
+
+
+func _clear_others() -> void:
+	for o in others.values():
+		o["node"].queue_free()
+	others.clear()
+
+
+## Updates arrive a few times a second; glide toward the latest one.
+func _update_others(delta: float) -> void:
+	for o in others.values():
+		var node: CharacterSprite = o["node"]
+		var to: Vector2 = o["target"] - node.position
+		if to.length() > 96.0:
+			node.position = o["target"]
+		else:
+			node.position += to.limit_length(maxf(PLAYER_SPEED * 1.2, to.length() * 6.0) * delta)
+		# Walk animation follows their reported velocity, so it doesn't stutter
+		# between updates; a last glide after they stop still animates.
+		var velocity: Vector2 = o["velocity"]
+		if velocity.length() < 1.0 and to.length() > 1.0:
+			velocity = to.normalized() * PLAYER_SPEED
+		node.move_velocity = velocity
 
 
 func _spawn_character(id: String) -> CharacterSprite:
@@ -135,6 +209,8 @@ func _process(delta: float) -> void:
 	if player == null:
 		return
 	_update_hud()
+	_update_others(delta)
+	Net.update_position(player.position, Vector2.ZERO if busy else player.move_velocity)
 	if busy:
 		player.move_velocity = Vector2.ZERO
 		for f in followers:
@@ -149,6 +225,8 @@ func _process(delta: float) -> void:
 	_update_enemies(delta)
 
 	if Input.is_action_just_pressed("action"):
+		if not player.is_airborne():
+			Net.send_jump()
 		player.jump()
 	elif Input.is_action_just_pressed("talk"):
 		var npc = _nearest_npc()
@@ -285,6 +363,7 @@ func _pause_menu() -> void:
 			await say("Game saved in this browser.")
 		4:
 			Game.save()
+			Net.leave()
 			get_tree().change_scene_to_file(Game.TITLE_SCENE)
 			return
 	busy = false

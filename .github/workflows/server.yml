@@ -1,0 +1,51 @@
+# Checks the game server (server/) on pull requests and deploys it to
+# Cloudflare Workers on pushes to main.
+#
+# One-time setup, see server/README.md: add the repository secrets
+# CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID. Until they exist the
+# deploy step is skipped and only the checks run.
+name: Game server
+
+on:
+  push:
+    branches: [main]
+    paths: ["server/**", ".github/workflows/server.yml"]
+  pull_request:
+    paths: ["server/**", ".github/workflows/server.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  server:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - run: npm ci
+
+      - name: Type-check
+        run: npm run check
+
+      - name: Smoke test against a local server
+        run: |
+          npx wrangler dev --port 8787 > wrangler.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:8787/ && break; sleep 1; done
+          npm test || (cat wrangler.log; exit 1)
+
+      - name: Deploy to Cloudflare
+        if: github.event_name != 'pull_request' && env.CLOUDFLARE_API_TOKEN != ''
+        run: npx wrangler deploy

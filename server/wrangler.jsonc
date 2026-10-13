@@ -1,0 +1,11 @@
+// Cloudflare Worker config. Everything here fits the Workers Free plan.
+{
+  "name": "mario-luigi-mmo",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-10-01",
+  "durable_objects": {
+    "bindings": [{ "name": "ZONES", "class_name": "Zone" }]
+  },
+  // The free plan only allows SQLite-backed Durable Objects.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Zone"] }]
+}
