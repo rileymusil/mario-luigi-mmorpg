@@ -145,7 +145,7 @@ func _add_action(action: String, keys: Array, buttons: Array) -> void:
 func new_player(character_id: String, username := "") -> void:
 	var c: Dictionary = CHARACTERS[character_id]
 	player = {
-		"username": clean_username(username), "character": character_id, "side": c["side"], "level": 1, "xp": 0, "coins": 20,
+		"username": clean_username(username), "uid": new_uid(), "character": character_id, "side": c["side"], "level": 1, "xp": 0, "coins": 20,
 		"max_hp": c["hp"], "hp": c["hp"], "max_sp": c["sp"], "sp": c["sp"], "pow": c["pow"], "def": c["def"],
 		"mushrooms": 3, "party": [], "map": HOME_MAP[c["side"]], "spawn": "start", "position": null,
 		"wins": 0,
@@ -162,6 +162,13 @@ func character_name() -> String:
 func username() -> String:
 	var u: String = player.get("username", "")
 	return u if u != "" else character_name()
+
+
+## A random id that stays the same for this save, so your party partner can
+## find you again on the next map.
+func new_uid() -> String:
+	var bytes := Crypto.new().generate_random_bytes(6)
+	return bytes.hex_encode()
 
 
 ## Same rule as the server: letters, numbers, spaces and _ . ' - , max 16.
@@ -290,6 +297,8 @@ func load_save() -> bool:
 	for member in data["party"]:
 		for key in ["max_hp", "hp", "pow", "def"]:
 			member[key] = int(member[key])
+	if not data.has("uid"):
+		data["uid"] = new_uid()
 	player = data
 	return true
 

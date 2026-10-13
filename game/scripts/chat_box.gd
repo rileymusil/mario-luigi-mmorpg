@@ -2,20 +2,22 @@ class_name ChatBox
 extends CanvasLayer
 ## Text chat with the players on your map: a short log in the bottom-left
 ## corner and a text box opened with T (or /, or the Chat button).
-## Commands: /mute name, /unmute name, /who, /help.
+## Commands: /p message (party), /mute name, /unmute name, /who, /help.
 ## Muted names are kept in the save (Game.player["muted"]).
 
 signal message_shown(id: String, text: String)  # for speech bubbles
 
 const MAX_LINES := 6
 const FADE_AFTER := 12.0
-const HELP := "T: chat   /who: who's here   /mute name   /unmute name"
+const HELP := "/p: party chat   /who   /mute name   /unmute name   X near someone: team up"
 
 var _log: VBoxContainer
 var _prompt: TextPrompt
 var _button: Button
 var _lines: Array = []  # [{label, age}]
 var _open_requested := false
+## Lines survive map changes (each map makes a new ChatBox): [{text, color, at}]
+static var _history: Array = []
 
 
 func _ready() -> void:
@@ -34,6 +36,10 @@ func _ready() -> void:
 	_button.position = Vector2(340, 178)
 	_button.pressed.connect(func(): _open_requested = true)
 	add_child(_button)
+	var now := Time.get_ticks_msec() / 1000.0
+	for h in _history.slice(-MAX_LINES):
+		_add_line(h["text"], h["color"], false)
+		_lines.back()["age"] = now - h["at"]
 	Net.chat_received.connect(_on_chat)
 	Net.player_arrived.connect(func(p): system("%s arrived." % p["name"]))
 
@@ -67,10 +73,13 @@ func system(text: String) -> void:
 	_add_line(text, Color(1, 0.85, 0.2))
 
 
-func _on_chat(id: String, who: String, text: String) -> void:
+func _on_chat(id: String, who: String, text: String, party: bool) -> void:
 	if is_muted(who):
 		return
-	_add_line("%s: %s" % [who, text], Color.WHITE)
+	if party:
+		_add_line("[Party] %s: %s" % [who, text], Color(0.55, 1, 0.55))
+	else:
+		_add_line("%s: %s" % [who, text], Color.WHITE)
 	message_shown.emit(id, text)
 
 
@@ -82,6 +91,17 @@ func _command(text: String) -> void:
 	var parts := text.split(" ", false, 1)
 	var arg := parts[1].strip_edges() if parts.size() > 1 else ""
 	match parts[0].to_lower():
+		"/p", "/party":
+			if Net.party_id == "":
+				system("You're not in a party. Walk up to someone and press X to team up.")
+			elif not Net.party_here:
+				system("%s isn't on this map right now." % Net.party_name)
+			elif arg != "":
+				Net.send_chat(arg, true)
+		"/leave":
+			if Net.party_id != "":
+				system("You left the party with %s." % Net.party_name)
+				Net.leave_party()
 		"/mute":
 			if arg == "":
 				system("Type /mute and their name.")
@@ -106,11 +126,17 @@ func _command(text: String) -> void:
 			for p in Net.players.values():
 				names.append(p["name"] + (" (muted)" if is_muted(p["name"]) else ""))
 			system("Here: you" + (", " + ", ".join(names) if not names.is_empty() else ". Nobody else yet."))
+			if Net.party_id != "":
+				system("Party: %s%s" % [Net.party_name, "" if Net.party_here else " (on another map)"])
 		_:
 			system(HELP)
 
 
-func _add_line(text: String, color: Color) -> void:
+func _add_line(text: String, color: Color, remember := true) -> void:
+	if remember:
+		_history.append({"text": text, "color": color, "at": Time.get_ticks_msec() / 1000.0})
+		if _history.size() > MAX_LINES:
+			_history.pop_front()
 	var l := Label.new()
 	l.text = text
 	l.theme_type_variation = &"OutlineLabel"

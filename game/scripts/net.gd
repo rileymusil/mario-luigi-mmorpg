@@ -17,11 +17,21 @@ signal player_moved(id: String, pos: Vector2, velocity: Vector2)
 signal player_jumped(id: String)
 signal player_left(id: String)
 signal player_arrived(player: Dictionary)  # someone walked in (not the roster on joining)
-signal chat_received(id: String, name: String, text: String)
+signal chat_received(id: String, name: String, text: String, party: bool)
+signal invited(from_id: String, name: String)       # someone wants to team up
+signal invite_declined(name: String)
+signal party_changed                                # formed, ended, or partner arrived
+signal warp_requested(map_id: String, spawn: String) # your partner took an exit
 signal zone_reset                          # connection (re)opened: forget everyone
 
 var my_id := ""
-var players := {}  # id -> {id, name, character, x, y}: everyone else in your zone
+var players := {}  # id -> {id, name, character, side, x, y}: everyone else in your zone
+## Party: your partner's id (their uid, the same on every map) and name, and
+## whether they're on this map with you right now.
+var party_id := ""
+var party_name := ""
+var party_here := false
+var pending_warp := {}  # {map, spawn} to follow your partner once you're free
 var _socket: WebSocketPeer
 var _zone := ""
 var _hello := {}
@@ -52,6 +62,10 @@ func join_zone(map_id: String, character: String, display_name: String, pos: Vec
 	_hello = {"t": "hello", "name": display_name, "character": character, "x": pos.x, "y": pos.y}
 	if map_id == _zone and _socket != null:
 		return
+	# Taking an exit (not being sent home) pulls your partner along.
+	var spawn: String = Game.player.get("spawn", "start")
+	if party_here and spawn != "start":
+		_send({"t": "warp", "map": map_id, "spawn": spawn})
 	leave()
 	_zone = map_id
 	_retries = 0
@@ -65,6 +79,7 @@ func leave() -> void:
 	_zone = ""
 	my_id = ""
 	players.clear()
+	party_here = false
 	_was_open = false
 
 
@@ -79,11 +94,32 @@ func send_jump() -> void:
 
 
 ## Returns false when not connected. The server trims, filters and echoes it back.
-func send_chat(text: String) -> bool:
+func send_chat(text: String, to_party := false) -> bool:
 	if not is_online():
 		return false
-	_send({"t": "chat", "text": text})
+	_send({"t": "chat", "text": text, "party": to_party})
 	return true
+
+
+func send_invite(id: String) -> void:
+	_send({"t": "invite", "to": id})
+
+
+func answer_invite(from_id: String, accept: bool) -> void:
+	_send({"t": "accept" if accept else "decline", "from": from_id})
+
+
+func leave_party() -> void:
+	_send({"t": "leave_party"})
+	_end_party()
+
+
+func _end_party() -> void:
+	party_id = ""
+	party_name = ""
+	party_here = false
+	pending_warp = {}
+	party_changed.emit()
 
 
 func _connect() -> void:
@@ -124,7 +160,11 @@ func _process(delta: float) -> void:
 				_last_sent = {}
 				players.clear()
 				zone_reset.emit()
-				_socket.send_text(JSON.stringify(_hello))
+				var hello := _hello.duplicate()
+				hello["uid"] = Game.player.get("uid", "")
+				hello["side"] = Game.player.get("side", "good")
+				hello["party"] = party_id
+				_socket.send_text(JSON.stringify(hello))
 			while _socket.get_available_packet_count() > 0:
 				_handle(_socket.get_packet().get_string_from_utf8())
 			_send_timer -= delta
@@ -169,8 +209,25 @@ func _handle(text: String) -> void:
 			var id := str(msg["id"])
 			if players.erase(id):
 				player_left.emit(id)
+				if id == party_id:
+					party_here = false
+					party_changed.emit()
 		"chat":
-			chat_received.emit(str(msg["id"]), str(msg["name"]), str(msg["text"]))
+			chat_received.emit(str(msg["id"]), str(msg["name"]), str(msg["text"]), msg.get("party", false) == true)
+		"invite":
+			invited.emit(str(msg["from"]), str(msg["name"]))
+		"declined":
+			invite_declined.emit(str(msg["name"]))
+		"party":
+			party_id = str(msg["id"])
+			party_name = str(msg["name"])
+			party_here = true
+			party_changed.emit()
+		"party_end":
+			_end_party()
+		"warp":
+			pending_warp = {"map": str(msg["map"]), "spawn": str(msg["spawn"])}
+			warp_requested.emit(pending_warp["map"], pending_warp["spawn"])
 		"full":
 			_zone = ""  # don't retry into a full zone
 
