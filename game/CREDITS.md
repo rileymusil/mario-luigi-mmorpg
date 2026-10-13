@@ -9,7 +9,6 @@ Sprites and maps come from *Mario & Luigi: Superstar Saga* (Nintendo / AlphaDrea
   - Professor E. Gadd, Prince Peasley and Yoshi: A.J. Nitro.
   - Vivian: Tonberry2k.
   - Rookie Bowser: Superstar Saga's Rookie Bowser NPC sheet (USA); no ripper is named on the sheet.
-  - Dimentio: Mack151.
   - Grodus: Sniper the Yoshi/Boo/Person (scepter rings by Bean).
   - Mimi: ShyGuy Grey.
   - Koopa Bros.: Parakoopa's Koopa Troopa, edited by A.J. Nitro; the green, yellow and black brothers are palette swaps from the sheet's colour swatches.

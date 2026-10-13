@@ -91,7 +91,7 @@ func tick(delta: float, busy: bool) -> void:
 		_answer_invite(_invites.pop_front())
 	elif chat.wants_to_open():
 		_type_chat()
-	elif near != "" and Input.is_action_just_pressed("talk") and _world._nearest_npc() == null:
+	elif near != "" and _world.keys_ready() and Input.is_action_just_pressed("talk") and _world._nearest_npc() == null:
 		_interact(near)
 	for o in others.values():
 		var node: CharacterSprite = o["node"]

@@ -91,7 +91,7 @@ func _pick_side() -> void:
 	_pick_character("good" if i == 0 else "evil")
 
 
-## Eight characters a side: the list in the middle, the walking preview on
+## Each side's characters: the list in the middle, the walking preview on
 ## the left and the highlighted character's card on the right.
 func _pick_character(side: String) -> void:
 	var ids: Array = []
@@ -133,14 +133,14 @@ func _pick_character(side: String) -> void:
 func _show_character(id: String) -> void:
 	var c: Dictionary = Game.CHARACTERS[id]
 	preview.character_id = id
-	# Big sheets (Grodus, Dimentio) are drawn smaller so they stay left of the list.
+	# Big sheets (Grodus) are drawn smaller so they stay left of the list.
 	var tex: Texture2D = load("res://assets/characters/%s.png" % id)
 	var cell := Vector2(tex.get_width() / float(c["frames"]), tex.get_height() / 3.0)
 	preview.scale = Vector2.ONE * clampf(minf(84.0 / cell.x, 92.0 / cell.y), 1.0, 2.0)
 	var sp: Dictionary = Game.SPECIALS[c["special"]]
 	card_special.text = sp["name"]
 	card_stats.text = "HP %d  POW %d  DEF %d" % [c["hp"], c["pow"], c["def"]]
-	card_info.text = sp["info"]
+	card_info.text = sp["info"].replace("{a}", "A" if TouchControls.active else "Z")
 	card.reset_size()
 
 
