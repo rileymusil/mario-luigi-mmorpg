@@ -26,7 +26,9 @@ export interface Env {
 }
 
 const ZONE_NAME = /^[a-z0-9_]{1,32}$/;
-const CHARACTERS = new Set(["mario", "luigi", "peach", "bowser"]);
+// Character ids are checked for shape only, so new characters in the game
+// don't need a server deploy.
+const CHARACTER_ID = /^[a-z0-9_]{1,32}$/;
 const MAX_PLAYERS_PER_ZONE = 50;
 const MAX_MESSAGES_PER_SECOND = 15;
 const MAX_MESSAGE_BYTES = 512;
@@ -110,7 +112,7 @@ export class Zone extends DurableObject<Env> {
 
     if (msg.t === "hello" && a.player === null) {
       const character = String(msg.character);
-      if (!CHARACTERS.has(character)) {
+      if (!CHARACTER_ID.test(character)) {
         ws.close(1008, "unknown character");
         return;
       }
