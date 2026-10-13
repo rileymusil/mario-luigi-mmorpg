@@ -1,0 +1,31 @@
+; Engine configuration file.
+; Open this folder in Godot 4.4 or newer (Import > select this project.godot).
+
+config_version=5
+
+[application]
+
+config/name="Mario & Luigi MMO"
+config/description="A Superstar Saga style RPG prototype for the browser."
+run/main_scene="res://scenes/overworld.tscn"
+config/features=PackedStringArray("4.4", "GL Compatibility")
+config/icon="res://icon.svg"
+
+[autoload]
+
+Game="*res://scripts/game.gd"
+
+[display]
+
+window/size/viewport_width=384
+window/size/viewport_height=216
+window/size/window_width_override=1152
+window/size/window_height_override=648
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+
+[rendering]
+
+textures/canvas_textures/default_texture_filter=0
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
