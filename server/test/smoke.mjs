@@ -119,6 +119,12 @@ check((await q.next("chat")).party === true && (await p.next("chat")).text === "
 await new Promise((res) => setTimeout(res, 300));
 check(!r.inbox.some((m) => m.t === "chat"), "party chat doesn't reach others");
 
+p.send({ t: "pmsg", d: { kind: "coop_start", foes: ["goomba"] } });
+check((await q.next("pmsg")).d.kind === "coop_start", "party messages reach the partner");
+r.send({ t: "pmsg", d: { kind: "sneaky" } });
+await new Promise((res) => setTimeout(res, 300));
+check(!p.inbox.some((m) => m.t === "pmsg") && !q.inbox.some((m) => m.t === "pmsg"), "party messages need a party");
+
 p.send({ t: "warp", map: "outskirts", spawn: "south_path" });
 const warp = await q.next("warp");
 check(warp.map === "outskirts" && warp.spawn === "south_path", "warp is passed to the partner");

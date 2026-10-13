@@ -22,6 +22,7 @@ signal invited(from_id: String, name: String)       # someone wants to team up
 signal invite_declined(name: String)
 signal party_changed                                # formed, ended, or partner arrived
 signal warp_requested(map_id: String, spawn: String) # your partner took an exit
+signal party_message(d: Dictionary)               # co-op battle traffic from your partner
 signal challenged(foe: Dictionary)                  # an evil player attacks you: {id, name, character, stats}
 signal duel_started(foe: Dictionary, first: bool)   # foe: Player + {stats}; first: you move first
 signal duel_message(msg: Dictionary)                # duel_act / duel_hit from your foe
@@ -116,6 +117,15 @@ func send_invite(id: String) -> void:
 
 func answer_invite(from_id: String, accept: bool) -> void:
 	_send({"t": "accept" if accept else "decline", "from": from_id})
+
+
+## Anything for your partner on this map (co-op battles). Returns false if
+## they aren't here to get it.
+func send_party(d: Dictionary) -> bool:
+	if not is_online() or not party_here:
+		return false
+	_send({"t": "pmsg", "d": d})
+	return true
 
 
 ## Evil only: attack a good player standing next to you.
@@ -265,6 +275,9 @@ func _handle(text: String) -> void:
 		"warp":
 			pending_warp = {"map": str(msg["map"]), "spawn": str(msg["spawn"])}
 			warp_requested.emit(pending_warp["map"], pending_warp["spawn"])
+		"pmsg":
+			if typeof(msg.get("d")) == TYPE_DICTIONARY:
+				party_message.emit(msg["d"])
 		"challenge":
 			var foe := {"id": str(msg["from"]), "name": str(msg["name"]), "character": str(msg["character"]),
 				"stats": msg.get("stats", {})}
