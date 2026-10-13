@@ -105,7 +105,6 @@ func _setup_presentation(map_id: String) -> void:
 	rating.modulate.a = 0.0
 	blocks.highlighted.connect(func(info: String): _say(info))
 	TouchControls.active_changed.connect(_on_touch_mode_changed)
-	_build_party_bar()
 	_refresh()
 
 
@@ -725,8 +724,14 @@ func _wait(seconds: float) -> void:
 # --- Status display --------------------------------------------------------------
 
 ## One navy box per ally on the bottom bar: face, heart and HP (SP for you).
+## Adds an HP box for every ally that doesn't have one yet (allies can join
+## after the start, e.g. a co-op partner). _refresh() calls it.
 func _build_party_bar() -> void:
+	if not _presented:
+		return
 	for a in allies:
+		if a.has("panel"):
+			continue
 		var panel := PanelContainer.new()
 		panel.theme_type_variation = &"NavyPanel"
 		panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -755,6 +760,7 @@ func _set_turn(who: Dictionary) -> void:
 
 func _refresh() -> void:
 	var p: Dictionary = Game.player
+	_build_party_bar()
 	for a in allies:
 		if not a.has("hp_label"):
 			continue

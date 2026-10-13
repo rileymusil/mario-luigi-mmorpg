@@ -135,7 +135,7 @@ func _process(_delta: float) -> void:
 	_show(stick, roaming)
 	_show(menu_button, roaming)
 	_show(fullscreen_button, _can_fullscreen and active and not blocked and (roaming or path == Game.TITLE_SCENE))
-	_layout(path == Game.BATTLE_SCENE or path == Game.PVP_SCENE)
+	_layout(scene != null and scene.is_in_group(&"battles"))  # battle.tscn and scenes built on it
 
 
 func _show(c: Control, on: bool) -> void:

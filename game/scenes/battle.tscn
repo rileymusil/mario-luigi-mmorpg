@@ -5,7 +5,7 @@
 [ext_resource type="Script" path="res://ui/target_picker.gd" id="3_targets"]
 [ext_resource type="Script" path="res://scripts/choice_menu.gd" id="4_menu"]
 
-[node name="Battle" type="Node2D"]
+[node name="Battle" type="Node2D" groups=["battles"]]
 script = ExtResource("1_battle")
 
 [node name="Backdrop" type="ColorRect" parent="."]
