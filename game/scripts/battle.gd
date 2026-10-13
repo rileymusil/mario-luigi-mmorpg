@@ -224,8 +224,9 @@ func _run_battle() -> void:
 func _commands_for(a: Dictionary) -> Array:
 	var p: Dictionary = Game.player
 	if not _is_player(a):
+		var move: Dictionary = Game.MOVES[_move_id(a)]
 		return [
-			{"id": "attack", "label": "Attack", "icon": "hammer", "info": "Tackle! Press {a} in the gold zone."},
+			{"id": "attack", "label": move["name"], "icon": "hammer", "info": move["info"]},
 			{"id": "run", "label": "Run", "icon": "run", "info": "Try to escape."},
 		]
 	var sp: Dictionary = Game.SPECIALS[Game.CHARACTERS[p["character"]]["special"]]
@@ -246,48 +247,6 @@ func _ally_turn(a: Dictionary) -> String:
 		await _end_veil(a)  # nobody attacked the shadows: the fire comes out anyway
 		if _alive(foes).is_empty():
 			return ""
-	var is_player := is_same(a["member"], Game.player)
-	var p: Dictionary = Game.player
-	var options: Array = []
-	var enabled: Array = []
-	var infos: Array = []
-	if is_player:
-		var sp: Dictionary = Game.SPECIALS[Game.CHARACTERS[p["character"]]["special"]]
-		options = ["Jump", "%s (%d SP)" % [sp["name"], sp["sp"]], "Mushroom (%d)" % p["mushrooms"], "Ask to join", "Run"]
-		enabled = [true, p["sp"] >= sp["sp"], p["mushrooms"] > 0, p["side"] == "evil" and Game.can_recruit(), true]
-		infos = ["Stomp! Press Z as you land for a 2nd hit.", sp["info"], "Heal 10 HP.",
-			"Evil only: ask an enemy to join your party." if p["side"] == "good" else "Weaker enemies say yes more often.",
-			"Try to escape."]
-	else:
-		var move: Dictionary = Game.MOVES[_move_id(a)]
-		options = [move["name"], "Run"]
-		enabled = [true, true]
-		infos = [move["info"], "Try to escape."]
-	message.text = "%s's turn" % a["name"]
-	var choice: String = options[await menu.choose(options, a["name"], false, enabled, infos)]
-	message.text = ""
-	if choice == "Run":
-		if randf() < 0.6:
-			return "fled"
-		message.text = "Couldn't get away!"
-		await _wait(0.8)
-		return ""
-	if choice.begins_with("Mushroom"):
-		p["mushrooms"] -= 1
-		var target = await _pick_ally()
-		_set_hp(target, _hp(target) + 10)
-		_show_rating("+10 HP")
-		await _wait(0.8)
-		return ""
-	var target = await _pick_foe()
-	if choice == "Jump":
-		await _jump_attack(a, target)
-	elif not is_player:
-		await _partner_move(a, target, _move_id(a))
-	elif choice == "Ask to join":
-		await _ask(target)
-	else:
-		await _special(a, target)
 	var p: Dictionary = Game.player
 	var commands := _commands_for(a)
 	_set_turn(a)
@@ -317,7 +276,7 @@ func _ally_turn(a: Dictionary) -> String:
 			"jump":
 				await _jump_attack(a, target)
 			"attack":
-				await _tackle(a, target)
+				await _partner_move(a, target, _move_id(a))
 			"ask":
 				await _ask(target)
 			"special":
@@ -732,7 +691,7 @@ func _rookie_rush(a: Dictionary, target: Dictionary) -> void:
 	var back := tpos + Vector2(-60, 0)
 	var contact := tpos + Vector2(-16, 0)
 	await _walk(node, back, 220.0)
-	message.text = "Press Z as each shell bash hits!"
+	_say("Press {a} as each shell bash hits!")
 	var streak := 0
 	for i in 3:
 		var result := _rate_landing(await _arc(node, back, contact, 6.0, 0.3, true))
@@ -813,7 +772,7 @@ func _bros_tower(a: Dictionary, target: Dictionary) -> void:
 	var rise := 20.0 * SCALE
 	var tower: Array = []
 	var bonus := 1
-	message.text = "Press Z as each brother lands on the stack!"
+	_say("Press {a} as each brother lands on the stack!")
 	for color in BROS:
 		var bro := _make_bro(color, tower.size() + 1)
 		var from := base + Vector2(-80, 0)
@@ -1287,7 +1246,7 @@ func _build_party_bar() -> void:
 		row.add_child(_icon(ICON_HEART))
 		a["hp_label"] = _light_label()
 		row.add_child(a["hp_label"])
-		if _is_player(a):
+		if _is_player(a) or a.get("you", false):
 			row.add_child(_icon(ICON_BEAN))
 			a["sp_label"] = _light_label()
 			row.add_child(a["sp_label"])
@@ -1304,8 +1263,6 @@ func _set_turn(who: Dictionary) -> void:
 
 func _refresh() -> void:
 	var p: Dictionary = Game.player
-	status.text = "  ".join(lines) + "   SP %d/%d" % [p["sp"], p["max_sp"]]
-	foe_status.text = "\n".join(_alive(foes).map(func(f): return "%s HP %d/%d%s" % [f["name"], f["hp"], f["max_hp"], _status_tags(f)]))
 	_build_party_bar()
 	for a in allies:
 		if not a.has("hp_label"):
@@ -1333,6 +1290,16 @@ func _refresh() -> void:
 			row.add_child(_icon(STATUS_BURN))
 		if f["stun"]:
 			row.add_child(_icon(STATUS_STUN))
+		var tags: Array = []
+		if f.get("cube", 0) > 0:
+			tags.append("cube")
+		if f.get("def_down", 0) > 0:
+			tags.append("DEF-%d" % f["def_down"])
+		if not tags.is_empty():
+			var tag_label := Label.new()
+			tag_label.text = " ".join(tags)
+			tag_label.modulate = Color(0.75, 0.6, 1.0)
+			row.add_child(tag_label)
 		foe_list.add_child(row)
 
 

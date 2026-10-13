@@ -148,11 +148,12 @@ func _foe_turn(f: Dictionary) -> void:
 	await _charge(f, target, not target.get("remote", false))
 
 
-## Like battle.gd's enemy charge. `local`: Z jumps here; otherwise the partner's
-## game plays the dodge and says whether it worked.
+## Like battle.gd's enemy charge. `local`: Z (A on touch) jumps here;
+## otherwise the partner's game plays the dodge and says whether it worked.
 func _charge(f: Dictionary, target: Dictionary, local: bool) -> void:
 	var node: CharacterSprite = target["node"]
-	message.text = "%s charges at %s!%s" % [f["name"], target["name"], " Press Z to jump!" if local else ""]
+	_say("%s charges at %s! Press {a} to jump!" if local else "%s charges at %s!", [f["name"], target["name"]])
+	var badge: Sprite2D = _show_badge(target, "jump") if local else null
 	var fnode: CharacterSprite = f["node"]
 	for i in 6:
 		fnode.position.x = f["home"].x + (2.0 if i % 2 == 0 else -2.0)
@@ -172,6 +173,8 @@ func _charge(f: Dictionary, target: Dictionary, local: bool) -> void:
 		fnode.move_velocity = Vector2.LEFT * 100
 		if local and Input.is_action_just_pressed("action"):
 			node.jump()
+	if badge:
+		badge.queue_free()
 	var dodged: bool = node.jump_height > 8.0
 	if not local:
 		var answer := await _await_party(["dodged"], DODGE_WAIT)
