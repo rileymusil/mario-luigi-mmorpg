@@ -21,6 +21,8 @@ const MARGIN := 4.0
 
 var _commands: Array = []
 var _blocks: Array[TextureRect] = []
+var _current_lifts: Array[float] = []
+var _target_label_x := 0.0
 var _index := 0
 var _active := false
 var _time := 0.0
@@ -46,6 +48,7 @@ func choose(commands: Array, anchor: CharacterSprite, partner := false) -> int:
 	for b in _blocks:
 		b.queue_free()
 	_blocks.clear()
+	_current_lifts.clear()
 	var block_tex: Texture2D = BLOCK_BLUE if partner else BLOCK_YELLOW
 	var size := block_tex.get_size()
 	var width := commands.size() * size.x + (commands.size() - 1) * GAP
@@ -57,6 +60,7 @@ func choose(commands: Array, anchor: CharacterSprite, partner := false) -> int:
 		var block := TextureRect.new()
 		block.texture = block_tex
 		block.position = Vector2(x + i * (size.x + GAP), _row_y)
+		block.pivot_offset = size / 2.0
 		block.mouse_filter = Control.MOUSE_FILTER_STOP
 		block.gui_input.connect(_on_block_input.bind(i))
 		var icon := TextureRect.new()
@@ -72,6 +76,7 @@ func choose(commands: Array, anchor: CharacterSprite, partner := false) -> int:
 			block.add_child(x_mark)
 		add_child(block)
 		_blocks.append(block)
+		_current_lifts.append(0.0)
 	_index = 0
 	_touch_block = -1
 	visible = true
@@ -95,19 +100,25 @@ func _refresh() -> void:
 		var b := _blocks[i]
 		if i == _index:
 			b.modulate = Color.WHITE
+			var t := create_tween()
+			t.tween_property(b, "scale", Vector2(1.12, 1.12), 0.06)
+			t.tween_property(b, "scale", Vector2.ONE, 0.06)
 		elif _is_enabled(i):
 			b.modulate = Color(0.78, 0.78, 0.78)
+			b.scale = Vector2.ONE
 		else:
 			b.modulate = Color(0.55, 0.55, 0.6)
+			b.scale = Vector2.ONE
 	var c: Dictionary = _commands[_index]
 	_label.text = c["label"]
 	_label.modulate = Color.WHITE if _is_enabled(_index) else Color(0.75, 0.75, 0.75)
 	_label.reset_size()
 	var sel := _blocks[_index]
 	var view := get_viewport_rect().size
-	_label.position = Vector2(
-		clampf(sel.position.x + sel.size.x / 2.0 - _label.size.x / 2.0, MARGIN, view.x - MARGIN - _label.size.x),
-		_row_y - RAISE - _label.size.y - 1.0)
+	_target_label_x = clampf(sel.position.x + sel.size.x / 2.0 - _label.size.x / 2.0, MARGIN, view.x - MARGIN - _label.size.x)
+	_label.position.y = _row_y - RAISE - _label.size.y - 1.0
+	if _label.position.x == 0.0:
+		_label.position.x = _target_label_x
 	highlighted.emit(c.get("info", ""))
 
 
@@ -115,9 +126,16 @@ func _process(delta: float) -> void:
 	if not visible or _blocks.is_empty():
 		return
 	_time += delta
+
+	# Smoothly slide the label above the active block
+	if absf(_label.position.x - _target_label_x) > 0.5:
+		_label.position.x = lerpf(_label.position.x, _target_label_x, clampf(24.0 * delta, 0.0, 1.0))
+
+	# Smoothly interpolate block heights with gentle floating wave
 	for i in _blocks.size():
-		var lift := RAISE + roundf(sin(_time * 6.0) * 1.0) if i == _index else 0.0
-		_blocks[i].position.y = _row_y - lift
+		var target_lift := (RAISE + sin(_time * 6.0) * 1.5) if i == _index else 0.0
+		_current_lifts[i] = lerpf(_current_lifts[i], target_lift, clampf(20.0 * delta, 0.0, 1.0))
+		_blocks[i].position.y = _row_y - _current_lifts[i]
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -169,4 +187,10 @@ func _pick(i: int) -> void:
 	if not _is_enabled(i):
 		return
 	_active = false
+	# Punch bounce animation on confirmation!
+	var sel := _blocks[i]
+	var tw := create_tween()
+	tw.tween_property(sel, "position:y", _row_y - RAISE - 7.0, 0.07)
+	tw.tween_property(sel, "position:y", _row_y - RAISE, 0.07)
+	await tw.finished
 	chosen.emit(i)

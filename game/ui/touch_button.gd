@@ -19,6 +19,8 @@ var radius := 0.0
 var held := false
 
 var _finger := NONE
+var _current_scale := 1.0
+var _target_scale := 1.0
 
 
 func _init(p_action: StringName = &"", p_texture: Texture2D = null, p_scale := 1.0, p_radius := 0.0) -> void:
@@ -31,6 +33,12 @@ func _init(p_action: StringName = &"", p_texture: Texture2D = null, p_scale := 1
 		size = Vector2.ONE * radius * 2.0
 	elif texture:
 		size = texture.get_size() * art_scale
+
+
+func _process(delta: float) -> void:
+	if absf(_current_scale - _target_scale) > 0.005:
+		_current_scale = lerpf(_current_scale, _target_scale, clampf(24.0 * delta, 0.0, 1.0))
+		queue_redraw()
 
 
 func _has_point(point: Vector2) -> bool:
@@ -61,6 +69,7 @@ func _press(finger: int) -> void:
 	release()
 	_finger = finger
 	held = true
+	_target_scale = 0.88
 	if action != &"":
 		Pointer.send_action(action, true)
 	pressed_down.emit()
@@ -73,14 +82,20 @@ func release() -> void:
 		return
 	held = false
 	_finger = NONE
+	_target_scale = 1.0
 	if action != &"":
 		Pointer.send_action(action, false)
 	queue_redraw()
 
 
 func _draw() -> void:
+	if held:
+		# Satisfying soft tactile touch ring
+		var r := radius if radius > 0.0 else size.x * 0.5
+		draw_circle(size / 2.0, r * 1.08, Color(1, 1, 1, 0.12))
+
 	if texture == null:
 		return
-	var s := texture.get_size() * art_scale
+	var s := texture.get_size() * art_scale * _current_scale
 	var at := ((size - s) / 2.0).round() + (Vector2(0, 1) if held else Vector2.ZERO)
-	draw_texture_rect(texture, Rect2(at, s), false, Color(0.78, 0.78, 0.78) if held else Color.WHITE)
+	draw_texture_rect(texture, Rect2(at, s), false, Color(0.85, 0.85, 0.85) if held else Color.WHITE)

@@ -496,6 +496,12 @@ func _damage(target: Dictionary, amount: int) -> int:
 	var dmg := maxi(1, amount - int(target["def"]))
 	_set_hp(target, _hp(target) - dmg)
 	_flash(target["node"])
+	var node: CharacterSprite = target["node"]
+	var recoil_dir := 6.0 if target["ally"] else -6.0
+	var rtw := create_tween()
+	rtw.tween_property(node, "position:x", node.position.x + recoil_dir, 0.05)
+	rtw.tween_property(node, "position:x", node.position.x, 0.07)
+	_shake(2.5, 0.12)
 	_popup(target["node"].position + Vector2(0, -50), str(dmg))
 	if not target["ally"] and target["hp"] <= 0:
 		var e: Dictionary = Game.ENEMIES[target["type"]]
@@ -1140,16 +1146,29 @@ func _flash(node: CanvasItem) -> void:
 		tween.tween_property(node, "self_modulate", Color.WHITE, 0.06)
 
 
+func _shake(strength := 3.0, duration := 0.14) -> void:
+	var tw := create_tween()
+	var steps := 4
+	for i in steps:
+		var off := Vector2(randf_range(-strength, strength), randf_range(-strength, strength))
+		tw.tween_property(stage, "position", off, duration / float(steps))
+	tw.tween_property(stage, "position", Vector2.ZERO, 0.03)
+
+
 func _popup(pos: Vector2, text: String) -> void:
 	var l := Label.new()
 	l.text = text
 	l.theme_type_variation = &"OutlineLabel"
 	l.add_theme_font_size_override("font_size", 24)
 	l.position = pos - Vector2(10, 0)
+	l.pivot_offset = Vector2(10, 12)
+	l.scale = Vector2(1.4, 1.4)
 	stage.add_child(l)
 	var t := create_tween()
-	t.tween_property(l, "position:y", pos.y - 20, 0.5)
-	t.tween_property(l, "modulate:a", 0.0, 0.3)
+	t.tween_property(l, "scale", Vector2.ONE, 0.08)
+	t.parallel().tween_property(l, "position:y", pos.y - 24.0, 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	t.tween_property(l, "position:y", pos.y - 16.0, 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.tween_property(l, "modulate:a", 0.0, 0.22)
 	t.tween_callback(l.queue_free)
 
 
@@ -1178,8 +1197,10 @@ func _show_rating(text: String) -> void:
 	rating.pivot_offset = rating.size / 2.0
 	rating.modulate.a = 1.0
 	rating.scale = Vector2(0.4, 0.4)
+	if parts[0] == "Excellent":
+		_shake(4.5, 0.16)
 	_rating_tween = create_tween()
-	_rating_tween.tween_property(rating, "scale", Vector2(1.2, 1.2), 0.08)
+	_rating_tween.tween_property(rating, "scale", Vector2(1.24, 1.24), 0.08)
 	_rating_tween.tween_property(rating, "scale", Vector2.ONE, 0.06)
 	_rating_tween.tween_interval(0.55)
 	_rating_tween.tween_property(rating, "modulate:a", 0.0, 0.3)

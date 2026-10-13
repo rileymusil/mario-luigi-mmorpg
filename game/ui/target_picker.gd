@@ -68,19 +68,28 @@ func choose(targets: Array, cancellable := true) -> int:
 	return result
 
 
+var _target_pointer_pos := Vector2.ZERO
+var _target_label_pos := Vector2.ZERO
+
+
 func _refresh() -> void:
 	_label.text = _targets[_index]["label"]
 	_label.reset_size()
-	_place()
+	_update_targets()
+	if _pointer.position == Vector2.ZERO:
+		_pointer.position = _target_pointer_pos
+		_label.position = _target_label_pos
+	# Subtle cursor squash punch on target switch
+	_pointer.scale = Vector2(0.82, 1.25)
 
 
-func _place() -> void:
+func _update_targets() -> void:
 	var node: CharacterSprite = _targets[_index]["node"]
 	var top := node.position + Vector2(0, -node.height() * node.scale.y - 2.0)
 	var bob := roundf(sin(_time * 7.0) * 1.5)
-	_pointer.position = top + Vector2(0, -7.0 + bob)
+	_target_pointer_pos = top + Vector2(0, -7.0 + bob)
 	var view := get_viewport_rect().size
-	_label.position = Vector2(
+	_target_label_pos = Vector2(
 		clampf(top.x - _label.size.x / 2.0, MARGIN, view.x - MARGIN - _label.size.x),
 		top.y - 14.0 - _label.size.y)
 
@@ -89,7 +98,12 @@ func _process(delta: float) -> void:
 	if not visible or _targets.is_empty():
 		return
 	_time += delta
-	_place()
+	_update_targets()
+
+	# Smooth gliding to the newly selected target
+	_pointer.position = _pointer.position.lerp(_target_pointer_pos, clampf(24.0 * delta, 0.0, 1.0))
+	_label.position = _label.position.lerp(_target_label_pos, clampf(24.0 * delta, 0.0, 1.0))
+	_pointer.scale = _pointer.scale.lerp(Vector2.ONE, clampf(20.0 * delta, 0.0, 1.0))
 
 
 func _unhandled_input(event: InputEvent) -> void:

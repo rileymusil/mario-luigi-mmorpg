@@ -158,11 +158,44 @@ func nearest_walkable(p: Vector2) -> Vector2:
 
 func _try_move(node: Node2D, delta_pos: Vector2) -> Vector2:
 	var start := node.position
-	for step in [delta_pos, Vector2(delta_pos.x, 0), Vector2(0, delta_pos.y)]:
-		if step.length() > 0.0 and can_stand(start + step):
-			node.position = start + step
-			break
-	return node.position - start
+	if delta_pos.length_squared() == 0.0:
+		return Vector2.ZERO
+
+	# 1. Direct step
+	if can_stand(start + delta_pos):
+		node.position = start + delta_pos
+		return delta_pos
+
+	# 2. Diagonal slide or partial sub-step
+	var step_x := Vector2(delta_pos.x, 0.0)
+	var step_y := Vector2(0.0, delta_pos.y)
+
+	if step_x.length() > 0.0 and can_stand(start + step_x):
+		node.position = start + step_x
+		return step_x
+
+	if step_y.length() > 0.0 and can_stand(start + step_y):
+		node.position = start + step_y
+		return step_y
+
+	# 3. Corner rounding assistance (nudges character around 1-3px obstacle corners)
+	if absf(delta_pos.x) > 0.1 and absf(delta_pos.y) < 0.1:
+		for nudge in [1.0, -1.0, 2.0, -2.0, 3.0, -3.0]:
+			if can_stand(start + Vector2(delta_pos.x * 0.6, nudge)):
+				node.position = start + Vector2(delta_pos.x * 0.6, nudge * 0.8)
+				return node.position - start
+	elif absf(delta_pos.y) > 0.1 and absf(delta_pos.x) < 0.1:
+		for nudge in [1.0, -1.0, 2.0, -2.0, 3.0, -3.0]:
+			if can_stand(start + Vector2(nudge, delta_pos.y * 0.6)):
+				node.position = start + Vector2(nudge * 0.8, delta_pos.y * 0.6)
+				return node.position - start
+
+	# 4. Fractional crawl fallback if moving fast
+	if can_stand(start + delta_pos * 0.5):
+		node.position = start + delta_pos * 0.5
+		return delta_pos * 0.5
+
+	return Vector2.ZERO
 
 
 # --- Every frame ---------------------------------------------------------------
@@ -182,7 +215,11 @@ func _process(delta: float) -> void:
 	var input := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	var moved := _try_move(player, input * PLAYER_SPEED * delta)
 	player.move_velocity = moved / maxf(delta, 0.0001)
-	camera.position = player.position
+
+	# Dynamic camera lead: smoothly tilts focus slightly ahead in movement direction
+	var lead := player.facing * 12.0 if player.move_velocity.length() > 15.0 else Vector2.ZERO
+	camera.position = player.position + lead
+
 	_update_followers(delta)
 	_update_enemies(delta)
 

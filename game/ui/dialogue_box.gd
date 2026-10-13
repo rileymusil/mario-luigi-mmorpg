@@ -68,7 +68,13 @@ func open(text: String, speaker := "", anchor: Node2D = null) -> void:
 	name_tag.reset_size()
 	name_tag.position = Vector2(box.position.x + 10, box.position.y - name_tag.size.y + 5)
 	_place_tail()
+	box.pivot_offset = box.size / 2.0
+	box.scale = Vector2(0.94, 0.94)
+	box.modulate.a = 0.4
 	visible = true
+	var tw := create_tween()
+	tw.tween_property(box, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(box, "modulate:a", 1.0, 0.08)
 
 
 ## Shows the text, waits for Z or X (or a click or tap), then closes.
@@ -140,18 +146,31 @@ func _place_tail() -> void:
 	tail.position.x = clampf(tip.x - 2.0, box.position.x + 4.0, box.position.x + box.size.x - tail.size.x - 8.0)
 
 
+var _pause_time := 0.0
+
+
 func _process(delta: float) -> void:
 	if not visible:
 		return
 	_time += delta
 	if typing:
-		_shown += CHARS_PER_SECOND * delta
-		var total := text_label.get_total_character_count()
-		text_label.visible_characters = mini(int(_shown), total)
-		if _shown >= total:
-			text_label.visible_characters = -1
-			typing = false
-			typed.emit()
+		if _pause_time > 0.0:
+			_pause_time -= delta
+		else:
+			_shown += CHARS_PER_SECOND * delta
+			var total := text_label.get_total_character_count()
+			var prev_chars := text_label.visible_characters
+			text_label.visible_characters = mini(int(_shown), total)
+			if text_label.visible_characters > prev_chars and text_label.visible_characters < total:
+				var ch := text_label.text.substr(text_label.visible_characters - 1, 1)
+				if ch in [".", "!", "?"]:
+					_pause_time = 0.12
+				elif ch in [",", ";", ":"]:
+					_pause_time = 0.06
+			if _shown >= total:
+				text_label.visible_characters = -1
+				typing = false
+				typed.emit()
 	next_arrow.visible = not typing
 	if next_arrow.visible:
 		next_arrow.position = box.position + box.size - Vector2(18, 13 + absf(sin(_time * 6.0)) * 3.0)

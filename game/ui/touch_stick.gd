@@ -16,17 +16,25 @@ const HOLD_AT := 0.4
 const LET_GO_AT := 0.28
 
 ## How far the knob travels from the middle, and the touch area's radius.
-var reach := 18.0
-var touch_radius := 40.0
+var reach := 20.0
+var touch_radius := 46.0
 
 var _finger := TouchButton.NONE
 var _knob := Vector2.ZERO
+var _target_knob := Vector2.ZERO
 var _held := {}
 
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	size = Vector2.ONE * touch_radius * 2.0
+
+
+func _process(delta: float) -> void:
+	# Smooth elastic spring return when released or moving
+	if _knob.distance_squared_to(_target_knob) > 0.04:
+		_knob = _knob.lerp(_target_knob, clampf(26.0 * delta, 0.0, 1.0))
+		queue_redraw()
 
 
 func _has_point(point: Vector2) -> bool:
@@ -67,8 +75,8 @@ func _gui_input(event: InputEvent) -> void:
 
 
 func _aim(local: Vector2) -> void:
-	_knob = (local - size / 2.0).limit_length(reach)
-	var v := _knob / reach
+	_target_knob = (local - size / 2.0).limit_length(reach)
+	var v := _target_knob / reach
 	for action in DIRECTIONS:
 		var amount: float = v.dot(DIRECTIONS[action])
 		_hold(action, amount > (LET_GO_AT if _held.get(action, false) else HOLD_AT))
@@ -82,10 +90,10 @@ func _hold(action: StringName, on: bool) -> void:
 	Pointer.send_action(action, on)
 
 
-## Lets go of everything and re-centres the knob.
+## Lets go of everything and smoothly returns the knob.
 func release() -> void:
 	_finger = TouchButton.NONE
-	_knob = Vector2.ZERO
+	_target_knob = Vector2.ZERO
 	for action in _held.keys():
 		_hold(action, false)
 	queue_redraw()
@@ -93,5 +101,9 @@ func release() -> void:
 
 func _draw() -> void:
 	var middle := size / 2.0
+	# Subtle translucent halo when finger touches the stick
+	if is_held():
+		draw_circle(middle, touch_radius * 0.9, Color(1, 1, 1, 0.08))
+		draw_arc(middle, reach + 6.0, 0, TAU, 32, Color(1, 0.85, 0.3, 0.35), 1.5)
 	draw_texture(BASE, (middle - BASE.get_size() / 2.0).round())
 	draw_texture(KNOB, (middle + _knob - KNOB.get_size() / 2.0).round())

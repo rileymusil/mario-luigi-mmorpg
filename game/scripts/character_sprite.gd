@@ -22,6 +22,9 @@ var _jump_velocity := 0.0
 var _anim_time := 0.0
 var _frames := 8
 var _sprite: Sprite2D
+var _squash := Vector2.ONE
+var _was_airborne := false
+var _jump_buffer := 0.0
 
 
 func _ready() -> void:
@@ -51,8 +54,10 @@ func _draw() -> void:
 	var w := 7.0
 	if _sprite and _sprite.texture:
 		w = clampf(_sprite.texture.get_width() / float(_frames) * 0.3, 5.0, 14.0)
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.4))
-	draw_circle(Vector2.ZERO, w, Color(0, 0, 0, 0.3))
+	# Shadow smoothly scales down and softly fades as character jumps higher
+	var height_ratio := clampf(1.0 - jump_height / 70.0, 0.45, 1.0)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0 * height_ratio, 0.4 * height_ratio))
+	draw_circle(Vector2.ZERO, w, Color(0, 0, 0, 0.32 * height_ratio))
 
 
 func is_airborne() -> bool:
@@ -62,6 +67,10 @@ func is_airborne() -> bool:
 func jump() -> void:
 	if not is_airborne():
 		_jump_velocity = JUMP_SPEED
+		_squash = Vector2(0.86, 1.18)
+	else:
+		# Buffer jump if requested close to landing
+		_jump_buffer = 0.14
 
 
 func _process(delta: float) -> void:
@@ -70,16 +79,38 @@ func _process(delta: float) -> void:
 		_anim_time += delta
 	else:
 		_anim_time = 0.0
-	if is_airborne():
+
+	if _jump_buffer > 0.0:
+		_jump_buffer -= delta
+
+	var airborne_now := is_airborne()
+	if airborne_now:
 		jump_height += _jump_velocity * delta
 		_jump_velocity -= GRAVITY * delta
 		if jump_height <= 0.0:
 			jump_height = 0.0
 			_jump_velocity = 0.0
+			# Landing impact squash!
+			_squash = Vector2(1.24, 0.8)
+			if _jump_buffer > 0.0:
+				_jump_buffer = 0.0
+				_jump_velocity = JUMP_SPEED
+				_squash = Vector2(0.86, 1.18)
+		queue_redraw()
+	elif _was_airborne and jump_height == 0.0:
+		queue_redraw()
+
+	_was_airborne = airborne_now
+
+	# Elastic recovery of squash and stretch back to 1.0
+	_squash = _squash.lerp(Vector2.ONE, clampf(18.0 * delta, 0.0, 1.0))
+
 	if _sprite:
 		# Sheets with a single pose per direction hop a little instead of a walk cycle.
 		var hop := absf(sin(_anim_time * WALK_FPS * 0.5)) * 2.0 if _frames == 1 else 0.0
 		_sprite.position.y = -jump_height - hop
+		_sprite.scale = _squash
+
 	_update_frame()
 
 
