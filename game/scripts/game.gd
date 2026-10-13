@@ -5,6 +5,7 @@ extends Node
 const TITLE_SCENE := "res://scenes/title.tscn"
 const WORLD_SCENE := "res://scenes/world.tscn"
 const BATTLE_SCENE := "res://scenes/battle.tscn"
+const PVP_SCENE := "res://scenes/pvp_battle.tscn"
 const SAVE_PATH := "user://save.json"
 const MAX_LEVEL := 50
 const MAX_PARTY := 2
@@ -243,8 +244,31 @@ func start_battle(enemies: Array, defeated_key: String, overworld_position: Vect
 	get_tree().call_deferred("change_scene_to_file", BATTLE_SCENE)
 
 
+## What a foe sees of you in an online duel (sent through the server).
+func pvp_stats() -> Dictionary:
+	var out := {}
+	for key in ["hp", "max_hp", "sp", "max_sp", "pow", "def", "level", "coins"]:
+		out[key] = player[key]
+	return out
+
+
+## An online duel with another player. foe: {id, name, character, stats}.
+func start_pvp(foe: Dictionary, first: bool, overworld_position: Vector2) -> void:
+	player["position"] = [overworld_position.x, overworld_position.y]
+	pending_battle = {"pvp": foe, "first": first, "key": ""}
+	player["in_duel"] = true  # cleared when the duel ends; quitting mid-duel counts as a loss
+	save()
+	get_tree().call_deferred("change_scene_to_file", PVP_SCENE)
+
+
+## Coins a player drops when they lose a duel (the winner picks them up).
+func pvp_drop(coins: int) -> int:
+	return coins - int(coins * 0.9)
+
+
 ## result: "won", "lost" or "fled".
 func end_battle(result: String) -> void:
+	player.erase("in_duel")
 	if result == "won":
 		defeated[pending_battle["key"]] = Time.get_ticks_msec() / 1000.0
 	if result == "lost":
@@ -299,6 +323,14 @@ func load_save() -> bool:
 			member[key] = int(member[key])
 	if not data.has("uid"):
 		data["uid"] = new_uid()
+	if data.get("in_duel", false):
+		# Closed the game mid-duel: that's a loss (coins dropped, back home).
+		data.erase("in_duel")
+		data["coins"] -= pvp_drop(data["coins"])
+		data["hp"] = data["max_hp"]
+		data["map"] = HOME_MAP.get(data.get("side", "good"), "castle_town")
+		data["spawn"] = "start"
+		data["position"] = null
 	player = data
 	return true
 
