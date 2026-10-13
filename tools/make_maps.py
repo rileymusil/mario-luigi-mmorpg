@@ -25,6 +25,7 @@ the map ids you want to rebuild.
 Usage:
   python3 tools/make_maps.py "<path to Mario&LuigiMMO folder>" [map ids...]   crop art + build masks
   python3 tools/make_maps.py --mask-only [map ids...]                          rebuild masks from the art in the repo
+  add --heights to also rebuild <map>_height.png (otherwise an existing one is kept, see "Height layer")
 """
 import colorsys
 import json
@@ -56,6 +57,12 @@ def town_walk(r, g, b):
     if 0.1 < h < 0.2 and s < 0.5 and v > 0.75:
         return None  # pale cream: a path stone if it is small, a wall if it is big
     return False
+
+
+def town_wall(r, g, b):
+    # Cream bricks of the terrace walls (and their darker mortar).
+    h, s, v = hsv(r, g, b)
+    return 0.1 < h < 0.2 and s < 0.45 and v > 0.75
 
 
 def town_water(r, g, b):
@@ -127,6 +134,16 @@ def stardust_walk(r, g, b):
     return 0.79 <= h < 0.9 and 0.2 <= s < 0.42 and v > 0.86
 
 
+def stardust_plateau(r, g, b):
+    h, s, v = hsv(r, g, b)
+    return 0.82 <= h < 0.9 and s < 0.42 and v > 0.86
+
+
+def stardust_cliff(r, g, b):
+    h, s, v = hsv(r, g, b)
+    return 0.8 <= h < 0.9 and s > 0.35 and v < 0.65
+
+
 def sky(r, g, b):
     return False  # nothing to keep blocked under props
 
@@ -149,20 +166,34 @@ MAPS = {
             ("block", (578, 0, 676, 136)), ("block", (776, 0, 872, 150)),  # stairs up to the castle
             ("block", (208, 0, 482, 118)),  # palace windows
         ],
+        # The cream brick walls under the grass terraces are ledge faces: the
+        # low ones can be jumped up, any of them dropped down.
+        "height": {"faces": [("auto", town_wall, (6, 48), None)]},
     },
     "outskirts": {
         "sheet": "Maps/Game Boy Advance - Mario & Luigi_ Superstar Saga - Maps - Beanbean Outskirts.png",
         "crop": (1447, 1923, 2912, 2560), "walk": field_walk, "hard": is_water, "smooth": 5, "islands": 200,
-        "seeds": [(800, 615)],
+        "seeds": [(800, 615), (100, 450), (520, 110), (460, 150), (260, 175)],  # + raised ground reached by jumping
         "fixes": [
             # Tops of the giant trees, the raised platforms and the rock pillar.
-            ("block", (324, 0, 436, 88)), ("block", (197, 108, 313, 200)), ("block", (419, 108, 501, 200)),
-            ("block", (499, 92, 580, 202)), ("block", (850, 60, 1060, 120)), ("block", (1094, 44, 1140, 102)),
+            ("block", (324, 0, 436, 88)), ("block", (850, 60, 1060, 120)), ("block", (1094, 44, 1140, 102)),
             ("block", (1172, 28, 1258, 86)), ("block", (1284, 28, 1380, 86)), ("block", (1028, 381, 1158, 478)),
             ("block", (50, 412, 148, 506)), ("block", (786, 60, 850, 171)), ("block", (350, 85, 410, 114)),
             # East bridge to Bowser's Castle, and a way down from it to the meadow.
             ("walk", (1380, 46, 1465, 80)), ("walk", (1381, 46, 1405, 112)),
+            # Raised ground you jump onto (see "height"): the L-shaped hedge and
+            # the two flat tree tops west of it, the way to the west islands.
+            ("walk", (500, 98, 578, 125)), ("walk", (500, 98, 544, 172)),
+            ("walk", (420, 112, 500, 192)), ("walk", (198, 112, 340, 192)),
+            ("block", (197, 190, 312, 200)), ("block", (450, 190, 500, 200)),  # leafy fringe over the water
+            ("walk", (54, 414, 146, 491)),  # hedge on the south-west island
         ],
+        "height": {
+            "levels": [(1, "box", (500, 94, 544, 172)), (1, "box", (500, 94, 579, 125)),
+                       (1, "box", (420, 108, 500, 193)), (1, "box", (196, 108, 340, 193)),
+                       (1, "box", (53, 412, 147, 491))],
+            "faces": [("box", (544, 125, 579, 149)), ("box", (500, 172, 546, 200)), ("box", (53, 491, 147, 508))],
+        },
     },
     "bowser_castle": {
         "sheet": "Maps/Game Boy Advance - Mario & Luigi_ Superstar Saga - Maps - Bowser's Castle.png",
@@ -232,7 +263,17 @@ MAPS.update({
         "sheet": "Maps/Game Boy Advance - Mario & Luigi_ Superstar Saga - Maps - Stardust Fields.png",
         "crop": (720, 830, 1250, 1500), "walk": stardust_walk, "hard": sky, "smooth": 5, "islands": 300,
         "seeds": [(40, 590)], "white": (123, 130, 222),
-        "fixes": [("walk", (0, 404, 44, 432)), ("walk", (0, 572, 34, 600))],  # west bridges
+        "fixes": [("walk", (0, 404, 44, 432)), ("walk", (0, 572, 34, 600)),  # west bridges
+                  ("block", (84, 340, 120, 378))],  # top of the little pillar under the plateau
+        # The pink plateaus stand one level above the violet ground: jump up
+        # onto them from the violet. Their tall south cliffs can only be
+        # dropped down.
+        "height": {
+            "levels": [(1, "flood", [(200, 230), (360, 270), (222, 150)], stardust_plateau, (95, 100, 410, 340)),
+                       (1, "flood", [(505, 130)], stardust_plateau, (470, 95, 530, 160))],
+            "faces": [("auto", stardust_cliff, (20, 80), (95, 230, 410, 380))],
+            "flat": [(84, 340, 122, 420)],  # the little pillar under the plateau stays a wall
+        },
     },
     "hoohoo_village": {
         "sheet": "Maps/Game Boy Advance - Mario & Luigi_ Superstar Saga - Maps - Hoohoo Village (Exterior).png",
@@ -251,6 +292,9 @@ MAPS.update({
             ("walk", (228, 372, 316, 432)), ("block", (255, 355, 291, 386)),  # island, the cave's stone door
             ("walk", (110, 336, 160, 420)),  # grass block
         ],
+        # The sand ledge by the mountain door is a step above the blue grass:
+        # drop down it, jump back up.
+        "height": {"faces": [("box", (672, 264, 701, 284))]},
     },
     "hoohoo_hut_w": {"sheet": _HOOHOO_IN, "crop": (26, 64, 238, 306), "walk": never, "hard": sky, "smooth": 1,
                      "islands": 1, "seeds": [(160, 200)],
@@ -358,6 +402,97 @@ def keep_reachable(mask, seeds):
                 px[x, y] = 0
 
 
+# --- Height layer ---------------------------------------------------------------
+# <map>_height.png gives the ground a level, for raised ground you must jump
+# onto (see "Height" in game/scripts/world.gd): grey level * LEVEL_STEP, and
+# FACE (white) for a ledge face, the drawn side of raised ground that can be
+# jumped up (if it is low enough) or dropped down. A map's "height" entry:
+#   "levels": [(level, "box", (l, t, r, b)),
+#              (level, "flood", [seed points], colour test, (l, t, r, b) or None)]
+#       painted in order; "flood" fills the walkable pixels of that colour
+#       connected to the seeds (inside the box), then grows 2px over outlines.
+#   "faces": [("box", (l, t, r, b)),
+#             ("auto", colour test, (shortest, tallest), (l, t, r, b) or None)]
+#       "auto" finds walls drawn in that colour between walkable ground above
+#       and below (a column of blocked pixels, mostly that colour, between
+#       shortest and tallest px) and makes them ledge faces.
+#   "flat": [(l, t, r, b)] boxes reset to level 0 with no faces (applied last).
+# Hand edits in the map editor are kept: the height layer is only written when
+# it doesn't exist yet or with --heights.
+LEVEL_STEP = 50
+FACE = 255
+
+
+def flood(mask, art, seeds, test, box):
+    w, h = mask.size
+    l, t, r, b = box or (0, 0, w, h)
+    mp, ap = mask.load(), art.load()
+    seen = set()
+    q = deque((x, y) for x, y in seeds if mp[x, y] == 255 and test(*ap[x, y]))
+    seen.update(q)
+    while q:
+        x, y = q.popleft()
+        for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+            if l <= nx < r and t <= ny < b and (nx, ny) not in seen and mp[nx, ny] == 255 and test(*ap[nx, ny]):
+                seen.add((nx, ny))
+                q.append((nx, ny))
+    return seen
+
+
+def auto_faces(mask, art, test, runs, box):
+    """Columns of blocked pixels mostly in the wall colour, with walkable
+    ground right above and below, between runs[0] and runs[1] px tall."""
+    w, h = mask.size
+    l, t, r, b = box or (0, 0, w, h)
+    mp, ap = mask.load(), art.load()
+    out = []
+    for x in range(max(0, l), min(w, r)):
+        y = max(1, t)
+        while y < min(h - 1, b):
+            if mp[x, y] == 0 and mp[x, y - 1] == 255:
+                y1 = y
+                while y1 < h and mp[x, y1] == 0:
+                    y1 += 1
+                n = y1 - y
+                if y1 < h and runs[0] <= n <= runs[1] and \
+                        sum(1 for yy in range(y, y1) if test(*ap[x, yy])) >= 0.6 * n:
+                    out.extend((x, yy) for yy in range(y, y1))
+                y = y1
+            else:
+                y += 1
+    return out
+
+
+def build_height(map_id, cfg, art, mask):
+    w, h = art.size
+    height = Image.new("L", (w, h), 0)
+    hp = height.load()
+    src = art.convert("RGB")
+    for level, kind, *args in cfg.get("levels", []):
+        v = level * LEVEL_STEP
+        if kind == "box":
+            height.paste(v, args[0])
+        else:
+            seeds, test, box = args
+            pixels = flood(mask, src, seeds, test, box)
+            grow = Image.new("L", (w, h), 0)
+            gp = grow.load()
+            for x, y in pixels:
+                gp[x, y] = 255
+            grow = grow.filter(ImageFilter.MaxFilter(5))
+            height.paste(v, mask=grow)
+    for kind, *args in cfg.get("faces", []):
+        if kind == "box":
+            height.paste(FACE, args[0])
+        else:
+            for x, y in auto_faces(mask, src, *args):
+                hp[x, y] = FACE
+    for box in cfg.get("flat", []):
+        height.paste(0, box)
+    height.save(os.path.join(OUT, map_id + "_height.png"))
+    print(map_id, "height", height.size)
+
+
 def build_mask(map_id, cfg, art):
     w, h = art.size
     src = art.convert("RGB").load()
@@ -395,6 +530,7 @@ def build_mask(map_id, cfg, art):
         keep_reachable(mask, cfg["seeds"])
     mask.save(os.path.join(OUT, map_id + "_mask.png"))
     print(map_id, "mask", mask.size)
+    return mask
 
 
 def touch_up(art, cfg):
@@ -423,7 +559,7 @@ def touch_up(art, cfg):
                     px[x, y] = cfg["white"]
 
 
-def build(map_id, cfg, root):
+def build(map_id, cfg, root, heights=False):
     if root:
         src = Image.open(os.path.join(root, cfg["sheet"])).convert("RGB")
         art = src.crop(cfg["crop"])
@@ -432,11 +568,18 @@ def build(map_id, cfg, root):
         art.save(os.path.join(OUT, map_id + ".png"))
     else:
         art = Image.open(os.path.join(OUT, map_id + ".png")).convert("RGB")
-    build_mask(map_id, cfg, art)
+    mask = build_mask(map_id, cfg, art)
+    if "height" in cfg:
+        if heights or not os.path.exists(os.path.join(OUT, map_id + "_height.png")):
+            build_height(map_id, cfg["height"], art, mask)
+        else:
+            print(map_id, "height: kept %s_height.png (it may have hand edits; pass --heights to rebuild it)" % map_id)
 
 
 if __name__ == "__main__":
     args = sys.argv[1:]
+    rebuild_heights = "--heights" in args
+    args = [a for a in args if a != "--heights"]
     root = None if args and args[0] == "--mask-only" else (args[0] if args else None)
     if not args:
         sys.exit(__doc__)
@@ -444,4 +587,4 @@ if __name__ == "__main__":
     for map_id, cfg in MAPS.items():
         if ids and map_id not in ids:
             continue
-        build(map_id, cfg, root)
+        build(map_id, cfg, root, rebuild_heights)

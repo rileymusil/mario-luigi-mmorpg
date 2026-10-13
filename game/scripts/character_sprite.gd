@@ -7,6 +7,9 @@ const GRAVITY := 650.0
 const JUMP_SPEED := 190.0
 const WALK_FPS := 12.0
 
+## Emitted when a jump starts (followers replay it where it happened).
+signal jumped
+
 @export var character_id := "mario":
 	set(value):
 		character_id = value
@@ -69,9 +72,24 @@ func jump() -> void:
 	if not is_airborne():
 		_jump_velocity = JUMP_SPEED
 		_squash = Vector2(0.86, 1.18)
+		jumped.emit()
 	else:
 		# Buffer jump if requested close to landing
 		_jump_buffer = 0.14
+
+
+## Puts the character `h` px above the ground under it, keeping its jump
+## going. The world uses it when someone hops up or drops down a ledge face:
+## their feet move to the new ground and this keeps the sprite where it was.
+func set_air(h: float) -> void:
+	if h > 0.0:
+		jump_height = h
+	else:
+		if jump_height > 0.0:
+			_squash = Vector2(1.24, 0.8)  # landed on the ledge
+		jump_height = 0.0
+		_jump_velocity = maxf(_jump_velocity, 0.0)
+	queue_redraw()
 
 
 func _process(delta: float) -> void:
@@ -97,6 +115,7 @@ func _process(delta: float) -> void:
 				_jump_buffer = 0.0
 				_jump_velocity = JUMP_SPEED
 				_squash = Vector2(0.86, 1.18)
+				jumped.emit()
 		queue_redraw()
 	elif _was_airborne and jump_height == 0.0:
 		queue_redraw()

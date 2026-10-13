@@ -242,6 +242,9 @@ const MAPS := {
 			{"type": "buzzy_beetle", "pos": Vector2(1150, 250)}, {"type": "galoomba", "pos": Vector2(678, 545)},
 			{"type": "dry_bones", "pos": Vector2(1250, 130)}, {"type": "koopa", "pos": Vector2(1240, 457)},
 			{"type": "shy_guy", "pos": Vector2(1100, 600)}, {"type": "galoomba", "pos": Vector2(548, 447)},
+			# The west islands, reached by jumping onto the hedge and the flat tree tops.
+			{"type": "koopa", "pos": Vector2(380, 270)}, {"type": "beanie", "pos": Vector2(120, 215)},
+			{"type": "galoomba", "pos": Vector2(100, 560)}, {"type": "shy_guy", "pos": Vector2(380, 590)},
 		],
 		"npcs": [{"id": "yoshi_kid", "pos": Vector2(765, 285)}, {"id": "yoshi", "pos": Vector2(1380, 180)}],
 	},

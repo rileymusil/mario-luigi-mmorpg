@@ -12,11 +12,17 @@ extends Node2D
 ##              move the footprint (its corner square resizes it)
 ##   N          new prop at the mouse      Del / Backspace  delete the selected prop
 ##   C          copy the selected prop     T  tree / rectangle shape    F  add / remove footprint
+##   4          height: paint the ground level (left mouse) or pick the one
+##              under the mouse (right mouse); - and = change the level painted
+##              (0-4, then "face": a ledge face). H shows / hides the heights.
 ##   Arrows / WASD pan, mouse wheel zoom, Ctrl+S save, F2 close.
-## Saving writes <map>_mask.png and <map>_props.json into res://assets/maps/
-## when running from the Godot editor, otherwise into user://maps/.
+## The height layer is drawn over the map: level 1 yellow, 2 orange, 3 pink,
+## 4 purple (level 0 clear) and ledge faces cyan (see world.gd, "Height").
+## Saving writes <map>_mask.png, <map>_height.png and <map>_props.json into
+## res://assets/maps/ when running from the Godot editor, otherwise into
+## user://maps/.
 
-enum Mode { WALK, BLOCK, PROPS }
+enum Mode { WALK, BLOCK, PROPS, HEIGHT }
 
 const PAN_SPEED := 300.0
 const OVERLAY_SHADER := """
@@ -26,6 +32,23 @@ void fragment() {
 	COLOR = vec4(1.0, 0.1, 0.1, walk < 0.5 ? 0.45 : 0.0);
 }
 """
+const HEIGHT_SHADER := """
+shader_type canvas_item;
+uniform float strength = 1.0;
+void fragment() {
+	float v = texture(TEXTURE, UV).r * 255.0;
+	if (v > 225.5) {
+		bool stripe = mod(floor((FRAGCOORD.x + FRAGCOORD.y) / 3.0), 2.0) < 1.0;
+		COLOR = vec4(0.0, 1.0, 1.0, (stripe ? 0.75 : 0.45) * strength);
+	} else {
+		float level = floor((v + 25.0) / 50.0);
+		vec3 c = level < 1.5 ? vec3(1.0, 0.9, 0.0) : (level < 2.5 ? vec3(1.0, 0.5, 0.0)
+			: (level < 3.5 ? vec3(1.0, 0.1, 0.8) : vec3(0.55, 0.1, 1.0)));
+		COLOR = vec4(c, level < 0.5 ? 0.0 : 0.38 * strength);
+	}
+}
+"""
+const LEVEL_NAMES := ["level 0", "level 1", "level 2", "level 3", "level 4", "ledge face"]
 
 var world  # the World node (world.gd)
 var is_open := false
@@ -47,6 +70,11 @@ var _status: Label
 var _message := ""
 var _saved_zoom := Vector2.ONE
 var _mouse_screen := Vector2.ZERO  # last mouse position from input events
+var _heights: Sprite2D
+var _heights_tex: ImageTexture
+var _heights_dirty := false
+var _heights_changed := false  # painted since the last save
+var height_brush := 1           # 0-4 = ground level, 5 = ledge face
 
 
 ## The mouse in map pixels (follows the camera when it pans or zooms).
@@ -70,6 +98,14 @@ func _ready() -> void:
 	mat.shader.code = OVERLAY_SHADER
 	_overlay.material = mat
 	add_child(_overlay)
+	_heights = Sprite2D.new()
+	_heights.centered = false
+	_heights.z_index = -1
+	var hmat := ShaderMaterial.new()
+	hmat.shader = Shader.new()
+	hmat.shader.code = HEIGHT_SHADER
+	_heights.material = hmat
+	add_child(_heights)
 	_layer = CanvasLayer.new()
 	_layer.layer = 50
 	_layer.visible = false
@@ -77,12 +113,12 @@ func _ready() -> void:
 	var panel := ColorRect.new()
 	panel.color = Color(0, 0, 0, 0.55)
 	panel.position = Vector2(0, 20)
-	panel.size = Vector2(384, 56)
+	panel.size = Vector2(384, 64)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_layer.add_child(panel)
 	_status = Label.new()
 	_status.position = Vector2(4, 20)
-	_status.size = Vector2(376, 56)
+	_status.size = Vector2(376, 64)
 	_status.add_theme_font_override("font", ThemeDB.fallback_font)  # small and plain, whatever the game theme
 	_status.add_theme_font_size_override("font_size", 8)
 	_status.add_theme_color_override("font_color", Color(1, 1, 0.8))
@@ -102,6 +138,8 @@ func toggle() -> void:
 		_saved_zoom = cam.zoom
 		_overlay_tex = ImageTexture.create_from_image(world.mask)
 		_overlay.texture = _overlay_tex
+		_heights_tex = ImageTexture.create_from_image(world.height)
+		_heights.texture = _heights_tex
 		_message = ""
 	else:
 		cam.zoom = _saved_zoom
@@ -141,6 +179,15 @@ func _key(event: InputEventKey) -> void:
 			mode = Mode.BLOCK
 		KEY_3:
 			mode = Mode.PROPS
+		KEY_4:
+			mode = Mode.HEIGHT
+			_heights.visible = true
+		KEY_MINUS:
+			height_brush = posmod(height_brush - 1, LEVEL_NAMES.size())
+		KEY_EQUAL, KEY_PLUS:
+			height_brush = posmod(height_brush + 1, LEVEL_NAMES.size())
+		KEY_H:
+			_heights.visible = not _heights.visible
 		KEY_BRACKETLEFT:
 			brush = maxi(1, brush - 1)
 		KEY_BRACKETRIGHT:
@@ -189,9 +236,20 @@ func _mouse_button(event: InputEventMouseButton) -> void:
 	if not event.pressed:
 		if _drag == "paint":
 			world.rebuild_collision()
+		elif _drag == "height":
+			pass  # the world reads the height layer directly
 		elif _drag != "":
 			_changed()
 		_drag = ""
+		return
+	if mode == Mode.HEIGHT:
+		if event.button_index == MOUSE_BUTTON_RIGHT:
+			var v: int = world.height_px(int(pt.x), int(pt.y))
+			height_brush = 5 if v < 0 else v
+		elif event.button_index == MOUSE_BUTTON_LEFT:
+			_drag = "height"
+			_last_paint = pt
+			_paint_height(pt, pt)
 		return
 	if mode != Mode.PROPS:
 		if event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
@@ -216,6 +274,10 @@ func _mouse_drag() -> void:
 	var pt := _mouse()
 	if _drag == "paint":
 		_paint_line(_last_paint, pt)
+		_last_paint = pt
+		return
+	if _drag == "height":
+		_paint_height(_last_paint, pt)
 		_last_paint = pt
 		return
 	if selected == null:
@@ -310,14 +372,41 @@ func _paint_line(a: Vector2, b: Vector2) -> void:
 	_overlay_dirty = true
 
 
+## Paints the height brush (a ground level or a ledge face) along a line.
+func _paint_height(a: Vector2, b: Vector2) -> void:
+	var steps := maxi(1, int(a.distance_to(b)))
+	var v := MapProps.FACE if height_brush >= LEVEL_NAMES.size() - 1 else MapProps.level_value(height_brush)
+	var col := Color8(v, v, v)
+	var img: Image = world.height
+	var size := img.get_size()
+	for i in steps + 1:
+		var c := a.lerp(b, float(i) / steps)
+		for y in range(int(c.y) - brush, int(c.y) + brush + 1):
+			for x in range(int(c.x) - brush, int(c.x) + brush + 1):
+				if x >= 0 and y >= 0 and x < size.x and y < size.y and Vector2(x, y).distance_to(c) <= brush:
+					img.set_pixel(x, y, col)
+	unsaved = true
+	_heights_changed = true
+	_heights_dirty = true
+
+
 func save() -> void:
 	var mask_path := MapProps.save_path(world.map_id, "_mask.png")
 	var err: Error = world.mask.save_png(mask_path)
+	var saved := [mask_path.get_file()]
+	# Only maps that have heights (or just got some) get a height file.
+	var height_path := MapProps.save_path(world.map_id, "_height.png")
+	if err == OK and (_heights_changed or FileAccess.file_exists(height_path)
+			or ResourceLoader.exists(MapProps.res_path(world.map_id, "_height.png"))):
+		err = world.height.save_png(height_path)
+		saved.append(height_path.get_file())
 	var props_path: String = world.props.save_props()
 	if err == OK and props_path != "":
 		unsaved = false
-		_message = "Saved " + mask_path.get_file() + " and " + props_path.get_file()
-		print("Map editor saved ", mask_path, " and ", props_path)
+		_heights_changed = false
+		saved.append(props_path.get_file())
+		_message = "Saved " + ", ".join(saved)
+		print("Map editor saved ", ", ".join(saved), " in ", props_path.get_base_dir())
 	else:
 		_message = "Save failed (%s)" % error_string(err)
 
@@ -334,8 +423,15 @@ func _process(delta: float) -> void:
 	if _overlay_dirty:
 		_overlay_tex.update(world.mask)
 		_overlay_dirty = false
-	var lines := ["MAP EDITOR  %s  [%s]%s" % [world.map_id, ["walk paint", "block paint", "props"][mode], "  *unsaved*" if unsaved else ""],
-		"1 walk  2 block  3 props   [ ] brush %d   wheel zoom   Ctrl+S save   F2 close" % brush,
+	if _heights_dirty:
+		_heights_tex.update(world.height)
+		_heights_dirty = false
+	var m := _mouse()
+	var here: int = world.height_px(int(m.x), int(m.y))
+	var lines := ["MAP EDITOR  %s  [%s]%s" % [world.map_id,
+			["walk paint", "block paint", "props", "height: " + LEVEL_NAMES[height_brush]][mode], "  *unsaved*" if unsaved else ""],
+		"1 walk  2 block  3 props  4 height (- = level, right click picks, H hide)",
+		"[ ] brush %d   wheel zoom   Ctrl+S save   F2 close   under mouse: %s" % [brush, LEVEL_NAMES[5] if here < 0 else LEVEL_NAMES[here]],
 		"N new  C copy  Del delete  T shape  F footprint"]
 	if selected:
 		lines.append("%s (%s) rect %s base %d foot %s" % [selected.name, selected.shape, selected.rect, selected.base,
@@ -361,5 +457,7 @@ func _draw() -> void:
 		for c in [Vector2(selected.rect.position), Vector2(selected.rect.end)] + ([Vector2(selected.foot.end)] if selected.has_foot() else []):
 			draw_rect(Rect2(c - Vector2(h, h), Vector2(h, h) * 2), Color(1, 1, 0.2))
 		draw_polyline(selected.polygon + PackedVector2Array([selected.polygon[0]]), Color(0.4, 0.9, 1), -1.0)
-	if mode != Mode.PROPS:
+	if mode == Mode.HEIGHT:
+		draw_arc(_mouse(), brush, 0, TAU, 24, Color(0.2, 1, 1) if height_brush == 5 else Color(1, 0.9, 0.2), -1.0)
+	elif mode != Mode.PROPS:
 		draw_arc(_mouse(), brush, 0, TAU, 24, Color.WHITE if mode == Mode.WALK else Color.RED, -1.0)

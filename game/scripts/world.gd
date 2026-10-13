@@ -11,6 +11,10 @@ const TOUCH_DISTANCE := 14.0
 const TALK_DISTANCE := 26.0
 const FOOT_HALF_WIDTH := 5.0  # everyone's feet are 10px wide
 const FOOT_DEPTH := 3.0
+const LEVEL_PX := 16.0      # how high one level of the height layer is
+const CLIMB_SLACK := 3.0    # a jump this much lower than a ledge still makes it
+const MAX_LEDGE := 80       # tallest ledge face you can drop down (px)
+const FOLLOWER_CLIMB := 22.0  # how high a follower jumps before hopping up after the leader
 const FACINGS := {"down": Vector2.DOWN, "up": Vector2.UP, "left": Vector2.LEFT, "right": Vector2.RIGHT}
 
 var map_id := ""
@@ -18,6 +22,7 @@ var map_info: Dictionary
 var map_size := Vector2.ZERO
 var mask: Image            # the ground: white = walkable (what the map editor paints)
 var solid: Image           # mask with prop footprints blocked (what collision reads)
+var height: Image          # ground levels and ledge faces (see "Height" below)
 var props := MapProps.new()
 var editing := false       # true while the map editor is open
 
@@ -27,7 +32,11 @@ var enemies: Array = []   # [{node, home, target, pause, key, type}]
 var npcs: Array = []      # [{node, id}]
 var busy := false         # true while a menu or dialog is open
 var _grace := 1.5         # seconds after arriving before enemies can start a battle
-var _trail: Array[Vector2] = []
+## The leader's path, followed by the party: x, y, 1 where a jump started,
+## and the jump height change where the leader hopped a ledge face.
+var _trail: Array[Vector4] = []
+var _trail_start := 0     # how many trail points were dropped from the front
+var _hop_shift := 0.0     # set when the player hops a ledge face this frame
 ## Z confirms menus and X closes them, but they also jump and talk out here.
 ## After anything that took the keys (a menu, someone talking, a battle, a
 ## text box), the world ignores them until they have been let go, so the
@@ -59,6 +68,7 @@ func _ready() -> void:
 	$Map.texture = art
 	map_size = art.get_size()
 	mask = MapProps.load_mask(map_id)
+	height = MapProps.load_height(map_id, Vector2i(map_size))
 	props.load_props(map_id)
 	props.build(actors, art)
 	rebuild_collision()
@@ -76,7 +86,8 @@ func _ready() -> void:
 		var f := _spawn_character(member["id"])
 		f.position = player.position
 		followers.append(f)
-	_trail = [player.position]
+	_trail = [Vector4(player.position.x, player.position.y, 0.0, 0.0)]
+	player.jumped.connect(_on_player_jumped)
 	camera.position = player.position
 	camera.reset_smoothing()
 
@@ -155,10 +166,13 @@ func rebuild_collision() -> void:
 	props.paint_feet(solid)
 
 
+## Ground you can stand on: walkable in the mask, no prop footprint, and not
+## a ledge face of the height layer.
 func walkable(p: Vector2) -> bool:
 	if p.x < 2 or p.y < 2 or p.x >= map_size.x - 2 or p.y >= map_size.y - 2:
 		return false
-	return solid.get_pixel(int(p.x), int(p.y)).r > 0.5
+	return solid.get_pixel(int(p.x), int(p.y)).r > 0.5 \
+		and MapProps.value_level(height.get_pixel(int(p.x), int(p.y)).r8) != -1
 
 
 ## Feet are a 10x3px box at the bottom of every character (player, followers,
@@ -183,45 +197,128 @@ func nearest_walkable(p: Vector2) -> Vector2:
 	return p
 
 
-func _try_move(node: Node2D, delta_pos: Vector2) -> Vector2:
+# --- Height: raised ground, ledges and cliffs ----------------------------------
+# The height layer (<map>_height.png, see MapProps.load_height) gives the ground
+# a level. Walking onto higher ground needs a jump at least LEVEL_PX high per
+# level (one level is a jump, two is a cliff); walking off it drops you down.
+# A ledge face (the drawn side of raised ground, never walkable itself) can
+# be jumped up while walking up the screen into it, if the jump is as high as
+# the face is tall, and dropped down while walking down the screen. The feet
+# move across the face in one step and the jump height changes by the same
+# amount, so the sprite doesn't move on screen: it looks like landing on top,
+# or falling off.
+
+## Ground level (0 = lowest) at map pixel (x, y), or -1 on a ledge face.
+func height_px(x: int, y: int) -> int:
+	x = clampi(x, 0, height.get_width() - 1)
+	y = clampi(y, 0, height.get_height() - 1)
+	return MapProps.value_level(height.get_pixel(x, y).r8)
+
+
+## The level of the ground under someone's feet: the highest ground any part
+## of their foot box is on.
+func level_at(p: Vector2) -> int:
+	var best := 0
+	for dx in [-FOOT_HALF_WIDTH, 0.0, FOOT_HALF_WIDTH]:
+		for dy in [0.0, -FOOT_DEPTH]:
+			best = maxi(best, height_px(int(p.x + dx), int(p.y + dy)))
+	return best
+
+
+## Can someone on ground level `from_level`, `air` px up in a jump, step to `to`?
+func can_step(to: Vector2, from_level: int, air: float, can_drop: bool) -> bool:
+	if not can_stand(to):
+		return false
+	var level := level_at(to)
+	if level > from_level:
+		return air >= (level - from_level) * LEVEL_PX - CLIMB_SLACK
+	return level == from_level or can_drop
+
+
+## Crosses a ledge face straight up or down the screen from `node`'s feet, if
+## `delta_pos` walks into one: up needs a jump as high as the face, down needs
+## `can_drop`. Returns true if `node` moved.
+func _ledge_hop(node: CharacterSprite, delta_pos: Vector2, can_drop: bool) -> bool:
+	if absf(delta_pos.y) < absf(delta_pos.x) * 0.9:
+		return false  # faces are crossed going up or down the screen
+	var up := delta_pos.y < 0.0
+	var start := node.position
+	var x := int(start.x)
+	var face := 0
+	var reach := int(ceilf(absf(delta_pos.y))) + 3  # the face must start right in front
+	for k in range(1, MAX_LEDGE + 8):
+		var p := start + Vector2(0.0, -k if up else k)
+		var lead := int(p.y - FOOT_DEPTH) if up else int(p.y)  # the row the feet push into
+		if lead < 2 or lead >= map_size.y - 2:
+			return false
+		if height_px(x, lead) == -1:
+			face += 1
+			if face > MAX_LEDGE:
+				return false
+		elif not walkable(Vector2(x, lead)):
+			return false  # a wall, water...: not a ledge
+		elif face == 0:
+			if k > reach:
+				return false
+		elif can_stand(p):
+			var from_level := level_at(start)
+			var to_level := level_at(p)
+			if up:
+				var need := maxf(face, (to_level - from_level) * LEVEL_PX) - CLIMB_SLACK
+				if node.jump_height < need:
+					return false
+			elif not can_drop:
+				return false
+			var shift := p.y - start.y
+			node.position = p
+			node.set_air(node.jump_height + shift)
+			if node == player:
+				_hop_shift = shift
+			return true
+		elif k > face + reach + int(FOOT_DEPTH) + 6:
+			return false  # walkable ground past the face, but nowhere to stand
+	return false
+
+
+## Moves `node` by up to `delta_pos` and returns how far it went. It slides
+## along walls (straight or slanted) and round small corners, climbs onto
+## higher ground or up a ledge face when it is jumping high enough, and drops
+## off ledges unless `can_drop` is false (enemies stay on their own level).
+func _try_move(node: CharacterSprite, delta_pos: Vector2, can_drop := true) -> Vector2:
 	var start := node.position
 	if delta_pos.length_squared() == 0.0:
 		return Vector2.ZERO
-
-	# 1. Direct step
-	if can_stand(start + delta_pos):
+	var level := level_at(start)
+	var air := node.jump_height
+	# 1. Straight on.
+	if can_step(start + delta_pos, level, air, can_drop):
 		node.position = start + delta_pos
 		return delta_pos
-
-	# 2. Diagonal slide or partial sub-step
-	var step_x := Vector2(delta_pos.x, 0.0)
-	var step_y := Vector2(0.0, delta_pos.y)
-
-	if step_x.length() > 0.0 and can_stand(start + step_x):
-		node.position = start + step_x
-		return step_x
-
-	if step_y.length() > 0.0 and can_stand(start + step_y):
-		node.position = start + step_y
-		return step_y
-
-	# 3. Corner rounding assistance (nudges character around 1-3px obstacle corners)
-	if absf(delta_pos.x) > 0.1 and absf(delta_pos.y) < 0.1:
-		for nudge in [1.0, -1.0, 2.0, -2.0, 3.0, -3.0]:
-			if can_stand(start + Vector2(delta_pos.x * 0.6, nudge)):
-				node.position = start + Vector2(delta_pos.x * 0.6, nudge * 0.8)
-				return node.position - start
-	elif absf(delta_pos.y) > 0.1 and absf(delta_pos.x) < 0.1:
-		for nudge in [1.0, -1.0, 2.0, -2.0, 3.0, -3.0]:
-			if can_stand(start + Vector2(nudge, delta_pos.y * 0.6)):
-				node.position = start + Vector2(nudge * 0.8, delta_pos.y * 0.6)
-				return node.position - start
-
-	# 4. Fractional crawl fallback if moving fast
-	if can_stand(start + delta_pos * 0.5):
+	# 2. Up or down a ledge face.
+	if _ledge_hop(node, delta_pos, can_drop):
+		return node.position - start
+	# 3. Slide along a wall: keep the part of the step that isn't blocked.
+	for step in [Vector2(delta_pos.x, 0.0), Vector2(0.0, delta_pos.y)]:
+		if step.length() > 0.05 and can_step(start + step, level, air, can_drop):
+			node.position = start + step
+			return step
+	# 4. Slide along a slanted wall (diagonal edges of cliffs and water).
+	for angle in [PI / 6.0, -PI / 6.0, PI / 4.0, -PI / 4.0, PI / 3.0, -PI / 3.0]:
+		var step: Vector2 = delta_pos.rotated(angle) * cos(angle)
+		if can_step(start + step, level, air, can_drop):
+			node.position = start + step
+			return step
+	# 5. Round a small corner: sidestep 1-3px while walking straight on.
+	var side := Vector2(-delta_pos.y, delta_pos.x).normalized()
+	for nudge in [1.0, -1.0, 2.0, -2.0, 3.0, -3.0]:
+		var step: Vector2 = delta_pos * 0.6 + side * nudge
+		if can_step(start + step, level, air, can_drop):
+			node.position = start + step
+			return step
+	# 6. Creep up to the wall.
+	if can_step(start + delta_pos * 0.5, level, air, can_drop):
 		node.position = start + delta_pos * 0.5
 		return delta_pos * 0.5
-
 	return Vector2.ZERO
 
 
@@ -287,23 +384,55 @@ func keys_ready() -> bool:
 
 
 func _update_followers(delta: float) -> void:
-	if _trail.back().distance_to(player.position) > 1.0:
-		_trail.append(player.position)
-	# Each follower walks the leader's path, FOLLOW_GAP pixels further back.
+	var last := _trail.back() as Vector4
+	if Vector2(last.x, last.y).distance_to(player.position) > 1.0 or _hop_shift != 0.0:
+		_trail.append(Vector4(player.position.x, player.position.y, 0.0, _hop_shift))
+		_hop_shift = 0.0
+	# Each follower walks the leader's path, FOLLOW_GAP pixels further back,
+	# jumping where the leader jumped and hopping the same ledges.
 	var total := 0.0
 	var idx := _trail.size() - 1
-	for f in followers:
-		var want := FOLLOW_GAP * (followers.find(f) + 1)
+	for i in followers.size():
+		var f := followers[i]
+		var want := FOLLOW_GAP * (i + 1)
 		while idx > 0 and total < want:
-			total += _trail[idx].distance_to(_trail[idx - 1])
+			total += Vector2(_trail[idx].x, _trail[idx].y).distance_to(Vector2(_trail[idx - 1].x, _trail[idx - 1].y))
 			idx -= 1
-		var target := _trail[idx]
+		var serial := _trail_start + idx
+		var seen: int = f.get_meta("trail", serial)
+		for s in range(maxi(seen + 1, _trail_start), serial + 1):
+			var t := _trail[s - _trail_start]
+			if t.w < 0.0 and f.jump_height < minf(-t.w, FOLLOWER_CLIMB):
+				# The leader hopped up a ledge here: jump too, and wait at the
+				# bottom until high enough to follow.
+				if not f.is_airborne():
+					f.jump()
+				serial = maxi(s - 1, _trail_start)
+				break
+			if t.w != 0.0:
+				f.set_air(f.jump_height + t.w)
+			if t.z > 0.0:
+				f.jump()
+		f.set_meta("trail", serial)
+		var target := Vector2(_trail[serial - _trail_start].x, _trail[serial - _trail_start].y)
 		var step := target - f.position
 		f.position = target
-		f.move_velocity = step / maxf(delta, 0.0001) if step.length() > 0.05 else Vector2.ZERO
+		f.move_velocity = step / maxf(delta, 0.0001) if step.length() > 0.05 and step.length() < 8.0 else Vector2.ZERO
 	var keep := int(FOLLOW_GAP * (followers.size() + 2))
 	if _trail.size() > keep:
-		_trail = _trail.slice(_trail.size() - keep)
+		var cut := _trail.size() - keep
+		_trail = _trail.slice(cut)
+		_trail_start += cut
+
+
+## The party jumps where the leader jumped (when they get there).
+func _on_player_jumped() -> void:
+	var last := _trail.back() as Vector4
+	if Vector2(last.x, last.y).distance_to(player.position) <= 1.0:
+		last.z = 1.0
+		_trail[_trail.size() - 1] = last
+	else:
+		_trail.append(Vector4(player.position.x, player.position.y, 1.0, 0.0))
 
 
 func _update_enemies(delta: float) -> void:
@@ -315,12 +444,13 @@ func _update_enemies(delta: float) -> void:
 			node.move_velocity = Vector2.ZERO
 		else:
 			var to: Vector2 = e["target"] - node.position
-			var moved := _try_move(node, to.limit_length(28.0 * delta))
+			var moved := _try_move(node, to.limit_length(28.0 * delta), false)
 			node.move_velocity = moved / maxf(delta, 0.0001)
 			if to.length() < 1.0 or moved.length() < 0.01:
 				e["pause"] = randf_range(0.5, 1.8)
 				e["target"] = e["home"] + Vector2(randf_range(-1, 1), randf_range(-1, 1)) * 48.0
-		if _grace <= 0.0 and node.position.distance_to(player.position) < TOUCH_DISTANCE:
+		if _grace <= 0.0 and node.position.distance_to(player.position) < TOUCH_DISTANCE \
+				and level_at(node.position) == level_at(player.position):
 			_start_battle(e)
 			return
 

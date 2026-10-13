@@ -67,12 +67,47 @@ static func _user_override(map_id_: String, suffix: String) -> String:
 
 ## The walk mask (white = ground you can walk on).
 static func load_mask(map_id_: String) -> Image:
-	var override := _user_override(map_id_, "_mask.png")
+	return _load_layer(map_id_, "_mask.png")
+
+
+## The height layer, <map>_height.png (see world.gd, "Height"): how high the
+## ground is, as grey levels. Black is the lowest ground (level 0), each
+## LEVEL_STEP brighter is one level up, and white (FACE) is a ledge face: the
+## drawn side of raised ground, which you can jump up (if it is low enough) or
+## drop down. A map without the file is flat. Always an L8 image of `size`.
+const LEVEL_STEP := 50
+const MAX_LEVEL := 4
+const FACE := 255
+
+static func load_height(map_id_: String, size: Vector2i) -> Image:
+	var img: Image = null
+	var path := res_path(map_id_, "_height.png")
+	if ResourceLoader.exists(path) or FileAccess.file_exists(path) or _user_override(map_id_, "_height.png") != "":
+		img = _load_layer(map_id_, "_height.png")
+	if img == null or img.is_empty() or img.get_size() != size:
+		return Image.create(size.x, size.y, false, Image.FORMAT_L8)
+	if img.get_format() != Image.FORMAT_L8:
+		img.convert(Image.FORMAT_L8)
+	return img
+
+
+## Grey value of a height level (0..MAX_LEVEL) in the height layer.
+static func level_value(level: int) -> int:
+	return clampi(level, 0, MAX_LEVEL) * LEVEL_STEP
+
+
+## Level stored at a grey value, or -1 for a ledge face.
+static func value_level(v: int) -> int:
+	return -1 if v > MAX_LEVEL * LEVEL_STEP + LEVEL_STEP / 2 else (v + LEVEL_STEP / 2) / LEVEL_STEP
+
+
+static func _load_layer(map_id_: String, suffix: String) -> Image:
+	var override := _user_override(map_id_, suffix)
 	if override != "":
 		return Image.load_from_file(override)
-	var path := res_path(map_id_, "_mask.png")
+	var path := res_path(map_id_, suffix)
 	if OS.has_feature("editor"):
-		# Read the PNG itself, so a mask saved by the map editor is used even
+		# Read the PNG itself, so a layer saved by the map editor is used even
 		# before Godot re-imports it.
 		var img := Image.load_from_file(ProjectSettings.globalize_path(path))
 		if img != null and not img.is_empty():
