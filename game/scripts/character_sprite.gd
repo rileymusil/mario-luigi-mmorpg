@@ -77,7 +77,9 @@ func _process(delta: float) -> void:
 			jump_height = 0.0
 			_jump_velocity = 0.0
 	if _sprite:
-		_sprite.position.y = -jump_height
+		# Sheets with a single pose per direction hop a little instead of a walk cycle.
+		var hop := absf(sin(_anim_time * WALK_FPS * 0.5)) * 2.0 if _frames == 1 else 0.0
+		_sprite.position.y = -jump_height - hop
 	_update_frame()
 
 

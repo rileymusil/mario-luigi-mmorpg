@@ -18,6 +18,8 @@ var _info: Label
 var _infos: Array = []
 var _labels: Array[Label] = []
 var _active := false
+## Width the help text under the options wraps at.
+var info_width := 150.0
 
 
 func _init() -> void:
@@ -37,7 +39,6 @@ func _init() -> void:
 	_title = _make_label(Color(1, 0.85, 0.3))
 	_info = _make_label(Color(0.75, 0.85, 1))
 	_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_info.custom_minimum_size.x = 150
 	visible = false
 
 
@@ -69,6 +70,7 @@ func choose(options: Array, title := "", cancellable := false, enabled: Array = 
 		_box.add_child(l)
 		_labels.append(l)
 	if not infos.is_empty():
+		_info.custom_minimum_size.x = info_width
 		_box.add_child(_info)
 	visible = true
 	_active = false

@@ -15,8 +15,11 @@ from PIL import Image
 
 OUT = os.path.join(os.path.dirname(__file__), "..", "game", "assets", "characters")
 
-# rows: boxes for the down / side / up walk rows. side_faces_left: the side row
-# looks left on the source sheet and gets mirrored.
+# rows: boxes for the down / side / up walk rows (a box may repeat when a sheet
+# only has one direction). side_faces_left: the side row looks left on the
+# source sheet and gets mirrored. Optional: "bg" overrides the background colour,
+# "strip" lists extra colours to clear (drawn-on shadows), "flood" clears only
+# background that touches the frame edge (for white sheets with white sprites).
 CHARACTERS = {
     "mario": {"sheet": "Playable Characters GOOD/Game Boy Advance - Mario & Luigi_ Superstar Saga - Playable Characters - Mario (Overworld).png",
               "rows": [(0, 8, 176, 48), (0, 86, 176, 126), (0, 169, 176, 209)], "side_faces_left": False},
@@ -32,6 +35,29 @@ CHARACTERS = {
              "rows": None, "side_faces_left": True},
     "beanie": {"sheet": "Enemies/Game Boy Advance - Mario & Luigi_ Superstar Saga - Enemies - Beanie & Gold Beanie.png",
                "rows": [(0, 188, 172, 216), (0, 222, 172, 250), (0, 255, 172, 284)], "side_faces_left": True},
+    "waluigi": {"sheet": "Playable Characters GOOD/Custom _ Edited - Mario Customs - Waluigi - Waluigi (Overworld, Mario & Luigi_ Superstar Saga-Style).png",
+                "rows": [(0, 10, 126, 56), (0, 61, 126, 107), (126, 10, 248, 56)], "side_faces_left": True},
+    "rosalina": {"sheet": "Playable Characters GOOD/Custom _ Edited - Mario Customs - Rosalina & Luma - Rosalina (Mario & Luigi_ Superstar Saga-Style).png",
+                 "rows": [(28, 19, 232, 61), (32, 105, 232, 149), (34, 149, 232, 192)], "side_faces_left": True,
+                 "bg": (255, 255, 255), "flood": True},
+    "toadette": {"sheet": "Playable Characters GOOD/Custom _ Edited - Mario Customs - Toadette & Peachette - Toadette (Mario & Luigi_ Superstar Saga-Style).png",
+                 "rows": [(0, 76, 150, 101), (0, 27, 183, 52), (0, 52, 183, 76)], "side_faces_left": True, "flood": True},
+    "bowser_jr": {"sheet": "Playable Characters EVIL/Custom _ Edited - Mario Customs - Bowser Jr. - Bowser Jr. (Mario & Luigi_ Superstar Saga-Style).png",
+                  "rows": [(278, 112, 313, 155), (372, 112, 405, 155), (313, 112, 343, 155)], "side_faces_left": True},
+    "shadow_mario": {"sheet": "Playable Characters EVIL/Custom _ Edited - Mario Customs - Other Bosses - Shadow Mario (Mario & Luigi_ Superstar Saga-Style).png",
+                     "rows": [(88, 240, 116, 281), (63, 240, 86, 281), (36, 240, 62, 281)], "side_faces_left": False},
+    "pianta": {"sheet": "NPCs/Custom _ Edited - Mario Customs - Piantas - Piantas (Superstar Saga-Style).png",
+               "rows": [(0, 196, 128, 240), (128, 196, 232, 240), (0, 196, 128, 240)], "side_faces_left": False},
+    "galoomba": {"sheet": "Enemies/Custom _ Edited - Mario Customs - Goomba & Related Enemies - Galoomba (Mario & Luigi_ Superstar Saga-Style).png",
+                 "rows": [(0, 150, 200, 172), (0, 235, 200, 257), (0, 176, 200, 198)], "side_faces_left": False},
+    "koopa": {"sheet": "Enemies/Custom _ Edited - Mario Customs - Koopa Troopa & Related Enemies - Koopa Troopa (Mario & Luigi_ Superstar Saga-Style).png",
+              "rows": [(0, 585, 140, 616), (0, 651, 140, 682), (0, 618, 140, 649)], "side_faces_left": False},
+    "dry_bones": {"sheet": "Enemies/Custom _ Edited - Mario Customs - Dry Bones & Related Enemies - Dry Bones (Mario & Luigi_ Superstar Saga-Style).png",
+                  "rows": [(0, 481, 130, 512), (0, 547, 130, 581), (0, 515, 130, 546)], "side_faces_left": False},
+    "shy_guy": {"sheet": "Enemies/Custom _ Edited - Mario Customs - Shy Guy, Snifit & Related Enemies - Shy Guy (Mario & Luigi_ Superstar Saga-Style).png",
+                "rows": [(0, 30, 175, 75)] * 3, "side_faces_left": True, "strip": [(84, 109, 142)]},
+    "buzzy_beetle": {"sheet": "Enemies/Custom _ Edited - Mario Customs - Buzzy Beetle, Spiny & Related Enemies - Buzzy Beetle (Mario & Luigi_ Superstar Saga-Style).png",
+                     "rows": [(0, 27, 220, 55)] * 3, "side_faces_left": True},
 }
 
 
@@ -48,10 +74,11 @@ def bands(mask):
     return out
 
 
-def frames_in(im, bg, box):
+def frames_in(im, bg, box, strip=(), flood=False):
     x0, y0, x1, y1 = box
     px = im.load()
-    fg = lambda x, y: px[x, y][3] > 0 and px[x, y][:3] != bg
+    clear = {bg, *strip}
+    fg = lambda x, y: px[x, y][3] > 0 and px[x, y][:3] not in clear
     rows = [b for b in bands([any(fg(x, y) for x in range(x0, x1)) for y in range(y0, y1)]) if b[1] - b[0] > 6]
     ya, yb = y0 + rows[0][0], y0 + rows[-1][1]
     cols = [c for c in bands([any(fg(x, y) for y in range(ya, yb)) for x in range(x0, x1)]) if c[1] - c[0] > 4]
@@ -59,10 +86,19 @@ def frames_in(im, bg, box):
     for a, b in cols:
         fr = im.crop((x0 + a, ya, x0 + b, yb))
         p = fr.load()
-        for y in range(fr.size[1]):
-            for x in range(fr.size[0]):
-                if p[x, y][:3] == bg:
+        if flood:  # only clear background touching the edges, keeps white caps/eyes
+            w, h = fr.size
+            todo = [(x, y) for x in range(w) for y in (0, h - 1)] + [(x, y) for y in range(h) for x in (0, w - 1)]
+            while todo:
+                x, y = todo.pop()
+                if 0 <= x < w and 0 <= y < h and p[x, y][3] > 0 and p[x, y][:3] in clear:
                     p[x, y] = (0, 0, 0, 0)
+                    todo += [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
+        else:
+            for y in range(fr.size[1]):
+                for x in range(fr.size[0]):
+                    if p[x, y][:3] in clear:
+                        p[x, y] = (0, 0, 0, 0)
         frames.append(fr.crop(fr.getbbox()) if fr.getbbox() else fr)
     return frames
 
@@ -76,9 +112,9 @@ def auto_rows(im, bg, xmax=176):
 
 def build(name, cfg, root):
     im = Image.open(os.path.join(root, cfg["sheet"])).convert("RGBA")
-    bg = max(im.getcolors(1 << 24))[1][:3]  # most common colour = background
+    bg = tuple(cfg.get("bg") or max(im.getcolors(1 << 24))[1][:3])  # most common colour = background
     boxes = cfg["rows"] or auto_rows(im, bg)
-    rows = [frames_in(im, bg, b) for b in boxes]
+    rows = [frames_in(im, bg, b, [tuple(c) for c in cfg.get("strip", ())], cfg.get("flood", False)) for b in boxes]
     if "order" in cfg:
         rows = [rows[i] for i in cfg["order"]]
     if cfg["side_faces_left"]:
