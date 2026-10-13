@@ -173,7 +173,7 @@ MAPS = {
     "outskirts": {
         "sheet": "Maps/Game Boy Advance - Mario & Luigi_ Superstar Saga - Maps - Beanbean Outskirts.png",
         "crop": (1447, 1923, 2912, 2560), "walk": field_walk, "hard": is_water, "smooth": 5, "islands": 200,
-        "seeds": [(800, 615)],
+        "seeds": [(800, 615), (100, 450), (520, 110), (460, 150), (260, 175)],  # + raised ground reached by jumping
         "fixes": [
             # Tops of the giant trees, the raised platforms and the rock pillar.
             ("block", (324, 0, 436, 88)), ("block", (850, 60, 1060, 120)), ("block", (1094, 44, 1140, 102)),
@@ -186,11 +186,13 @@ MAPS = {
             ("walk", (500, 98, 578, 125)), ("walk", (500, 98, 544, 172)),
             ("walk", (420, 112, 500, 192)), ("walk", (198, 112, 340, 192)),
             ("block", (197, 190, 312, 200)), ("block", (450, 190, 500, 200)),  # leafy fringe over the water
+            ("walk", (54, 414, 146, 491)),  # hedge on the south-west island
         ],
         "height": {
-            "levels": [(1, "box", (500, 94, 579, 172)), (1, "box", (500, 94, 579, 125)),
-                       (1, "box", (420, 108, 500, 193)), (1, "box", (196, 108, 340, 193))],
-            "faces": [("box", (544, 125, 579, 149)), ("box", (500, 172, 546, 200))],
+            "levels": [(1, "box", (500, 94, 544, 172)), (1, "box", (500, 94, 579, 125)),
+                       (1, "box", (420, 108, 500, 193)), (1, "box", (196, 108, 340, 193)),
+                       (1, "box", (53, 412, 147, 491))],
+            "faces": [("box", (544, 125, 579, 149)), ("box", (500, 172, 546, 200)), ("box", (53, 491, 147, 508))],
         },
     },
     "bowser_castle": {
@@ -261,7 +263,8 @@ MAPS.update({
         "sheet": "Maps/Game Boy Advance - Mario & Luigi_ Superstar Saga - Maps - Stardust Fields.png",
         "crop": (720, 830, 1250, 1500), "walk": stardust_walk, "hard": sky, "smooth": 5, "islands": 300,
         "seeds": [(40, 590)], "white": (123, 130, 222),
-        "fixes": [("walk", (0, 404, 44, 432)), ("walk", (0, 572, 34, 600))],  # west bridges
+        "fixes": [("walk", (0, 404, 44, 432)), ("walk", (0, 572, 34, 600)),  # west bridges
+                  ("block", (84, 340, 120, 378))],  # top of the little pillar under the plateau
         # The pink plateaus stand one level above the violet ground: jump up
         # onto them from the violet. Their tall south cliffs can only be
         # dropped down.
@@ -269,6 +272,7 @@ MAPS.update({
             "levels": [(1, "flood", [(200, 230), (360, 270), (222, 150)], stardust_plateau, (95, 100, 410, 340)),
                        (1, "flood", [(505, 130)], stardust_plateau, (470, 95, 530, 160))],
             "faces": [("auto", stardust_cliff, (20, 80), (95, 230, 410, 380))],
+            "flat": [(84, 340, 122, 420)],  # the little pillar under the plateau stays a wall
         },
     },
     "hoohoo_village": {

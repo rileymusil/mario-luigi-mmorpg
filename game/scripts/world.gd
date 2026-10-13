@@ -14,6 +14,7 @@ const FOOT_DEPTH := 3.0
 const LEVEL_PX := 16.0      # how high one level of the height layer is
 const CLIMB_SLACK := 3.0    # a jump this much lower than a ledge still makes it
 const MAX_LEDGE := 80       # tallest ledge face you can drop down (px)
+const FOLLOWER_CLIMB := 22.0  # how high a follower jumps before hopping up after the leader
 const FACINGS := {"down": Vector2.DOWN, "up": Vector2.UP, "left": Vector2.LEFT, "right": Vector2.RIGHT}
 
 var map_id := ""
@@ -200,7 +201,7 @@ func nearest_walkable(p: Vector2) -> Vector2:
 # The height layer (<map>_height.png, see MapProps.load_height) gives the ground
 # a level. Walking onto higher ground needs a jump at least LEVEL_PX high per
 # level (one level is a jump, two is a cliff); walking off it drops you down.
-# A ledge face (the drawn side of raised ground, blocked in the walk mask) can
+# A ledge face (the drawn side of raised ground, never walkable itself) can
 # be jumped up while walking up the screen into it, if the jump is as high as
 # the face is tall, and dropped down while walking down the screen. The feet
 # move across the face in one step and the jump height changes by the same
@@ -401,12 +402,19 @@ func _update_followers(delta: float) -> void:
 		var seen: int = f.get_meta("trail", serial)
 		for s in range(maxi(seen + 1, _trail_start), serial + 1):
 			var t := _trail[s - _trail_start]
-			if t.z > 0.0:
-				f.jump()
+			if t.w < 0.0 and f.jump_height < minf(-t.w, FOLLOWER_CLIMB):
+				# The leader hopped up a ledge here: jump too, and wait at the
+				# bottom until high enough to follow.
+				if not f.is_airborne():
+					f.jump()
+				serial = maxi(s - 1, _trail_start)
+				break
 			if t.w != 0.0:
 				f.set_air(f.jump_height + t.w)
+			if t.z > 0.0:
+				f.jump()
 		f.set_meta("trail", serial)
-		var target := Vector2(_trail[idx].x, _trail[idx].y)
+		var target := Vector2(_trail[serial - _trail_start].x, _trail[serial - _trail_start].y)
 		var step := target - f.position
 		f.position = target
 		f.move_velocity = step / maxf(delta, 0.0001) if step.length() > 0.05 and step.length() < 8.0 else Vector2.ZERO
