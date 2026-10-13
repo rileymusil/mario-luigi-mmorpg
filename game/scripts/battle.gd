@@ -127,6 +127,10 @@ func _run_battle() -> void:
 
 
 func _ally_turn(a: Dictionary) -> String:
+	if a.get("veil", 0) > 0:
+		await _end_veil(a)  # nobody attacked the shadows: the fire comes out anyway
+		if _alive(foes).is_empty():
+			return ""
 	var is_player := is_same(a["member"], Game.player)
 	var p: Dictionary = Game.player
 	var options: Array = []
@@ -140,9 +144,10 @@ func _ally_turn(a: Dictionary) -> String:
 			"Evil only: ask an enemy to join your party." if p["side"] == "good" else "Weaker enemies say yes more often.",
 			"Try to escape."]
 	else:
-		options = ["Attack", "Run"]
+		var move: Dictionary = Game.MOVES[_move_id(a)]
+		options = [move["name"], "Run"]
 		enabled = [true, true]
-		infos = ["Tackle! Press Z in the gold zone.", "Try to escape."]
+		infos = [move["info"], "Try to escape."]
 	message.text = "%s's turn" % a["name"]
 	var choice: String = options[await menu.choose(options, a["name"], false, enabled, infos)]
 	message.text = ""
@@ -162,8 +167,8 @@ func _ally_turn(a: Dictionary) -> String:
 	var target = await _pick_foe()
 	if choice == "Jump":
 		await _jump_attack(a, target)
-	elif choice == "Attack":
-		await _tackle(a, target)
+	elif not is_player:
+		await _partner_move(a, target, _move_id(a))
 	elif choice == "Ask to join":
 		await _ask(target)
 	else:
@@ -211,14 +216,18 @@ func _jump_attack(a: Dictionary, target: Dictionary, burn := 0) -> String:
 	return result
 
 
-func _tackle(a: Dictionary, target: Dictionary) -> void:
+## move: an entry of Game.MOVES (bonus, ignore_def and the Excellent extras).
+func _tackle(a: Dictionary, target: Dictionary, move: Dictionary = {}) -> String:
 	var node: CharacterSprite = a["node"]
 	var result := await _timing_bar(1.0)
 	await _walk(node, target["node"].position + Vector2(-22, 0), 220.0)
-	_damage(target, a["pow"] + {"Excellent": 2, "Good": 1, "Miss": 0}[result])
+	var extra: int = move.get("bonus", 0) + (int(target["def"]) if move.get("ignore_def", false) else 0)
+	_damage(target, a["pow"] + extra + {"Excellent": 2, "Good": 1, "Miss": 0}[result])
 	_show_rating(result)
+	_move_extras(move, result, [target])
 	await _walk(node, a["home"], 160.0)
 	node.facing = Vector2.RIGHT
+	return result
 
 
 func _special(a: Dictionary, target: Dictionary) -> void:
@@ -275,6 +284,21 @@ func _special(a: Dictionary, target: Dictionary) -> void:
 			var dealt := _damage(target, a["pow"] + bonus)
 			_set_hp(a, _hp(a) + dealt)
 			_show_rating("%s  +%d HP" % [result, dealt])
+		"poltergust_pull":
+			await _poltergust_pull(a, target)
+		"shade_veil":
+			await _shade_veil(a)
+		"rookie_rush":
+			await _rookie_rush(a, target)
+		"magic_cube":
+			await _magic_cube(a, target)
+		"grodus_bolt":
+			await _grodus_bolt(a)
+		"mimic":
+			await _mimic(a, target)
+		"bros_tower":
+			await _bros_tower(a, target)
+	_refresh()
 	await _wait(0.6)
 
 
@@ -314,6 +338,440 @@ func _damage(target: Dictionary, amount: int) -> int:
 	return dmg
 
 
+# --- Partner and recruit moves ---------------------------------------------------
+
+func _move_id(a: Dictionary) -> String:
+	return Game.move_of(a["member"].get("kind", "partner"), a["member"]["id"])
+
+
+## Runs a Game.MOVES move for `a` (a partner, a recruit, or Mimi copying one)
+## and returns the rating.
+func _partner_move(a: Dictionary, target: Dictionary, id: String) -> String:
+	var move: Dictionary = Game.MOVES[id]
+	var node: CharacterSprite = a["node"]
+	var power: int = a["pow"] + move.get("bonus", 0)
+	var result := "Miss"
+	message.text = move["name"] + "!"
+	match move["kind"]:
+		"stomp":
+			result = await _jump_attack(a, target)
+			_move_extras(move, result, [target])
+		"tackle":
+			result = await _tackle(a, target, move)
+		"throw":
+			result = await _timing_bar(1.0)
+			var hit: Array = [target]
+			if move.get("pierce", false) and result == "Excellent":
+				hit += _alive(foes).filter(func(f): return not is_same(f, target)).slice(0, 1)
+			for f in hit:
+				await _projectile(_middle(a) + Vector2(10, 0), _middle(f), move.get("color", Color.WHITE))
+				var extra: int = int(f["def"]) if move.get("ignore_def", false) else 0
+				_damage(f, power + extra + {"Excellent": 2, "Good": 1, "Miss": 0}[result])
+			_show_rating(result)
+			_move_extras(move, result, hit)
+		"blast":
+			result = await _timing_bar(1.0)
+			var hit := _alive(foes)
+			for f in hit:
+				_burst(_middle(f), Color(1.0, 0.6, 0.15), 22.0)
+				_damage(f, power + {"Excellent": 2, "Good": 0, "Miss": -1}[result])
+			_show_rating(result)
+			_move_extras(move, result, hit)
+		"multi":
+			await _walk(node, target["node"].position + Vector2(-22, 0), 220.0)
+			for i in move.get("hits", 2):
+				result = await _timing_bar(0.8)
+				_damage(target, power - 1 + {"Excellent": 2, "Good": 1, "Miss": 0}[result])
+				if result == "Miss" or _hp(target) <= 0:
+					break
+			_move_extras(move, result, [target])
+			await _walk(node, a["home"], 160.0)
+			node.facing = Vector2.RIGHT
+	_refresh()
+	await _wait(0.4)
+	return result
+
+
+## What an Excellent adds on top of the damage (see Game.MOVES).
+func _move_extras(move: Dictionary, result: String, targets: Array) -> void:
+	if result != "Excellent" or move.is_empty():
+		return
+	var notes: Array = []
+	for f in targets:
+		if f["ally"] or f["hp"] <= 0:
+			continue
+		if move.get("stun", false):
+			f["stun"] = true
+			notes.append("%s is stunned!" % f["name"])
+		if move.get("burn", 0) > 0:
+			f["burn"] = maxi(f["burn"], move["burn"])
+			notes.append("%s is burning!" % f["name"])
+		if move.get("def_down", 0) > 0 and _lower_def(f, move["def_down"]) > 0:
+			notes.append("%s's DEF went down!" % f["name"])
+	if move.get("heal", 0) > 0:
+		for ally in _alive(allies):
+			_set_hp(ally, _hp(ally) + move["heal"])
+		notes.append("The party heals %d HP!" % move["heal"])
+	if not notes.is_empty():
+		message.text = "  ".join(notes)
+	_refresh()
+
+
+## Lowers a foe's DEF for the rest of the battle; returns how much it went down.
+func _lower_def(f: Dictionary, amount: int) -> int:
+	var drop := mini(amount, int(f["def"]))
+	f["def"] -= drop
+	f["def_down"] = f.get("def_down", 0) + drop
+	return drop
+
+
+func _status_tags(f: Dictionary) -> String:
+	var tags: Array = []
+	if f["burn"] > 0:
+		tags.append("burn")
+	if f["stun"]:
+		tags.append("stun")
+	if f.get("cube", 0) > 0:
+		tags.append("cube")
+	if f.get("def_down", 0) > 0:
+		tags.append("DEF-%d" % f["def_down"])
+	return " (%s)" % ", ".join(tags) if not tags.is_empty() else ""
+
+
+# --- Signature moves (the design roster) ----------------------------------------
+
+const VEIL_TINT := Color(0.35, 0.2, 0.5, 0.45)
+const BROS := ["green", "yellow", "black"]   # who climbs onto the Koopa Bros. tower
+
+
+## Poltergust Pull (E. Gadd): drags HP out of the target into E. Gadd. An
+## Excellent pull also steals what the enemy carries: a Mushroom, then coins.
+func _poltergust_pull(a: Dictionary, target: Dictionary) -> void:
+	var result := await _timing_bar(1.1)
+	var tnode: CharacterSprite = target["node"]
+	var stream := _suction(a["node"], tnode)
+	var tug := create_tween()
+	for i in 3:
+		tug.tween_property(tnode, "position", target["home"] + Vector2(-10, 0), 0.12)
+		tug.tween_property(tnode, "position", target["home"], 0.12)
+	await tug.finished
+	stream.queue_free()
+	var dealt := _damage(target, a["pow"] + {"Excellent": 3, "Good": 1, "Miss": 0}[result])
+	_set_hp(a, _hp(a) + dealt)
+	_show_rating("%s  +%d HP" % [result, dealt])
+	if result == "Excellent":
+		message.text = _steal(target)
+
+
+func _steal(target: Dictionary) -> String:
+	var p: Dictionary = Game.player
+	if not target.get("robbed", false):
+		target["robbed"] = true
+		p["mushrooms"] += 1
+		return "Stole a Mushroom from %s!" % target["name"]
+	var coins: int = Game.ENEMIES[target["type"]]["coins"]
+	p["coins"] += coins
+	return "Stole %d coins from %s!" % [coins, target["name"]]
+
+
+## Shade Veil (Vivian): she sinks into the shadows. The next attack on her
+## misses and she hits back with fire (_veil_counter); if nobody attacks
+## before her next turn, the fire comes out then (_end_veil).
+func _shade_veil(a: Dictionary) -> void:
+	var result := await _timing_bar(1.0)
+	a["veil"] = a["pow"] + {"Excellent": 3, "Good": 1, "Miss": 0}[result]
+	a["veil_burn"] = 2 if result == "Excellent" else 0
+	var t := create_tween()
+	t.tween_property(a["node"], "modulate", VEIL_TINT, 0.3)
+	await t.finished
+	message.text = "%s hides in the shadows!" % a["name"]
+
+
+func _veil_counter(f: Dictionary, target: Dictionary) -> void:
+	var fnode: CharacterSprite = f["node"]
+	var node: CharacterSprite = target["node"]
+	message.text = "%s charges at the shadows..." % f["name"]
+	var contact := Vector2(node.position.x + 8, node.position.y)
+	fnode.move_velocity = Vector2.LEFT * 100
+	await _slide(fnode, contact, 0.5)
+	await _slide(fnode, contact + Vector2(-40, 0), 0.2)  # straight through her
+	_show_rating("Dodged!")
+	await _wait(0.2)
+	await _end_veil(target, f)
+	fnode.move_velocity = Vector2.RIGHT * 100
+	await _slide(fnode, f["home"], 0.4)
+	fnode.move_velocity = Vector2.ZERO
+	fnode.facing = Vector2.LEFT
+	await _wait(0.3)
+
+
+## Brings `a` out of the shadows with a fireball at `foe` (or any enemy).
+func _end_veil(a: Dictionary, foe: Dictionary = {}) -> void:
+	var power: int = a["veil"]
+	var burn: int = a.get("veil_burn", 0)
+	a["veil"] = 0
+	var t := create_tween()
+	t.tween_property(a["node"], "modulate", Color(1, 1, 1, 1.0 if _hp(a) > 0 else 0.4), 0.2)
+	await t.finished
+	if foe.is_empty() or _hp(foe) <= 0:
+		var alive := _alive(foes)
+		if alive.is_empty():
+			return
+		foe = alive.pick_random()
+	message.text = "%s strikes back with fire!" % a["name"]
+	await _projectile(_middle(a), _middle(foe), Color(1.0, 0.45, 0.1))
+	_burst(_middle(foe), Color(1.0, 0.5, 0.1), 16.0)
+	_damage(foe, power)
+	if burn > 0 and foe["hp"] > 0:
+		foe["burn"] = maxi(foe["burn"], burn)
+	_refresh()
+	await _wait(0.6)
+
+
+## Rookie Rush (Rookie Bowser): up to 3 shell bashes, Z as each one hits.
+## Every Excellent in a row adds 2 damage; a miss ends the rush.
+func _rookie_rush(a: Dictionary, target: Dictionary) -> void:
+	var node: CharacterSprite = a["node"]
+	var tpos: Vector2 = target["node"].position
+	var back := tpos + Vector2(-60, 0)
+	var contact := tpos + Vector2(-16, 0)
+	await _walk(node, back, 220.0)
+	message.text = "Press Z as each shell bash hits!"
+	var streak := 0
+	for i in 3:
+		var result := _rate_landing(await _arc(node, back, contact, 6.0, 0.3, true))
+		streak = streak + 1 if result == "Excellent" else 0
+		_damage(target, a["pow"] - 2 + 2 * streak)
+		_show_rating(result + (" x%d" % streak if streak > 1 else ""))
+		if result == "Miss" or _hp(target) <= 0 or i == 2:
+			break
+		await _arc(node, contact, back, 14.0, 0.3, false)
+	await _walk(node, a["home"], 200.0)
+	node.facing = Vector2.RIGHT
+
+
+## Magic Cube (Dimentio): traps the target; on its next turn the cube
+## explodes instead of it acting (_cube_explode). A miss only fizzles.
+func _magic_cube(a: Dictionary, target: Dictionary) -> void:
+	var result := await _timing_bar(1.0)
+	if result == "Miss":
+		message.text = "The cube fizzles!"
+		_damage(target, a["pow"] - 1)
+		return
+	target["cube"] = a["pow"] + (6 if result == "Excellent" else 3)
+	target["cube_node"] = _make_cube(target["node"])
+	message.text = "%s is trapped in a Magic Cube!" % target["name"]
+
+
+func _cube_explode(f: Dictionary) -> void:
+	message.text = "The Magic Cube around %s explodes!" % f["name"]
+	var box: Variant = f.get("cube_node")
+	if box != null and is_instance_valid(box):
+		box.queue_free()
+	f["cube_node"] = null
+	var power: int = f["cube"]
+	f["cube"] = 0
+	f["stun"] = false  # being stuck in the cube already cost it this turn
+	_burst(_middle(f), Color(1.0, 0.85, 0.3), 30.0)
+	_damage(f, power)
+	await _wait(0.9)
+
+
+## Grodus Bolt (Grodus): lightning on every enemy. Good lowers DEF by 1,
+## Excellent by 2, for the rest of the battle.
+func _grodus_bolt(a: Dictionary) -> void:
+	var result := await _timing_bar(1.0)
+	var bonus: int = {"Excellent": 2, "Good": 1, "Miss": -1}[result]
+	var lower: int = {"Excellent": 2, "Good": 1, "Miss": 0}[result]
+	var lowered: Array = []
+	for f in _alive(foes):
+		_bolt(f["node"])
+		_damage(f, a["pow"] + bonus)
+		if lower > 0 and f["hp"] > 0 and _lower_def(f, lower) > 0:
+			lowered.append(f["name"])
+	_show_rating(result)
+	if not lowered.is_empty():
+		message.text = "DEF down: %s" % ", ".join(lowered)
+
+
+## Mimic (Mimi): copies the last move the target used (what it is known for
+## if it hasn't acted yet) and uses it with Mimi's own power and timing.
+func _mimic(a: Dictionary, target: Dictionary) -> void:
+	var id: String = target.get("last_move", "")
+	if id == "" or not Game.MOVES.has(id):
+		id = Game.move_of("enemy", target["type"])
+	var t := create_tween()
+	t.tween_property(a["node"], "modulate", Color(0.75, 0.5, 1.0), 0.15)
+	t.tween_property(a["node"], "modulate", Color.WHITE, 0.3)
+	message.text = "%s copies %s's %s!" % [a["name"], target["name"], Game.MOVES[id]["name"]]
+	await _wait(0.8)
+	await _partner_move(a, target, id)
+
+
+## Bros. Tower (Koopa Bros.): the other three brothers jump onto the stack,
+## Z as each one lands (a miss knocks him off), then the tower spins into
+## the target. Every brother on it adds damage, more for Excellent.
+func _bros_tower(a: Dictionary, target: Dictionary) -> void:
+	var node: CharacterSprite = a["node"]
+	var base: Vector2 = node.position
+	var rise := 20.0 * SCALE
+	var tower: Array = []
+	var bonus := 1
+	message.text = "Press Z as each brother lands on the stack!"
+	for color in BROS:
+		var bro := _make_bro(color, tower.size() + 1)
+		var from := base + Vector2(-80, 0)
+		var top := base + Vector2(0, -rise * (tower.size() + 1))
+		bro.position = from
+		var result := _rate_landing(await _arc(bro, from, top, 50.0, 0.5, true))
+		_show_rating(result)
+		if result == "Miss":
+			var fall := create_tween()
+			fall.tween_property(bro, "position", Vector2(top.x - 30, base.y), 0.35)
+			fall.parallel().tween_property(bro, "modulate:a", 0.0, 0.35)
+			fall.tween_callback(bro.queue_free)
+		else:
+			tower.append(bro)
+			bonus += 2 if result == "Excellent" else 1
+		await _wait(0.2)
+	message.text = "Bros. Tower x%d!" % (tower.size() + 1)
+	var dest: Vector2 = target["node"].position + Vector2(-24, 0)
+	var t := 0.0
+	var spin := 0.0
+	while t < 0.6:
+		await get_tree().process_frame
+		var dt := get_process_delta_time()
+		t = minf(t + dt, 0.6)
+		node.position = base.lerp(dest, t / 0.6)
+		for i in tower.size():
+			tower[i].position = node.position + Vector2(0, -rise * (i + 1))
+		spin += dt
+		if spin > 0.05:  # spinning: everyone flips back and forth
+			spin = 0.0
+			node.facing = Vector2(-signf(node.facing.x) if node.facing.x != 0.0 else 1.0, 0)
+			for bro in tower:
+				bro.flip_h = not bro.flip_h
+	_damage(target, a["pow"] + bonus)
+	_show_rating("Bros. Tower!")
+	for bro in tower:
+		var fade := create_tween()
+		fade.tween_property(bro, "modulate:a", 0.0, 0.3)
+		fade.tween_callback(bro.queue_free)
+	await _walk(node, a["home"], 180.0)
+	node.facing = Vector2.RIGHT
+
+
+## One of the other Koopa Bros. (a palette swap of the koopa_bros sheet),
+## standing in the side pose.
+func _make_bro(color: String, layer: int) -> Sprite2D:
+	var s := Sprite2D.new()
+	s.texture = load("res://assets/characters/koopa_bros_%s.png" % color)
+	s.hframes = Game.CHARACTERS["koopa_bros"]["frames"]
+	s.vframes = 3
+	s.frame = s.hframes  # first cell of the side row
+	s.offset = Vector2(0, -s.texture.get_height() / 6.0)
+	s.scale = Vector2(SCALE, SCALE)
+	s.z_index = layer
+	stage.add_child(s)
+	return s
+
+
+# --- Move effects (simple shapes) --------------------------------------------------
+
+func _middle(actor: Dictionary) -> Vector2:
+	var node: CharacterSprite = actor["node"]
+	return node.position + Vector2(0, -node.height() * SCALE * 0.5)
+
+
+func _circle(radius: float, color: Color) -> Polygon2D:
+	var poly := Polygon2D.new()
+	var points := PackedVector2Array()
+	for i in 16:
+		points.append(Vector2.from_angle(TAU * i / 16.0) * radius)
+	poly.polygon = points
+	poly.color = color
+	return poly
+
+
+## Something thrown (a shell, a rose, a fireball) arcs from `from` to `to`.
+func _projectile(from: Vector2, to: Vector2, color: Color) -> void:
+	var ball := _circle(5.0, color.darkened(0.55))
+	ball.add_child(_circle(3.5, color))
+	ball.z_index = 10
+	stage.add_child(ball)
+	await _arc(ball, from, to, 24.0, 0.35, false)
+	ball.queue_free()
+
+
+## A flash that grows and fades: explosions, fire.
+func _burst(pos: Vector2, color: Color, radius: float) -> void:
+	var b := _circle(radius, color)
+	b.position = pos
+	b.scale = Vector2(0.2, 0.2)
+	b.z_index = 10
+	stage.add_child(b)
+	var t := create_tween()
+	t.tween_property(b, "scale", Vector2.ONE, 0.2)
+	t.parallel().tween_property(b, "modulate:a", 0.0, 0.4)
+	t.tween_callback(b.queue_free)
+
+
+## A lightning bolt from the top of the screen down onto `node`.
+func _bolt(node: CharacterSprite) -> void:
+	var line := Line2D.new()
+	line.width = 2.0
+	line.default_color = Color(1.0, 0.95, 0.45)
+	var bottom := node.position + Vector2(0, -node.height() * SCALE * 0.4)
+	var y := 0.0
+	while y < bottom.y:
+		line.add_point(Vector2(bottom.x + randf_range(-6.0, 6.0), y))
+		y += 14.0
+	line.add_point(bottom)
+	line.z_index = 10
+	stage.add_child(line)
+	var t := create_tween()
+	t.tween_property(line, "modulate:a", 0.0, 0.45)
+	t.tween_callback(line.queue_free)
+
+
+## The Poltergust's stream between E. Gadd and the target.
+func _suction(from: CharacterSprite, to: CharacterSprite) -> Node2D:
+	var group := Node2D.new()
+	group.z_index = 10
+	for i in 3:
+		var line := Line2D.new()
+		line.width = 1.0
+		line.default_color = Color(0.7, 0.9, 1.0, 0.85)
+		var p0 := from.position + Vector2(12, -from.height() * SCALE * 0.35 + (i - 1) * 3)
+		var p1 := to.position + Vector2(0, -to.height() * SCALE * 0.5 + (i - 1) * 8)
+		line.points = PackedVector2Array([p0, p0.lerp(p1, 0.5) + Vector2(0, randf_range(-6.0, 6.0)), p1])
+		group.add_child(line)
+	stage.add_child(group)
+	return group
+
+
+## A see-through box around a trapped enemy (a child of its sprite).
+func _make_cube(node: CharacterSprite) -> Node2D:
+	var h := node.height() + 6.0
+	var w := h * 0.8
+	var corners := PackedVector2Array([Vector2(-w / 2, -h), Vector2(w / 2, -h), Vector2(w / 2, 3), Vector2(-w / 2, 3)])
+	var box := Node2D.new()
+	var fill := Polygon2D.new()
+	fill.polygon = corners
+	fill.color = Color(0.75, 0.4, 1.0, 0.35)
+	box.add_child(fill)
+	var edge := Line2D.new()
+	edge.points = corners
+	edge.closed = true
+	edge.width = 1.0
+	edge.default_color = Color(1.0, 0.85, 0.3)
+	box.add_child(edge)
+	node.add_child(box)
+	box.scale = Vector2.ZERO
+	create_tween().tween_property(box, "scale", Vector2.ONE, 0.25)
+	return box
+
+
 # --- Enemy turn ----------------------------------------------------------------
 
 func _foe_turn(f: Dictionary) -> void:
@@ -324,12 +782,19 @@ func _foe_turn(f: Dictionary) -> void:
 		await _wait(0.7)
 		if f["hp"] <= 0:
 			return
+	if f.get("cube", 0) > 0:
+		await _cube_explode(f)  # trapped: the turn goes to the explosion
+		return
 	if f["stun"]:
 		f["stun"] = false
 		message.text = "%s is stunned and can't move!" % f["name"]
 		await _wait(0.8)
 		return
 	var target: Dictionary = _alive(allies).pick_random()
+	f["last_move"] = Game.move_of("enemy", f["type"])  # what Mimi copies
+	if target.get("veil", 0) > 0:
+		await _veil_counter(f, target)
+		return
 	var node: CharacterSprite = target["node"]
 	message.text = "%s charges at %s! Press Z to jump!" % [f["name"], target["name"]]
 	var fnode: CharacterSprite = f["node"]
@@ -517,4 +982,4 @@ func _refresh() -> void:
 		lines.append("%s %d/%d" % [a["name"], _hp(a), a["member"]["max_hp"]])
 	var p: Dictionary = Game.player
 	status.text = "  ".join(lines) + "   SP %d/%d" % [p["sp"], p["max_sp"]]
-	foe_status.text = "\n".join(_alive(foes).map(func(f): return "%s HP %d/%d%s" % [f["name"], f["hp"], f["max_hp"], " (burn)" if f["burn"] > 0 else ""]))
+	foe_status.text = "\n".join(_alive(foes).map(func(f): return "%s HP %d/%d%s" % [f["name"], f["hp"], f["max_hp"], _status_tags(f)]))

@@ -279,7 +279,7 @@ func _talk_to(n: Dictionary) -> void:
 		await say("Eek! You're one of Bowser's bunch! Stay back!", info["name"], node)
 		return
 	busy = true
-	dialog.open("Going out to the Outskirts? It's dangerous out there...", info["name"], node)
+	dialog.open(info.get("line", "Want to team up?"), info["name"], node)
 	menu.position = Vector2(270, dialog.box.position.y - 52 if dialog.box.position.y > 100 else dialog.box.position.y + dialog.box.size.y + 4)
 	var i := await menu.choose(["Ask to join", "Never mind"], "", true)
 	dialog.close()

@@ -163,6 +163,10 @@ def build(name, cfg, root):
     n = max(len(r) for r in rows)
     cw = max(f.size[0] for r in rows for f in r) + 2
     ch = max(f.size[1] for r in rows for f in r) + 2
+    # Even cells keep every cell edge on a whole pixel at the battle's 1.5x
+    # scale, so the feet of the row above can't bleed into the top of a frame.
+    cw += cw % 2
+    ch += ch % 2
     sheet = Image.new("RGBA", (cw * n, ch * 3), (0, 0, 0, 0))
     for ri, r in enumerate(rows):
         for ci in range(n):
