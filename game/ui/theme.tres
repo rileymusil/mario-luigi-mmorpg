@@ -1,0 +1,133 @@
+[gd_resource type="Theme" load_steps=17 format=3]
+
+[ext_resource type="FontFile" path="res://assets/ui/mlss_font.fnt" id="1_font"]
+[ext_resource type="FontFile" path="res://assets/ui/mlss_font_outline.fnt" id="2_outline"]
+[ext_resource type="Texture2D" path="res://assets/ui/balloon.png" id="3_balloon"]
+[ext_resource type="Texture2D" path="res://assets/ui/navy_bar.png" id="4_navy"]
+[ext_resource type="Texture2D" path="res://assets/ui/place_strip.png" id="5_strip"]
+[ext_resource type="Texture2D" path="res://assets/ui/notebook.png" id="6_notebook"]
+[ext_resource type="Texture2D" path="res://assets/ui/card_red.png" id="7_red"]
+[ext_resource type="Texture2D" path="res://assets/ui/card_green.png" id="8_green"]
+
+[sub_resource type="StyleBoxTexture" id="Balloon"]
+content_margin_left = 8.0
+content_margin_top = 5.0
+content_margin_right = 8.0
+content_margin_bottom = 5.0
+texture = ExtResource("3_balloon")
+texture_margin_left = 7.0
+texture_margin_top = 7.0
+texture_margin_right = 7.0
+texture_margin_bottom = 7.0
+
+[sub_resource type="StyleBoxTexture" id="BalloonHover"]
+content_margin_left = 8.0
+content_margin_top = 5.0
+content_margin_right = 8.0
+content_margin_bottom = 5.0
+texture = ExtResource("3_balloon")
+texture_margin_left = 7.0
+texture_margin_top = 7.0
+texture_margin_right = 7.0
+texture_margin_bottom = 7.0
+modulate_color = Color(0.85, 0.92, 1, 1)
+
+[sub_resource type="StyleBoxTexture" id="Navy"]
+content_margin_left = 10.0
+content_margin_top = 3.0
+content_margin_right = 10.0
+content_margin_bottom = 3.0
+texture = ExtResource("4_navy")
+texture_margin_left = 12.0
+texture_margin_top = 6.0
+texture_margin_right = 12.0
+texture_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxTexture" id="Strip"]
+content_margin_left = 14.0
+content_margin_top = 6.0
+content_margin_right = 14.0
+content_margin_bottom = 5.0
+texture = ExtResource("5_strip")
+texture_margin_left = 10.0
+texture_margin_top = 8.0
+texture_margin_right = 10.0
+texture_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxTexture" id="Notebook"]
+content_margin_left = 26.0
+content_margin_top = 26.0
+content_margin_right = 26.0
+content_margin_bottom = 20.0
+texture = ExtResource("6_notebook")
+texture_margin_left = 24.0
+texture_margin_top = 24.0
+texture_margin_right = 24.0
+texture_margin_bottom = 18.0
+
+[sub_resource type="StyleBoxTexture" id="RedCard"]
+content_margin_left = 14.0
+content_margin_top = 12.0
+content_margin_right = 16.0
+content_margin_bottom = 6.0
+texture = ExtResource("7_red")
+texture_margin_left = 20.0
+texture_margin_top = 22.0
+texture_margin_right = 14.0
+texture_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxTexture" id="GreenCard"]
+content_margin_left = 14.0
+content_margin_top = 12.0
+content_margin_right = 16.0
+content_margin_bottom = 6.0
+texture = ExtResource("8_green")
+texture_margin_left = 20.0
+texture_margin_top = 22.0
+texture_margin_right = 14.0
+texture_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxEmpty" id="Empty"]
+
+[resource]
+default_font = ExtResource("1_font")
+default_font_size = 12
+Button/colors/font_color = Color(0.19, 0.19, 0.22, 1)
+Button/colors/font_disabled_color = Color(0.19, 0.19, 0.22, 0.4)
+Button/colors/font_focus_color = Color(0.19, 0.19, 0.22, 1)
+Button/colors/font_hover_color = Color(0.12, 0.25, 0.75, 1)
+Button/colors/font_pressed_color = Color(0.12, 0.25, 0.75, 1)
+Button/styles/disabled = SubResource("Balloon")
+Button/styles/focus = SubResource("Empty")
+Button/styles/hover = SubResource("BalloonHover")
+Button/styles/normal = SubResource("Balloon")
+Button/styles/pressed = SubResource("BalloonHover")
+FlatPanel/base_type = &"PanelContainer"
+FlatPanel/styles/panel = SubResource("Empty")
+GoldLabel/base_type = &"Label"
+GoldLabel/colors/font_color = Color(1, 0.85, 0.2, 1)
+GoldLabel/fonts/font = ExtResource("2_outline")
+GreenCard/base_type = &"PanelContainer"
+GreenCard/styles/panel = SubResource("GreenCard")
+InfoLabel/base_type = &"Label"
+InfoLabel/colors/font_color = Color(0.13, 0.3, 0.8, 1)
+Label/colors/font_color = Color(0.19, 0.19, 0.22, 1)
+Label/colors/font_shadow_color = Color(0, 0, 0, 0)
+Label/constants/line_spacing = 0
+LightLabel/base_type = &"Label"
+LightLabel/colors/font_color = Color(0.97, 0.97, 0.97, 1)
+NavyPanel/base_type = &"PanelContainer"
+NavyPanel/styles/panel = SubResource("Navy")
+NotebookPanel/base_type = &"PanelContainer"
+NotebookPanel/styles/panel = SubResource("Notebook")
+OutlineLabel/base_type = &"Label"
+OutlineLabel/colors/font_color = Color(1, 1, 1, 1)
+OutlineLabel/fonts/font = ExtResource("2_outline")
+Panel/styles/panel = SubResource("Balloon")
+PanelContainer/styles/panel = SubResource("Balloon")
+RedCard/base_type = &"PanelContainer"
+RedCard/styles/panel = SubResource("RedCard")
+StripPanel/base_type = &"PanelContainer"
+StripPanel/styles/panel = SubResource("Strip")
+TitleLabel/base_type = &"Label"
+TitleLabel/colors/font_color = Color(0.8, 0.15, 0.12, 1)

@@ -34,6 +34,12 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
 - `scripts/map_props.gd`: trees, buildings and other tall things you can walk behind (props), the walk mask loader. `scripts/map_editor.gd`: the debug-only map editor (F2).
 - `scripts/battle.gd`: battle flow, timed presses, specials, recruiting, XP.
 - `scripts/character_sprite.gd`, `scripts/choice_menu.gd`: shared sprite and menu box.
+- `ui/theme.tres`: the project's default theme (Superstar Saga font, speech-balloon panels and the
+  `NavyPanel`, `StripPanel`, `NotebookPanel`, `RedCard`/`GreenCard`, `FlatPanel` and
+  `LightLabel`, `InfoLabel`, `TitleLabel`, `OutlineLabel`, `GoldLabel` variations).
+  `ui/` also holds the reusable pieces: `dialogue_box` (typed-in speech balloon), `hud`,
+  `area_banner`, `pause_screen` (notebook), `party_screen` (stat cards) and `gold_number`.
+- `assets/ui/`: menu art and the bitmap fonts (`mlss_font.fnt`, `mlss_font_outline.fnt`).
 - `assets/characters/`: walk sheets, 3 rows (down, right, up). `assets/maps/`: map art, `<map>_mask.png` (the ground: white = walkable) and `<map>_props.json` (trees and buildings, see below).
 
 ## Maps: ground, props and the map editor
@@ -51,8 +57,9 @@ Run the game from the Godot editor (F5), walk to a map and press **F2**. Players
 - After saving, commit the two files. `tools/make_maps.py` rebuilds masks from scratch and would overwrite hand edits, so only re-run it for a new map.
 
 ## Adding art
-Both tools read the original sheets from the `Mario&LuigiMMO` art folder (not in this repo):
+The tools read the original sheets from the `Mario&LuigiMMO` art folder (not in this repo):
 - `python3 tools/slice_sprites.py "<Mario&LuigiMMO folder>" [ids]` cuts walk cycles. Add a character with the pixel boxes of its down, side and up rows (options for white backgrounds and drawn-on shadows are described at the top of the script), then add it to `CHARACTERS`, `PARTNERS` or `ENEMIES` in `game.gd`.
+- `python3 tools/slice_ui.py "<Mario&LuigiMMO folder>"` cuts the menu art (speech balloons, notebook, stat cards, gold digits, icons, title art) into `assets/ui/` and builds the two bitmap fonts from the MLSS alphabet. Re-run `godot --headless --import` afterwards.
 - `python3 tools/make_maps.py "<Mario&LuigiMMO folder>" [ids]` crops a map and guesses its walk mask from colours, opening up the ground behind the props in `<map>_props.json` (`python3 tools/make_maps.py --mask-only [ids]` rebuilds just the masks from the art in the repo). Touch up masks and props in the map editor (or `_mask.png` in any paint program: white = walk, black = blocked); re-running the tool overwrites hand-painted masks.
 
 ## Publishing
