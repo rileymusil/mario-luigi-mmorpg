@@ -3,8 +3,8 @@
 const base = process.env.SERVER ?? "ws://127.0.0.1:8787";
 const zone = `smoke_${Date.now() % 100000}`;
 
-function open(name, character, x, y) {
-  const ws = new WebSocket(`${base}/zone/${zone}`);
+function open(name, character, x, y, extra = {}, z = zone) {
+  const ws = new WebSocket(`${base}/zone/${z}`);
   const inbox = [];
   const waiters = [];
   ws.onmessage = (e) => {
@@ -22,7 +22,7 @@ function open(name, character, x, y) {
     });
   const ready = new Promise((resolve, reject) => {
     ws.onopen = () => {
-      ws.send(JSON.stringify({ t: "hello", name, character, x, y }));
+      ws.send(JSON.stringify({ t: "hello", name, character, x, y, ...extra }));
       resolve();
     };
     ws.onerror = () => reject(new Error(`${name}: could not connect to ${base}`));
@@ -88,5 +88,65 @@ check(leave.id === wb.id, "leaving is broadcast");
 
 a.ws.close();
 c.ws.close();
+
+// --- Parties ---
+const uidP = "aaaaaaaaaaa1", uidQ = "bbbbbbbbbbb2";
+const p = open("Pat", "mario", 0, 0, { uid: uidP, side: "good" });
+await p.ready;
+check((await p.next("welcome")).id === uidP, "uid becomes the player id");
+const q = open("Quinn", "luigi", 0, 0, { uid: uidQ });
+await q.ready;
+await q.next("welcome");
+const r = open("Rex", "bowser", 0, 0, { uid: uidP, side: "evil" });
+await r.ready;
+const wr = await r.next("welcome");
+check(wr.id !== uidP && /^[a-f0-9]{12}$/.test(wr.id), "a uid already in use gets a fresh id");
+check(wr.players.find((x) => x.id === uidP).side === "good", "players carry their side");
+
+q.send({ t: "accept", from: uidP });
+p.send({ t: "invite", to: uidQ });
+const inv = await q.next("invite");
+check(inv.from === uidP && inv.name === "Pat", "invite reaches the invitee");
+q.send({ t: "accept", from: uidP });
+check((await p.next("party")).id === uidQ && (await q.next("party")).id === uidP, "accepting forms a party");
+
+r.send({ t: "invite", to: uidQ });
+await new Promise((res) => setTimeout(res, 300));
+check(!q.inbox.some((m) => m.t === "invite"), "can't invite someone already in a party");
+
+p.send({ t: "chat", text: "secret plan", party: true });
+check((await q.next("chat")).party === true && (await p.next("chat")).text === "secret plan", "party chat reaches the partner");
+await new Promise((res) => setTimeout(res, 300));
+check(!r.inbox.some((m) => m.t === "chat"), "party chat doesn't reach others");
+
+p.send({ t: "warp", map: "outskirts", spawn: "south_path" });
+const warp = await q.next("warp");
+check(warp.map === "outskirts" && warp.spawn === "south_path", "warp is passed to the partner");
+
+// Both move to another map: they find each other again by uid.
+const zone2 = `${zone}_b`;
+p.ws.close();
+q.ws.close();
+const p2 = open("Pat", "mario", 0, 0, { uid: uidP, party: uidQ }, zone2);
+await p2.ready;
+await p2.next("welcome");
+const q2 = open("Quinn", "luigi", 0, 0, { uid: uidQ, party: uidP }, zone2);
+await q2.ready;
+await q2.next("welcome");
+check((await p2.next("party")).id === uidQ && (await q2.next("party")).id === uidP, "partners find each other on a new map");
+
+q2.send({ t: "leave_party" });
+await p2.next("party_end");
+check(true, "leaving the party tells the partner");
+
+const p3 = open("Pat", "mario", 0, 0, { uid: "ccccccccccc3", party: uidQ }, zone2);
+await p3.ready;
+await p3.next("welcome");
+await p3.next("party_end");
+check(true, "arriving with a partner who left the party ends it");
+
+r.send({ t: "invite", to: uidP });
+await new Promise((res) => setTimeout(res, 200));
+for (const x of [p2, q2, p3, r]) x.ws.close();
 console.log("all good");
 process.exit(0);
