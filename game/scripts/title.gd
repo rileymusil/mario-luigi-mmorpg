@@ -11,7 +11,13 @@ func _ready() -> void:
 	prompt = TextPrompt.new()
 	prompt.position = Vector2(110, 80)
 	add_child(prompt)
+	TouchControls.active_changed.connect(_show_controls_hint)
+	_show_controls_hint(TouchControls.active)
 	_main_menu()
+
+
+func _show_controls_hint(touch: bool) -> void:
+	$HintBox/Hint.text = "Tap to choose   Tap outside: back" if touch else "Arrows: choose   Z: confirm   X: back"
 
 
 func _main_menu() -> void:
@@ -36,8 +42,9 @@ func _main_menu() -> void:
 ## Returns a cleaned username, or "" if the player backed out.
 func _ask_username(suggested: String) -> String:
 	while true:
+		var keys := "" if TouchControls.active else "  Enter: OK  Esc: back"
 		var text := await prompt.ask("Pick a username", Game.clean_username(suggested), 16,
-			"Other players see this name.  Enter: OK  Esc: back")
+			"Other players see this name." + keys)
 		if text == "":
 			return ""
 		var u := Game.clean_username(text)

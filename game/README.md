@@ -8,12 +8,16 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
 2. In the Project Manager choose **Import**, pick this folder's `project.godot`, then press **F5** to play.
 
 ## Controls
-| Action | Keyboard | Gamepad |
-|---|---|---|
-| Move | Arrows / WASD | D-pad |
-| Jump, confirm, timed presses | Z, J or Space | A |
-| Talk, ask, back | X or K | B |
-| Menu | Enter or Esc | Start |
+| Action | Keyboard | Gamepad | Touch screen |
+|---|---|---|---|
+| Move | Arrows / WASD | D-pad | Joystick (bottom left) |
+| Jump, confirm, timed presses | Z, J or Space | A | Red **A** button |
+| Talk, ask, back | X or K | B | Green **B** button |
+| Menu | Enter or Esc | Start | **MENU** (top right) |
+
+**Mouse and touch.** Every menu works with the mouse: point at an option to move the pointer, click it to pick it, right-click or click outside the menu to go back (where the menu has a way back). On a touch screen, tap an option to pick it (slide your finger off before lifting to change your mind) and tap outside the menu to go back. Click or tap anywhere to read on when someone is talking. Click or tap someone with a "!" over their head to talk to them, and click a partner's card in the party screen to pick them. The username box has OK and Back buttons.
+
+**Phones and tablets.** Hold the phone sideways. The on-screen controls show on touch screens (or after your first touch) and hide when you press a key; several fingers work at once, so you can walk and jump together. Only the buttons that make sense show: none on the title screen (tap the menus), A and B in battle, all of them while walking around, and none while someone is talking. On Android, the corners button next to MENU goes full screen and keeps the game sideways; on iPhone, use Share > Add to Home Screen to play full screen. Typing your username opens the browser's own text box, so the phone's keyboard comes up.
 
 ## What you can do
 - **Pick a side and a character.** Good: Mario, Luigi, Princess Peach, Waluigi, Rosalina, Toadette. Evil: Bowser, Bowser Jr., Shadow Mario.
@@ -33,7 +37,8 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
 - `scripts/world.gd`: map loading, walking on the walk mask, followers, enemies, talking, pause menu.
 - `scripts/map_props.gd`: trees, buildings and other tall things you can walk behind (props), the walk mask loader. `scripts/map_editor.gd`: the debug-only map editor (F2).
 - `scripts/battle.gd`: battle flow, timed presses, specials, recruiting, XP.
-- `scripts/character_sprite.gd`, `scripts/choice_menu.gd`: shared sprite and menu box.
+- `scripts/character_sprite.gd`, `scripts/choice_menu.gd`: shared sprite and menu box (keys, mouse and touch).
+- `ui/touch_controls.gd` (autoload `TouchControls`): the on-screen joystick (`ui/touch_stick.gd`) and buttons (`ui/touch_button.gd`). They press the same input actions as the keys, so game code just reads `Input` as usual. Anything that should hide them while it is open joins the `touch_blockers` group (the speech balloon and text box do). `ui/pointer.gd` has small helpers that treat a click and a tap alike.
 - `ui/theme.tres`: the project's default theme (Superstar Saga font, speech-balloon panels and the
   `NavyPanel`, `StripPanel`, `NotebookPanel`, `RedCard`/`GreenCard`, `FlatPanel` and
   `LightLabel`, `InfoLabel`, `TitleLabel`, `OutlineLabel`, `GoldLabel` variations).
@@ -59,11 +64,11 @@ Run the game from the Godot editor (F5), walk to a map and press **F2**. Players
 ## Adding art
 The tools read the original sheets from the `Mario&LuigiMMO` art folder (not in this repo):
 - `python3 tools/slice_sprites.py "<Mario&LuigiMMO folder>" [ids]` cuts walk cycles. Add a character with the pixel boxes of its down, side and up rows (options for white backgrounds and drawn-on shadows are described at the top of the script), then add it to `CHARACTERS`, `PARTNERS` or `ENEMIES` in `game.gd`.
-- `python3 tools/slice_ui.py "<Mario&LuigiMMO folder>"` cuts the menu art (speech balloons, notebook, stat cards, gold digits, icons, title art) into `assets/ui/` and builds the two bitmap fonts from the MLSS alphabet. Re-run `godot --headless --import` afterwards.
+- `python3 tools/slice_ui.py "<Mario&LuigiMMO folder>"` cuts the menu art (speech balloons, notebook, stat cards, gold digits, icons, title art, the touch A / B buttons and joystick) into `assets/ui/` and builds the two bitmap fonts from the MLSS alphabet. Re-run `godot --headless --import` afterwards.
 - `python3 tools/make_maps.py "<Mario&LuigiMMO folder>" [ids]` crops a map and guesses its walk mask from colours, opening up the ground behind the props in `<map>_props.json` (`python3 tools/make_maps.py --mask-only [ids]` rebuilds just the masks from the art in the repo). Touch up masks and props in the map editor (or `_mask.png` in any paint program: white = walk, black = blocked); re-running the tool overwrites hand-painted masks.
 
 ## Publishing
-`export_presets.cfg` has a **Web** preset with thread support off, so the build runs on plain static hosting like GitHub Pages. `.github/workflows/deploy-pages.yml` (repo root) exports and publishes it on every push to `main`.
+`export_presets.cfg` has a **Web** preset with thread support off, so the build runs on plain static hosting like GitHub Pages. Its head include stops pinch zoom and page scrolling on phones, asks to turn portrait phones sideways, and turns the game sideways when it goes full screen on Android. The game keeps its 384x216 picture and scales it to fit (black bars at the sides on extra-wide phones), because the menus and battles are laid out for that size. `.github/workflows/deploy-pages.yml` (repo root) exports and publishes it on every push to `main`.
 
 ## Screenshot
 ![prototype](screenshot.png)
