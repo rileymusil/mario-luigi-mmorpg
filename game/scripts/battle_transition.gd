@@ -7,6 +7,9 @@ extends CanvasLayer
 ## spins up out of the middle until it fills the screen, the battle loads behind
 ## it and the yellow fades away.
 ##     BattleTransition.into_battle(get_tree(), Game.BATTLE_SCENE)
+## With at_once the battle loads right away and the swipe plays over a still
+## of the screen it left, for battles that must be running straight away (a
+## co-op guest, whose partner's battle sends its setup at once).
 ## Out of a battle: a quick fade to black and back.
 ##     BattleTransition.out_of_battle(get_tree(), func(): Game.end_battle("won"))
 
@@ -22,12 +25,13 @@ static var _current: BattleTransition
 
 var _cover: ColorRect
 var _star: Sprite2D
+var _still: TextureRect
 
 
-static func into_battle(tree: SceneTree, scene: String) -> void:
+static func into_battle(tree: SceneTree, scene: String, at_once := false) -> void:
 	var t := _start(tree)
 	if t:
-		t._play_in(scene)
+		t._play_in(scene, at_once)
 	else:
 		tree.call_deferred("change_scene_to_file", scene)
 
@@ -76,8 +80,12 @@ func _ready() -> void:
 	add_child(_star)
 
 
-func _play_in(scene: String) -> void:
-	await get_tree().process_frame
+func _play_in(scene: String, at_once: bool) -> void:
+	if at_once:
+		_freeze()
+		await _change_scene(func(): get_tree().change_scene_to_file(scene))
+	else:
+		await get_tree().process_frame
 	for i in 2:
 		_cover.color = Color(1, 1, 1, 0.85)
 		await _wait(0.05)
@@ -89,7 +97,10 @@ func _play_in(scene: String) -> void:
 		await _wait(1.0 / FPS)
 	_cover.color = STAR_YELLOW
 	_star.visible = false
-	await _change_scene(func(): get_tree().change_scene_to_file(scene))
+	if _still:
+		_still.queue_free()
+	if not at_once:
+		await _change_scene(func(): get_tree().change_scene_to_file(scene))
 	var tween := create_tween()
 	tween.tween_property(_cover, "color:a", 0.0, 0.35)
 	await tween.finished
@@ -106,6 +117,21 @@ func _play_out(change: Callable) -> void:
 	tween.tween_property(_cover, "color:a", 0.0, 0.3)
 	await tween.finished
 	queue_free()
+
+
+## Holds the last frame on screen (under the flash and the star).
+func _freeze() -> void:
+	var image := get_viewport().get_texture().get_image()
+	if image == null or image.is_empty():
+		return
+	_still = TextureRect.new()
+	_still.texture = ImageTexture.create_from_image(image)
+	_still.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_still.stretch_mode = TextureRect.STRETCH_SCALE
+	_still.size = get_viewport().get_visible_rect().size
+	_still.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_still)
+	move_child(_still, 0)
 
 
 ## Runs `change` and waits until the new scene is in place (or a moment passes,

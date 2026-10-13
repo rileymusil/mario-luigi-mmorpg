@@ -13,8 +13,7 @@ var _setup := {}
 
 
 func _ready() -> void:
-	bar.visible = false
-	rating.text = ""
+	_setup_presentation(Game.player.get("map", ""))  # backdrop, HP boxes (battle.gd)
 	message.text = "Joining %s's battle..." % Net.party_name
 	Net.party_message.connect(_on_party_message)
 	Net.party_changed.connect(func():
@@ -51,8 +50,9 @@ func _build(d: Dictionary) -> void:
 	me_index = int(d.get("me", -1))
 	for a in d.get("allies", []):
 		var node := _sprite(str(a[1]), Vector2(a[2], a[3]), Vector2.RIGHT)
+		# "you": your own box shows your SP too.
 		allies.append({"name": str(a[0]), "node": node, "ally": true, "home": node.position,
-			"member": {"hp": 1, "max_hp": 1}, "pow": 0, "def": 0})
+			"member": {"hp": 1, "max_hp": 1}, "pow": 0, "def": 0, "you": allies.size() == me_index})
 	for f in d.get("foes", []):
 		var node := _sprite(str(f[1]), Vector2(f[2], f[3]), Vector2.LEFT)
 		foes.append({"name": str(f[0]), "type": str(f[1]), "node": node, "ally": false, "home": node.position,
@@ -75,8 +75,9 @@ func _sprite(id: String, pos: Vector2, facing: Vector2) -> CharacterSprite:
 
 
 func _apply_state(d: Dictionary) -> void:
-	var msg := str(d.get("msg", ""))
-	if not msg.begins_with("Press Z"):  # their timing prompts are for them
+	# Their timing prompts ("Press Z ..." / "Press A ...") are for them.
+	var msg := str(d.get("msg", "")).get_slice(" Press ", 0)
+	if not msg.begins_with("Press "):
 		message.text = msg
 	var a_hp: Array = d.get("allies", [])
 	for i in mini(a_hp.size(), allies.size()):
@@ -121,40 +122,60 @@ func _my_turn() -> void:
 	var p: Dictionary = Game.player
 	var sp_id: String = Game.CHARACTERS[p["character"]]["special"]
 	var sp: Dictionary = Game.SPECIALS[sp_id]
-	var options := ["Jump", "%s (%d SP)" % [sp["name"], sp["sp"]], "Mushroom (%d)" % p["mushrooms"]]
-	var enabled := [true, p["sp"] >= sp["sp"], p["mushrooms"] > 0]
-	var infos := ["Stomp! Press Z as you land for a 2nd hit.", sp["info"], "Heal 10 HP."]
-	var choice: String = options[await menu.choose(options, me["name"], false, enabled, infos)]
-	if over:
-		return
+	# Command blocks over you (as in battle.gd), then the target pointer;
+	# X / B in the pointer goes back to the blocks.
+	var commands := [
+		{"label": "Jump", "icon": "jump", "info": "Stomp! Press {a} as you land for a 2nd hit."},
+		{"label": "%s (%d SP)" % [sp["name"], sp["sp"]], "icon": "burst", "enabled": p["sp"] >= sp["sp"], "info": sp["info"]},
+		{"label": "Mushroom (%d)" % p["mushrooms"], "icon": "mushroom", "enabled": p["mushrooms"] > 0, "info": "Heal 10 HP."},
+	]
+	_set_turn(me)
+	var choice := -1
+	var target_i := -1
+	while true:
+		choice = await blocks.choose(commands, me["node"])
+		if over:
+			return
+		target_i = -1
+		if choice == 2:
+			break
+		var alive := []
+		for i in foes.size():
+			if foes[i]["hp"] > 0:
+				alive.append(i)
+		alive.sort_custom(func(x, y): return foes[x]["node"].position.x < foes[y]["node"].position.x)
+		if alive.size() <= 1:
+			target_i = alive[0] if alive.size() == 1 else -1
+			break
+		message.text = "Pick a target."
+		var pick := await targets.choose(alive.map(func(i): return {"node": foes[i]["node"], "label": foes[i]["name"]}))
+		if over:
+			return
+		if pick >= 0:
+			target_i = alive[pick]
+			break
+	_set_turn({})
+	message.text = ""
 	var hp: int = me["member"]["hp"]
 	var max_hp: int = me["member"]["max_hp"]
-	if choice.begins_with("Mushroom"):
+	if choice == 2:  # Mushroom
 		p["mushrooms"] -= 1
 		_show_rating("+10 HP")
 		Net.send_party({"kind": "act", "move": "heal", "hp": mini(max_hp, hp + 10)})
 		return
-	var alive := []
-	for i in foes.size():
-		if foes[i]["hp"] > 0:
-			alive.append(i)
-	if alive.is_empty():
+	if target_i < 0:
 		Net.send_party({"kind": "act", "move": "wait"})
-		return
-	var target_i: int = alive[0]
-	if alive.size() > 1:
-		var pick := await menu.choose(alive.map(func(i): return "%s  HP %d" % [foes[i]["name"], foes[i]["hp"]]), "Target")
-		target_i = alive[pick]
-	if over:
 		return
 	var target: Dictionary = foes[target_i]
 	var node: CharacterSprite = me["node"]
-	if choice == "Jump":
+	if choice == 0:  # Jump
 		var stand: Vector2 = target["node"].position + Vector2(-40, 0)
 		var top: Vector2 = target["node"].position + Vector2(0, -target["node"].height() * SCALE * 0.8)
-		message.text = "Press Z just as you land!"
+		_say("Press {a} just as you land!")
 		await _walk(node, stand, 160.0)
+		var badge := _show_badge(me, "jump")
 		var result := _rate_landing(await _arc(node, node.position, top, 50.0, 0.55, true))
+		badge.queue_free()
 		_show_rating(result)
 		var hits := [p["pow"]]
 		if result != "Miss":
@@ -192,7 +213,8 @@ func _dodge(d: Dictionary) -> void:
 	var start := fnode.position
 	var contact := Vector2(node.position.x + 8, node.position.y)
 	var duration := clampf(float(d.get("time", 0.7)), 0.3, 1.2)
-	message.text = "%s charges at you! Press Z to jump!" % foes[i]["name"]
+	_say("%s charges at you! Press {a} to jump!", [foes[i]["name"]])
+	var badge := _show_badge(allies[me_index], "jump")
 	var t := 0.0
 	while t < duration:
 		await get_tree().process_frame
@@ -201,6 +223,7 @@ func _dodge(d: Dictionary) -> void:
 		fnode.move_velocity = Vector2.LEFT * 100
 		if Input.is_action_just_pressed("action"):
 			node.jump()
+	badge.queue_free()
 	var ok: bool = node.jump_height > 8.0
 	Net.send_party({"kind": "dodged", "ok": ok})
 	if ok:
@@ -219,6 +242,8 @@ func _finish(d: Dictionary) -> void:
 		return
 	over = true
 	menu.visible = false
+	blocks.visible = false
+	targets.visible = false
 	var p: Dictionary = Game.player
 	match str(d.get("result", "fled")):
 		"won":
@@ -244,12 +269,3 @@ func _finish(d: Dictionary) -> void:
 			await _wait(1.0)
 			Game.end_battle("fled")
 
-
-func _refresh() -> void:
-	var lines: Array = []
-	for a in allies:
-		lines.append("%s %d/%d" % [a["name"], a["member"]["hp"], a["member"]["max_hp"]])
-	var p: Dictionary = Game.player
-	status.text = "  ".join(lines) + "   SP %d/%d" % [p["sp"], p["max_sp"]]
-	foe_status.text = "\n".join(foes.filter(func(f): return f["hp"] > 0).map(
-		func(f): return "%s HP %d/%d" % [f["name"], f["hp"], f["max_hp"]]))
