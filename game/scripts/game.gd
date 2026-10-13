@@ -37,8 +37,6 @@ const CHARACTERS := {
 		"special": "fire_breath"},
 	"rookie_bowser": {"name": "Rookie Bowser", "side": "evil", "frames": 8, "hp": 24, "sp": 10, "pow": 6, "def": 3,
 		"special": "rookie_rush"},
-	"dimentio": {"name": "Dimentio", "side": "evil", "frames": 2, "hp": 19, "sp": 14, "pow": 5, "def": 2,
-		"special": "magic_cube"},
 	"grodus": {"name": "Grodus", "side": "evil", "frames": 5, "hp": 21, "sp": 14, "pow": 5, "def": 2,
 		"special": "grodus_bolt"},
 	"mimi": {"name": "Mimi", "side": "evil", "frames": 4, "hp": 20, "sp": 12, "pow": 5, "def": 2,
@@ -51,7 +49,12 @@ const CHARACTERS := {
 		"special": "shadow_drain"},
 }
 
-## Signature moves (battle.gd _special), each a timed press.
+## Characters that were taken out of the game, and who old saves with them
+## play as now (see load_save).
+const REMOVED_CHARACTERS := {"dimentio": "bowser"}
+
+## Signature moves (battle.gd _special), each a timed press. {a} in an info
+## line names the A button: Z on keys, A on touch (battle.gd _keys).
 const SPECIALS := {
 	"fire_jump": {"name": "Fire Jump", "sp": 4, "info": "Jump that burns the enemy for 3 turns."},
 	"thunderhand": {"name": "Thunderhand", "sp": 4, "info": "Electric punch. Great timing stuns."},
@@ -62,13 +65,11 @@ const SPECIALS := {
 		"info": "Hide in the shadows, dodge the next attack, then hit back with fire."},
 	"fire_breath": {"name": "Fire Breath", "sp": 5, "info": "Fire hits every enemy at once."},
 	"rookie_rush": {"name": "Rookie Rush", "sp": 5,
-		"info": "Up to 3 shell bashes; Z as each hits. Excellents in a row hit harder."},
-	"magic_cube": {"name": "Magic Cube", "sp": 6,
-		"info": "Traps an enemy in a box that explodes on its next turn."},
+		"info": "Up to 3 shell bashes; {a} as each hits. Excellents in a row hit harder."},
 	"grodus_bolt": {"name": "Grodus Bolt", "sp": 6, "info": "Lightning hits every enemy and lowers their DEF."},
 	"mimic": {"name": "Mimic", "sp": 4, "info": "Copies the last move the target used."},
 	"bros_tower": {"name": "Bros. Tower", "sp": 6,
-		"info": "Z as each brother lands on the stack, then the tower spins into the enemy."},
+		"info": "{a} as each brother lands on the stack, then the tower spins into the enemy."},
 	"wicked_whirl": {"name": "Wicked Whirl", "sp": 5, "info": "Hits every enemy. Excellent stuns all."},
 	"star_spin": {"name": "Star Spin", "sp": 5, "info": "Hits one enemy, heals the party a bit."},
 	"pickaxe_pound": {"name": "Pickaxe Pound", "sp": 4, "info": "Heavy hit that ignores defense."},
@@ -89,10 +90,10 @@ const MOVES := {
 		"info": "Throws a Mushroom. Excellent also heals the party 3 HP."},
 	"pianta_slam": {"name": "Pianta Slam", "kind": "tackle", "bonus": 1, "info": "A heavy belly slam."},
 	"bomb": {"name": "Bomb", "kind": "blast", "info": "Explodes and hits every enemy."},
-	"smack": {"name": "Smack", "kind": "multi", "hits": 3, "info": "Up to 3 slaps, Z in the gold zone for each."},
+	"smack": {"name": "Smack", "kind": "multi", "hits": 3, "info": "Up to 3 slaps, {a} in the gold zone for each."},
 	"bob_ombast": {"name": "Bob-ombast", "kind": "blast", "bonus": 1, "burn": 2,
 		"info": "Huge blast on every enemy. Excellent sets them on fire."},
-	"headbonk": {"name": "Headbonk", "kind": "stomp", "info": "Jump on the enemy. Z as you land for a 2nd hit."},
+	"headbonk": {"name": "Headbonk", "kind": "stomp", "info": "Jump on the enemy. {a} as you land for a 2nd hit."},
 	"shell_toss": {"name": "Shell Toss", "kind": "throw", "color": Color(0.3, 0.75, 0.25), "pierce": true,
 		"info": "A shell slides into an enemy. Excellent hits the next one too."},
 	"gulp": {"name": "Gulp", "kind": "tackle", "ignore_def": true,
@@ -100,7 +101,7 @@ const MOVES := {
 	"rose_toss": {"name": "Rose Toss", "kind": "throw", "color": Color(1.0, 0.45, 0.6), "def_down": 2,
 		"info": "Tosses a rose. Excellent charms the enemy: DEF down."},
 	"ground_pound": {"name": "Ground Pound", "kind": "stomp", "stun": true,
-		"info": "Flutter up and pound. Z as you land; Excellent stuns."},
+		"info": "Flutter up and pound. {a} as you land; Excellent stuns."},
 	"rolling_bump": {"name": "Rolling Bump", "kind": "tackle", "info": "Rolls into the enemy."},
 	"bean_bash": {"name": "Bean Bash", "kind": "tackle", "stun": true,
 		"info": "Pops out of the ground. Excellent stuns."},
@@ -420,8 +421,21 @@ func load_save() -> bool:
 	if not has_save():
 		return false
 	var data = JSON.parse_string(FileAccess.get_file_as_string(SAVE_PATH))
-	if typeof(data) != TYPE_DICTIONARY or not CHARACTERS.has(data.get("character", "")):
+	if typeof(data) != TYPE_DICTIONARY:
 		return false
+	if not CHARACTERS.has(data.get("character", "")):
+		# A character that left the game (Dimentio): play on as Bowser, or
+		# whoever leads that side's list, keeping levels and items.
+		var id: String = REMOVED_CHARACTERS.get(data.get("character", ""), "")
+		if id == "":
+			for c in CHARACTERS:
+				if CHARACTERS[c]["side"] == data.get("side", ""):
+					id = c
+					break
+		if id == "":
+			return false
+		data["character"] = id
+		data["side"] = CHARACTERS[id]["side"]
 	# JSON numbers come back as floats; keep whole-number stats as ints.
 	for key in ["level", "xp", "coins", "max_hp", "hp", "max_sp", "sp", "pow", "def", "mushrooms", "wins"]:
 		data[key] = int(data.get(key, 0))

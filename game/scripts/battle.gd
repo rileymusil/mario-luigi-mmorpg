@@ -417,8 +417,6 @@ func _special(a: Dictionary, target: Dictionary) -> void:
 			await _shade_veil(a)
 		"rookie_rush":
 			await _rookie_rush(a, target)
-		"magic_cube":
-			await _magic_cube(a, target)
 		"grodus_bolt":
 			await _grodus_bolt(a)
 		"mimic":
@@ -560,29 +558,6 @@ func _lower_def(f: Dictionary, amount: int) -> int:
 	return drop
 
 
-func _status_tags(f: Dictionary) -> String:
-	var tags: Array = []
-	if f["burn"] > 0:
-		tags.append("burn")
-	if f["stun"]:
-		tags.append("stun")
-	if f.get("cube", 0) > 0:
-		tags.append("cube")
-	if f.get("def_down", 0) > 0:
-		tags.append("DEF-%d" % f["def_down"])
-	return " (%s)" % ", ".join(tags) if not tags.is_empty() else ""
-
-
-## Start of an enemy's turn: a Magic Cube around it explodes instead of it
-## acting. True when that used up the turn. (coop_battle.gd's enemy turn
-## calls this and _foe_attack_taken too.)
-func _foe_trapped(f: Dictionary) -> bool:
-	if f.get("cube", 0) > 0:
-		await _cube_explode(f)
-		return true
-	return false
-
-
 ## The enemy has picked who to attack: remember its move for Mimic, and a
 ## veiled Vivian dodges and hits back. True when the veil took the attack.
 func _foe_attack_taken(f: Dictionary, target: Dictionary) -> bool:
@@ -703,33 +678,6 @@ func _rookie_rush(a: Dictionary, target: Dictionary) -> void:
 		await _arc(node, contact, back, 14.0, 0.3, false)
 	await _walk(node, a["home"], 200.0)
 	node.facing = Vector2.RIGHT
-
-
-## Magic Cube (Dimentio): traps the target; on its next turn the cube
-## explodes instead of it acting (_cube_explode). A miss only fizzles.
-func _magic_cube(a: Dictionary, target: Dictionary) -> void:
-	var result := await _timing_bar(1.0)
-	if result == "Miss":
-		message.text = "The cube fizzles!"
-		_damage(target, a["pow"] - 1)
-		return
-	target["cube"] = a["pow"] + (6 if result == "Excellent" else 3)
-	target["cube_node"] = _make_cube(target["node"])
-	message.text = "%s is trapped in a Magic Cube!" % target["name"]
-
-
-func _cube_explode(f: Dictionary) -> void:
-	message.text = "The Magic Cube around %s explodes!" % f["name"]
-	var box: Variant = f.get("cube_node")
-	if box != null and is_instance_valid(box):
-		box.queue_free()
-	f["cube_node"] = null
-	var power: int = f["cube"]
-	f["cube"] = 0
-	f["stun"] = false  # being stuck in the cube already cost it this turn
-	_burst(_middle(f), Color(1.0, 0.85, 0.3), 30.0)
-	_damage(f, power)
-	await _wait(0.9)
 
 
 ## Grodus Bolt (Grodus): lightning on every enemy. Good lowers DEF by 1,
@@ -905,28 +853,6 @@ func _suction(from: CharacterSprite, to: CharacterSprite) -> Node2D:
 	return group
 
 
-## A see-through box around a trapped enemy (a child of its sprite).
-func _make_cube(node: CharacterSprite) -> Node2D:
-	var h := node.height() + 6.0
-	var w := h * 0.8
-	var corners := PackedVector2Array([Vector2(-w / 2, -h), Vector2(w / 2, -h), Vector2(w / 2, 3), Vector2(-w / 2, 3)])
-	var box := Node2D.new()
-	var fill := Polygon2D.new()
-	fill.polygon = corners
-	fill.color = Color(0.75, 0.4, 1.0, 0.35)
-	box.add_child(fill)
-	var edge := Line2D.new()
-	edge.points = corners
-	edge.closed = true
-	edge.width = 1.0
-	edge.default_color = Color(1.0, 0.85, 0.3)
-	box.add_child(edge)
-	node.add_child(box)
-	box.scale = Vector2.ZERO
-	create_tween().tween_property(box, "scale", Vector2.ONE, 0.25)
-	return box
-
-
 # --- Enemy turn ----------------------------------------------------------------
 
 func _foe_turn(f: Dictionary) -> void:
@@ -937,8 +863,6 @@ func _foe_turn(f: Dictionary) -> void:
 		await _wait(0.7)
 		if f["hp"] <= 0:
 			return
-	if await _foe_trapped(f):
-		return
 	if f["stun"]:
 		f["stun"] = false
 		message.text = "%s is stunned and can't move!" % f["name"]
@@ -1291,8 +1215,6 @@ func _refresh() -> void:
 		if f["stun"]:
 			row.add_child(_icon(STATUS_STUN))
 		var tags: Array = []
-		if f.get("cube", 0) > 0:
-			tags.append("cube")
 		if f.get("def_down", 0) > 0:
 			tags.append("DEF-%d" % f["def_down"])
 		if not tags.is_empty():
