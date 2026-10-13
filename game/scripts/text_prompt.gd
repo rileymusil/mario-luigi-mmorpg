@@ -47,7 +47,10 @@ func ask(title: String, initial := "", max_length := 16, hint := "Enter: OK   Es
 	var text: String = await _done
 	visible = false
 	_edit.release_focus()
-	# Let the Enter / Escape key press finish before the game reads input again.
+	# Enter and Escape are also game keys (menu); wait until they're let go so
+	# the same press doesn't open the pause menu or pick a menu option.
+	while Input.is_action_pressed("menu") or Input.is_action_pressed("action"):
+		await get_tree().process_frame
 	await get_tree().process_frame
 	return text
 
