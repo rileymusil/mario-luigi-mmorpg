@@ -337,17 +337,18 @@ func go_to_map(map_id: String, spawn: String) -> void:
 func start_battle(enemies: Array, defeated_key: String, overworld_position: Vector2) -> void:
 	player["position"] = [overworld_position.x, overworld_position.y]
 	pending_battle = {"enemies": enemies, "key": defeated_key}
-	BattleTransition.into_battle(get_tree(), BATTLE_SCENE)
 	# With your partner on this map, they're pulled into the fight too.
 	var scene := COOP_SCENE if Net.party_here and Net.is_online() else BATTLE_SCENE
-	get_tree().call_deferred("change_scene_to_file", scene)
+	BattleTransition.into_battle(get_tree(), scene)
 
 
 ## Your partner started a battle and asked you in (see coop_guest.gd).
 func join_coop(start: Dictionary, overworld_position: Vector2) -> void:
 	player["position"] = [overworld_position.x, overworld_position.y]
 	pending_battle = {"coop": start, "key": ""}
-	get_tree().call_deferred("change_scene_to_file", COOP_GUEST_SCENE)
+	# at_once: their battle sends its setup as soon as you say yes, so the
+	# battle loads straight away and the swipe plays over a still of the map.
+	BattleTransition.into_battle(get_tree(), COOP_GUEST_SCENE, true)
 
 
 ## What a foe sees of you in an online duel (sent through the server).
