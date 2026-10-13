@@ -269,7 +269,13 @@ def save(img, name):
 def build_pictures(root):
     speech = load(root, "Speech Boxes")
     save(speech.crop((356, 121, 516, 145)), "balloon")          # 9-slice, 6px corners
-    save(speech.crop((232, 82, 252, 112)), "balloon_tail")      # row 0 lines up with the balloon's blue edge
+    # Tail of the top-left balloon: rows 0-1 are the balloon's bottom edge (blue, then
+    # dark) with the gap the tail comes out of; the tip is at the bottom left.
+    tail = speech.crop((226, 82, 252, 112))
+    for x in range(0, 10):                                      # straighten the corner bit
+        for y in (0, 1):
+            tail.putpixel((x, y), tail.getpixel((10, y)))
+    save(tail, "balloon_tail")
     save(speech.crop((43, 182, 50, 190)), "next_arrow")         # blue "more text" triangle
     save(speech.crop((52, 180, 67, 191)), "cursor")             # yellow menu pointer
 
@@ -316,7 +322,7 @@ def build_pictures(root):
                     card.putpixel((x, y), header + (255,))
         paper = (232, 232, 224)
         fill(card, (10, 12, 225, 40), paper)                     # erase the stat slots
-        fill(card, (18, 40, 225, 45), paper)
+        fill(card, (18, 40, 225, 46), paper)
         save(clear_color(card, {SKY_BLUE}), name)
     save(clear_color(equip.crop((205, 263, 441, 284)), {SKY_BLUE}), "navy_bar")
     for name, box in (("icon_hp", (125, 98, 136, 113)), ("icon_bp", (146, 98, 157, 113)),

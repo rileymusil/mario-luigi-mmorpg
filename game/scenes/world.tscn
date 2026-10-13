@@ -1,7 +1,13 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/world.gd" id="1_world"]
 [ext_resource type="Script" path="res://scripts/choice_menu.gd" id="2_menu"]
+[ext_resource type="PackedScene" path="res://ui/hud.tscn" id="3_hud"]
+[ext_resource type="PackedScene" path="res://ui/dialogue_box.tscn" id="4_dialogue"]
+[ext_resource type="PackedScene" path="res://ui/pause_screen.tscn" id="5_pause"]
+[ext_resource type="PackedScene" path="res://ui/party_screen.tscn" id="6_party"]
+[ext_resource type="Script" path="res://ui/area_banner.gd" id="7_banner"]
+[ext_resource type="Texture2D" path="res://assets/ui/emote_exclaim.png" id="8_exclaim"]
 
 [node name="World" type="Node2D"]
 script = ExtResource("1_world")
@@ -21,46 +27,39 @@ position_smoothing_speed = 8.0
 
 [node name="HUD" type="CanvasLayer" parent="."]
 
-[node name="Status" type="Label" parent="HUD"]
-offset_left = 6.0
-offset_top = 3.0
-offset_right = 378.0
-offset_bottom = 17.0
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 4
-theme_override_font_sizes/font_size = 10
+[node name="Hud" parent="HUD" instance=ExtResource("3_hud")]
 
-[node name="AreaName" type="Label" parent="HUD"]
-offset_top = 40.0
-offset_right = 384.0
-offset_bottom = 62.0
-theme_override_colors/font_color = Color(1, 0.9, 0.4, 1)
-theme_override_colors/font_outline_color = Color(0.2, 0.1, 0, 1)
-theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 16
+[node name="AreaName" type="PanelContainer" parent="HUD"]
+offset_left = 117.0
+offset_top = 30.0
+offset_right = 267.0
+offset_bottom = 54.0
+theme_type_variation = &"StripPanel"
+script = ExtResource("7_banner")
+
+[node name="Label" type="Label" parent="HUD/AreaName"]
+layout_mode = 2
 horizontal_alignment = 1
 
-[node name="Hint" type="Label" parent="HUD"]
-offset_left = 6.0
-offset_top = 200.0
-offset_right = 378.0
-offset_bottom = 214.0
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 4
-theme_override_font_sizes/font_size = 9
+[node name="HintBox" type="PanelContainer" parent="HUD"]
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -100.0
+offset_top = -23.0
+offset_right = 100.0
+offset_bottom = -2.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+theme_type_variation = &"NavyPanel"
 
-[node name="Dialog" type="Label" parent="HUD"]
-offset_left = 16.0
-offset_top = 150.0
-offset_right = 368.0
-offset_bottom = 196.0
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_outline_color = Color(0.05, 0.05, 0.2, 1)
-theme_override_constants/outline_size = 5
-theme_override_font_sizes/font_size = 11
-autowrap_mode = 3
+[node name="Hint" type="Label" parent="HUD/HintBox"]
+layout_mode = 2
+theme_type_variation = &"LightLabel"
+horizontal_alignment = 1
 
 [node name="Menu" type="PanelContainer" parent="HUD"]
 offset_left = 250.0
@@ -68,3 +67,16 @@ offset_top = 24.0
 offset_right = 370.0
 offset_bottom = 60.0
 script = ExtResource("2_menu")
+
+[node name="PauseScreen" parent="HUD" instance=ExtResource("5_pause")]
+
+[node name="PartyScreen" parent="HUD" instance=ExtResource("6_party")]
+
+[node name="TalkBubble" type="TextureRect" parent="HUD"]
+visible = false
+offset_right = 24.0
+offset_bottom = 22.0
+mouse_filter = 2
+texture = ExtResource("8_exclaim")
+
+[node name="Dialogue" parent="HUD" instance=ExtResource("4_dialogue")]

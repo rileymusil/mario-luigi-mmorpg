@@ -1,12 +1,15 @@
 class_name ChoiceMenu
 extends PanelContainer
-## A small Superstar Saga style menu box. Up/Down to move, Z to pick,
-## X to back out (when allowed). Clicking or tapping an option also picks it.
+## A small Superstar Saga style menu: a speech balloon (from the theme) with a
+## yellow pointer. Up/Down to move, Z to pick, X to back out (when allowed).
+## Clicking or tapping an option also picks it.
 ##     var index: int = await menu.choose(["Jump", "Run"])   # -1 = cancelled
+## Set theme_type_variation to "FlatPanel" to drop the balloon (e.g. inside
+## the pause notebook).
 
 signal chosen(index: int)
 
-const FONT_SIZE := 10
+const CURSOR := preload("res://assets/ui/cursor.png")
 
 var _options: Array = []
 var _enabled: Array = []
@@ -17,35 +20,26 @@ var _title: Label
 var _info: Label
 var _infos: Array = []
 var _labels: Array[Label] = []
+var _cursors: Array[TextureRect] = []
 var _active := false
+var _time := 0.0
 ## Width the help text under the options wraps at.
 var info_width := 150.0
 
 
 func _init() -> void:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.09, 0.13, 0.35, 0.94)
-	style.border_color = Color(1, 0.95, 0.75)
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(4)
-	style.content_margin_left = 8
-	style.content_margin_right = 8
-	style.content_margin_top = 4
-	style.content_margin_bottom = 4
-	add_theme_stylebox_override("panel", style)
 	_box = VBoxContainer.new()
 	_box.add_theme_constant_override("separation", 0)
 	add_child(_box)
-	_title = _make_label(Color(1, 0.85, 0.3))
-	_info = _make_label(Color(0.75, 0.85, 1))
+	_title = _make_label("TitleLabel")
+	_info = _make_label("InfoLabel")
 	_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	visible = false
 
 
-func _make_label(color: Color) -> Label:
+func _make_label(variation := "") -> Label:
 	var l := Label.new()
-	l.add_theme_font_size_override("font_size", FONT_SIZE)
-	l.add_theme_color_override("font_color", color)
+	l.theme_type_variation = variation
 	l.mouse_filter = Control.MOUSE_FILTER_STOP
 	return l
 
@@ -60,15 +54,28 @@ func choose(options: Array, title := "", cancellable := false, enabled: Array = 
 	_index = 0
 	for child in _box.get_children():
 		_box.remove_child(child)
+		if child != _title and child != _info:
+			child.queue_free()
 	_labels.clear()
+	_cursors.clear()
 	_title.text = title
 	if title != "":
 		_box.add_child(_title)
 	for i in options.size():
-		var l := _make_label(Color.WHITE)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 2)
+		var cursor := TextureRect.new()
+		cursor.texture = CURSOR
+		cursor.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+		cursor.custom_minimum_size = Vector2(17, 12)
+		row.add_child(cursor)
+		var l := _make_label()
+		l.text = str(options[i])
 		l.gui_input.connect(_on_label_input.bind(i))
-		_box.add_child(l)
+		row.add_child(l)
+		_box.add_child(row)
 		_labels.append(l)
+		_cursors.append(cursor)
 	if not infos.is_empty():
 		_info.custom_minimum_size.x = info_width
 		_box.add_child(_info)
@@ -91,11 +98,19 @@ func _is_enabled(i: int) -> bool:
 
 func _refresh() -> void:
 	for i in _labels.size():
-		var l := _labels[i]
-		l.text = ("> " if i == _index else "   ") + str(_options[i])
-		l.modulate = Color.WHITE if _is_enabled(i) else Color(1, 1, 1, 0.4)
+		_labels[i].modulate = Color.WHITE if _is_enabled(i) else Color(1, 1, 1, 0.4)
+		_cursors[i].self_modulate.a = 1.0 if i == _index else 0.0
 	if not _infos.is_empty():
 		_info.text = str(_infos[_index])
+
+
+func _process(delta: float) -> void:
+	if not visible or _cursors.is_empty():
+		return
+	# The pointer nudges left and right like in the save menu.
+	_time += delta
+	var c := _cursors[clampi(_index, 0, _cursors.size() - 1)]
+	c.position.x = -1.0 + roundf(sin(_time * 7.0) * 1.5)
 
 
 func _unhandled_input(event: InputEvent) -> void:

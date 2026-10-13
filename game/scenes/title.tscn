@@ -1,8 +1,10 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/title.gd" id="1_title"]
 [ext_resource type="Script" path="res://scripts/choice_menu.gd" id="2_menu"]
 [ext_resource type="Script" path="res://scripts/character_sprite.gd" id="3_sprite"]
+[ext_resource type="Texture2D" path="res://assets/ui/title_sky.png" id="4_sky"]
+[ext_resource type="Texture2D" path="res://assets/ui/logo.png" id="5_logo"]
 
 [node name="Title" type="Control"]
 layout_mode = 3
@@ -11,43 +13,30 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 script = ExtResource("1_title")
 
-[node name="Sky" type="ColorRect" parent="."]
+[node name="Sky" type="TextureRect" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-color = Color(0.36, 0.69, 0.94, 1)
+texture = ExtResource("4_sky")
 
-[node name="Ground" type="ColorRect" parent="."]
+[node name="Logo" type="TextureRect" parent="."]
 layout_mode = 0
-offset_top = 150.0
-offset_right = 384.0
-offset_bottom = 216.0
-color = Color(0.42, 0.75, 0.29, 1)
+offset_left = 60.0
+offset_top = 8.0
+offset_right = 273.0
+offset_bottom = 45.0
+texture = ExtResource("5_logo")
 
-[node name="Logo" type="Label" parent="."]
+[node name="MMO" type="Label" parent="."]
 layout_mode = 0
-offset_left = 0.0
-offset_top = 14.0
-offset_right = 384.0
-offset_bottom = 50.0
-theme_override_colors/font_color = Color(1, 0.86, 0.2, 1)
-theme_override_colors/font_outline_color = Color(0.55, 0.05, 0.05, 1)
-theme_override_constants/outline_size = 8
-theme_override_font_sizes/font_size = 26
-text = "Mario & Luigi MMO"
-horizontal_alignment = 1
-
-[node name="Subtitle" type="Label" parent="."]
-layout_mode = 0
-offset_top = 48.0
-offset_right = 384.0
-offset_bottom = 64.0
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 4
-theme_override_font_sizes/font_size = 11
-horizontal_alignment = 1
+offset_left = 279.0
+offset_top = 12.0
+offset_right = 335.0
+offset_bottom = 40.0
+theme_type_variation = &"GoldLabel"
+theme_override_font_sizes/font_size = 24
+text = "MMO"
 
 [node name="Menu" type="PanelContainer" parent="."]
 layout_mode = 0
@@ -62,14 +51,23 @@ position = Vector2(60, 150)
 scale = Vector2(2, 2)
 script = ExtResource("3_sprite")
 
-[node name="Hint" type="Label" parent="."]
-layout_mode = 0
-offset_top = 198.0
-offset_right = 384.0
-offset_bottom = 214.0
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 4
-theme_override_font_sizes/font_size = 9
+[node name="HintBox" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -110.0
+offset_top = -23.0
+offset_right = 110.0
+offset_bottom = -2.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_type_variation = &"NavyPanel"
+
+[node name="Hint" type="Label" parent="HintBox"]
+layout_mode = 2
+theme_type_variation = &"LightLabel"
 text = "Arrows: choose   Z: confirm   X: back"
 horizontal_alignment = 1

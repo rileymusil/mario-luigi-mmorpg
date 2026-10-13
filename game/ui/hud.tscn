@@ -1,0 +1,106 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://ui/hud.gd" id="1_hud"]
+[ext_resource type="Script" path="res://ui/gold_number.gd" id="2_gold"]
+[ext_resource type="Texture2D" path="res://assets/ui/lv.png" id="3_lv"]
+[ext_resource type="Texture2D" path="res://assets/ui/icon_heart.png" id="4_heart"]
+[ext_resource type="Texture2D" path="res://assets/ui/icon_bean.png" id="5_bean"]
+[ext_resource type="Texture2D" path="res://assets/ui/coin.png" id="6_coin"]
+
+[node name="Hud" type="PanelContainer"]
+offset_left = 4.0
+offset_top = 3.0
+offset_right = 300.0
+offset_bottom = 24.0
+mouse_filter = 2
+theme_type_variation = &"NavyPanel"
+script = ExtResource("1_hud")
+
+[node name="Row" type="HBoxContainer" parent="."]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 3
+
+[node name="Name" type="Label" parent="Row"]
+layout_mode = 2
+theme_type_variation = &"LightLabel"
+text = "Mario"
+vertical_alignment = 1
+
+[node name="Gap" type="Control" parent="Row"]
+custom_minimum_size = Vector2(3, 0)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Lv" type="TextureRect" parent="Row"]
+layout_mode = 2
+mouse_filter = 2
+texture = ExtResource("3_lv")
+stretch_mode = 3
+
+[node name="Level" type="Control" parent="Row"]
+custom_minimum_size = Vector2(8, 13)
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("2_gold")
+
+[node name="Gap2" type="Control" parent="Row"]
+custom_minimum_size = Vector2(3, 0)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Heart" type="TextureRect" parent="Row"]
+layout_mode = 2
+mouse_filter = 2
+texture = ExtResource("4_heart")
+stretch_mode = 3
+
+[node name="HP" type="Label" parent="Row"]
+layout_mode = 2
+theme_type_variation = &"LightLabel"
+text = "20/20"
+vertical_alignment = 1
+
+[node name="Gap3" type="Control" parent="Row"]
+custom_minimum_size = Vector2(3, 0)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Bean" type="TextureRect" parent="Row"]
+layout_mode = 2
+mouse_filter = 2
+texture = ExtResource("5_bean")
+stretch_mode = 3
+
+[node name="SP" type="Label" parent="Row"]
+layout_mode = 2
+theme_type_variation = &"LightLabel"
+text = "10/10"
+vertical_alignment = 1
+
+[node name="Gap4" type="Control" parent="Row"]
+custom_minimum_size = Vector2(3, 0)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Coin" type="TextureRect" parent="Row"]
+layout_mode = 2
+mouse_filter = 2
+texture = ExtResource("6_coin")
+stretch_mode = 3
+
+[node name="Coins" type="Control" parent="Row"]
+custom_minimum_size = Vector2(8, 13)
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("2_gold")
+
+[node name="Gap5" type="Control" parent="Row"]
+custom_minimum_size = Vector2(3, 0)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Side" type="Label" parent="Row"]
+layout_mode = 2
+text = "GOOD"
+vertical_alignment = 1
