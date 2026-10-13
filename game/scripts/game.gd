@@ -6,6 +6,8 @@ const TITLE_SCENE := "res://scenes/title.tscn"
 const WORLD_SCENE := "res://scenes/world.tscn"
 const BATTLE_SCENE := "res://scenes/battle.tscn"
 const PVP_SCENE := "res://scenes/pvp_battle.tscn"
+const COOP_SCENE := "res://scenes/coop_battle.tscn"        # you started it, your partner joins
+const COOP_GUEST_SCENE := "res://scenes/coop_guest.tscn"   # your partner's battle, seen from your side
 const SAVE_PATH := "user://save.json"
 const MAX_LEVEL := 50
 const MAX_PARTY := 2
@@ -243,6 +245,16 @@ func start_battle(enemies: Array, defeated_key: String, overworld_position: Vect
 	player["position"] = [overworld_position.x, overworld_position.y]
 	pending_battle = {"enemies": enemies, "key": defeated_key}
 	BattleTransition.into_battle(get_tree(), BATTLE_SCENE)
+	# With your partner on this map, they're pulled into the fight too.
+	var scene := COOP_SCENE if Net.party_here and Net.is_online() else BATTLE_SCENE
+	get_tree().call_deferred("change_scene_to_file", scene)
+
+
+## Your partner started a battle and asked you in (see coop_guest.gd).
+func join_coop(start: Dictionary, overworld_position: Vector2) -> void:
+	player["position"] = [overworld_position.x, overworld_position.y]
+	pending_battle = {"coop": start, "key": ""}
+	get_tree().call_deferred("change_scene_to_file", COOP_GUEST_SCENE)
 
 
 ## What a foe sees of you in an online duel (sent through the server).
