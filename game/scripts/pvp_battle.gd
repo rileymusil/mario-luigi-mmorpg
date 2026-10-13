@@ -106,7 +106,7 @@ func _my_turn() -> void:
 			Net.duel_send({"t": "duel_act", "move": "heal", "hp": _hp(me), "name": move_name})
 			await _wait(0.8)
 			return
-		if sp_id in ["star_spin", "shadow_drain"]:
+		if sp_id in ["star_spin", "shadow_drain", "poltergust_pull"]:
 			_heal(me, {"Excellent": 5, "Good": 3, "Miss": 1}[result])
 		hits = [me["pow"] + 2 + bonus]
 		await _walk(me["node"], foe["node"].position + Vector2(-22, 0), 220.0)

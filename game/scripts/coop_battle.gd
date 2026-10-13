@@ -135,12 +135,16 @@ func _foe_turn(f: Dictionary) -> void:
 		await _wait(0.7)
 		if f["hp"] <= 0:
 			return
+	if await _foe_trapped(f):  # Dimentio's Magic Cube
+		return
 	if f["stun"]:
 		f["stun"] = false
 		message.text = "%s is stunned and can't move!" % f["name"]
 		await _wait(0.8)
 		return
 	var target: Dictionary = _alive(allies).pick_random()
+	if await _foe_attack_taken(f, target):  # Mimic's memory, Vivian's Shade Veil
+		return
 	await _charge(f, target, not target.get("remote", false))
 
 
