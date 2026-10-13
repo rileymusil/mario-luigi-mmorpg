@@ -22,6 +22,10 @@ signal invited(from_id: String, name: String)       # someone wants to team up
 signal invite_declined(name: String)
 signal party_changed                                # formed, ended, or partner arrived
 signal warp_requested(map_id: String, spawn: String) # your partner took an exit
+signal challenged(foe: Dictionary)                  # an evil player attacks you: {id, name, character, stats}
+signal duel_started(foe: Dictionary, first: bool)   # foe: Player + {stats}; first: you move first
+signal duel_message(msg: Dictionary)                # duel_act / duel_hit from your foe
+signal duel_over(result: String)                    # your foe ended the duel: lost, fled, timeout, left, busy, refused...
 signal zone_reset                          # connection (re)opened: forget everyone
 
 var my_id := ""
@@ -32,6 +36,10 @@ var party_id := ""
 var party_name := ""
 var party_here := false
 var pending_warp := {}  # {map, spawn} to follow your partner once you're free
+## True while the overworld is up and can take a duel; otherwise a challenge is
+## answered "busy" straight away.
+var in_world := false
+var duel_foe := ""  # foe's id from challenging until the duel ends
 var _socket: WebSocketPeer
 var _zone := ""
 var _hello := {}
@@ -80,6 +88,7 @@ func leave() -> void:
 	my_id = ""
 	players.clear()
 	party_here = false
+	duel_foe = ""
 	_was_open = false
 
 
@@ -107,6 +116,33 @@ func send_invite(id: String) -> void:
 
 func answer_invite(from_id: String, accept: bool) -> void:
 	_send({"t": "accept" if accept else "decline", "from": from_id})
+
+
+## Evil only: attack a good player standing next to you.
+func challenge(id: String) -> void:
+	duel_foe = id
+	_send({"t": "duel", "to": id, "stats": Game.pvp_stats()})
+
+
+## Answer a challenge: fight (sends your stats) or say you're busy.
+func answer_challenge(ready: bool) -> void:
+	if ready:
+		_send({"t": "duel_ready", "stats": Game.pvp_stats()})
+	else:
+		duel_foe = ""
+		_send({"t": "duel_busy"})
+
+
+## duel_act / duel_hit to your foe.
+func duel_send(msg: Dictionary) -> void:
+	_send(msg)
+
+
+## lost, fled, timeout or cancel.
+func end_duel(result: String) -> void:
+	if duel_foe != "":
+		_send({"t": "duel_over", "result": result})
+	duel_foe = ""
 
 
 func leave_party() -> void:
@@ -164,6 +200,7 @@ func _process(delta: float) -> void:
 				hello["uid"] = Game.player.get("uid", "")
 				hello["side"] = Game.player.get("side", "good")
 				hello["party"] = party_id
+				hello["safe"] = Game.MAPS.get(_zone, {}).get("safe", true)
 				_socket.send_text(JSON.stringify(hello))
 			while _socket.get_available_packet_count() > 0:
 				_handle(_socket.get_packet().get_string_from_utf8())
@@ -228,6 +265,24 @@ func _handle(text: String) -> void:
 		"warp":
 			pending_warp = {"map": str(msg["map"]), "spawn": str(msg["spawn"])}
 			warp_requested.emit(pending_warp["map"], pending_warp["spawn"])
+		"challenge":
+			var foe := {"id": str(msg["from"]), "name": str(msg["name"]), "character": str(msg["character"]),
+				"stats": msg.get("stats", {})}
+			if not in_world or duel_foe != "":
+				_send({"t": "duel_busy"})
+			else:
+				duel_foe = foe["id"]
+				challenged.emit(foe)
+		"duel_start":
+			var foe: Dictionary = msg["foe"]
+			foe["id"] = str(foe["id"])
+			duel_foe = foe["id"]
+			duel_started.emit(foe, msg.get("first", false) == true)
+		"duel_act", "duel_hit":
+			duel_message.emit(msg)
+		"duel_over":
+			duel_foe = ""
+			duel_over.emit(str(msg.get("result", "cancel")))
 		"full":
 			_zone = ""  # don't retry into a full zone
 

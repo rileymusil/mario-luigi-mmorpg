@@ -148,5 +148,60 @@ check(true, "arriving with a partner who left the party ends it");
 r.send({ t: "invite", to: uidP });
 await new Promise((res) => setTimeout(res, 200));
 for (const x of [p2, q2, p3, r]) x.ws.close();
+
+// Duels: an evil player attacks a good one outside town.
+const zone3 = `${zone}_c`;
+const ev = open("Bowsy", "bowser", 0, 0, { uid: "eeeeeeeeeee1", side: "evil" }, zone3);
+await ev.ready;
+await ev.next("welcome");
+const gd = open("Goodie", "mario", 0, 0, { uid: "eeeeeeeeeee2", side: "good" }, zone3);
+await gd.ready;
+await gd.next("welcome");
+const town = open("Townie", "luigi", 0, 0, { uid: "eeeeeeeeeee3", side: "good", safe: true }, zone3);
+await town.ready;
+await town.next("welcome");
+const ev2 = open("Evie", "bowser", 0, 0, { uid: "eeeeeeeeeee4", side: "evil" }, zone3);
+await ev2.ready;
+await ev2.next("welcome");
+
+ev.send({ t: "duel", to: "eeeeeeeeeee3", stats: { hp: 20 } });
+check((await ev.next("duel_over")).result === "refused", "can't attack someone in a town");
+gd.send({ t: "duel", to: "eeeeeeeeeee4", stats: { hp: 20 } });
+check((await gd.next("duel_over")).result === "refused", "good players can't start duels");
+
+ev.send({ t: "duel", to: "eeeeeeeeeee2", stats: { hp: 30, pow: 5, coins: 100, junk: 4 } });
+const ch = await gd.next("challenge");
+check(ch.from === "eeeeeeeeeee1" && ch.stats.hp === 30 && ch.stats.junk === undefined, "the good player is challenged with the attacker's stats");
+ev2.send({ t: "duel", to: "eeeeeeeeeee2", stats: {} });
+check((await ev2.next("duel_over")).result === "refused", "can't attack someone already in a duel");
+gd.send({ t: "duel_ready", stats: { hp: 22, def: 1 } });
+const s1 = await ev.next("duel_start");
+const s2 = await gd.next("duel_start");
+check(s1.first && !s2.first && s1.foe.stats.hp === 22 && s2.foe.name === "Bowsy", "both sides start the duel");
+
+ev.send({ t: "duel_act", move: "jump", hits: [6, 7, 8, 9], rating: "Excellent", hp: 30 });
+const act = await gd.next("duel_act");
+check(act.move === "jump" && act.hits.length === 3 && act.rating === "Excellent", "moves are relayed to the foe");
+gd.send({ t: "duel_hit", dmg: 12, hp: 10, dodged: false });
+check((await ev.next("duel_hit")).hp === 10, "hit results go back to the attacker");
+
+gd.send({ t: "duel_over", result: "lost" });
+check((await ev.next("duel_over")).result === "lost", "the winner hears the loser lost");
+ev.send({ t: "duel", to: "eeeeeeeeeee2", stats: {} });
+check((await ev.next("duel_over")).result === "refused", "the loser can't be attacked again right away");
+
+// Walking away mid-duel ends it.
+const gd2 = open("Gwen", "peach", 0, 0, { uid: "eeeeeeeeeee5", side: "good" }, zone3);
+await gd2.ready;
+await gd2.next("welcome");
+ev2.send({ t: "duel", to: "eeeeeeeeeee5", stats: {} });
+await gd2.next("challenge");
+gd2.send({ t: "duel_ready", stats: {} });
+await ev2.next("duel_start");
+gd2.ws.close();
+check((await ev2.next("duel_over")).result === "left", "leaving mid-duel tells the foe");
+
+ev.send({ t: "duel_act", move: "jump" });
+for (const x of [ev, gd, town, ev2]) x.ws.close();
 console.log("all good");
 process.exit(0);
