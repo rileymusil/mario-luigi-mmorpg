@@ -1,17 +1,24 @@
 extends Node2D
-## A world map: draws the map art, keeps everyone on walkable ground (the
-## map's _mask.png), spawns enemies and NPCs, and handles exits, talking and
-## the pause menu. Which map to load comes from Game.player["map"].
+## A world map: draws the map art and its props (trees and buildings you can
+## walk behind, see map_props.gd), keeps everyone on walkable ground (the
+## map's _mask.png minus prop footprints), spawns enemies and NPCs, and handles
+## exits, talking and the pause menu. Which map to load comes from
+## Game.player["map"]. Debug builds have a map editor on F2 (map_editor.gd).
 
 const PLAYER_SPEED := 80.0
 const FOLLOW_GAP := 18.0
 const TOUCH_DISTANCE := 14.0
 const TALK_DISTANCE := 26.0
+const FOOT_HALF_WIDTH := 5.0  # everyone's feet are 10px wide
+const FOOT_DEPTH := 3.0
 
 var map_id := ""
 var map_info: Dictionary
 var map_size := Vector2.ZERO
-var mask: Image
+var mask: Image            # the ground: white = walkable (what the map editor paints)
+var solid: Image           # mask with prop footprints blocked (what collision reads)
+var props := MapProps.new()
+var editing := false       # true while the map editor is open
 
 var player: CharacterSprite
 var followers: Array[CharacterSprite] = []
@@ -43,7 +50,10 @@ func _ready() -> void:
 	var art: Texture2D = load("res://assets/maps/%s.png" % map_id)
 	$Map.texture = art
 	map_size = art.get_size()
-	mask = (load("res://assets/maps/%s_mask.png" % map_id) as Texture2D).get_image()
+	mask = MapProps.load_mask(map_id)
+	props.load_props(map_id)
+	props.build(actors, art)
+	rebuild_collision()
 	camera.limit_right = int(map_size.x)
 	camera.limit_bottom = int(map_size.y)
 
@@ -80,7 +90,11 @@ func _ready() -> void:
 
 	online = OnlinePlayers.new()
 	add_child(online)
+	# Their game may use an older mask; show them on our walkable ground.
+	online.snap = nearest_walkable
 	online.setup(_spawn_character, player, map_id)
+	if MapEditor.available():
+		add_child(MapEditor.new())
 
 	dialog.visible = false
 	if arriving:
@@ -106,23 +120,37 @@ func _in_party(id: String) -> bool:
 
 # --- Walkability ---------------------------------------------------------------
 
+## Rebuilds what collision reads after the mask or the props change.
+func rebuild_collision() -> void:
+	solid = mask.duplicate()
+	if solid.get_format() != Image.FORMAT_L8:
+		solid.convert(Image.FORMAT_L8)
+	props.paint_feet(solid)
+
+
 func walkable(p: Vector2) -> bool:
 	if p.x < 2 or p.y < 2 or p.x >= map_size.x - 2 or p.y >= map_size.y - 2:
 		return false
-	return mask.get_pixel(int(p.x), int(p.y)).r > 0.5
+	return solid.get_pixel(int(p.x), int(p.y)).r > 0.5
 
 
-## A body is about 10px wide at the feet.
+## Feet are a 10x3px box at the bottom of every character (player, followers,
+## enemies, other players all use the same one).
 func can_stand(p: Vector2) -> bool:
-	return walkable(p) and walkable(p + Vector2(-5, 0)) and walkable(p + Vector2(5, 0))
+	for dx in [-FOOT_HALF_WIDTH, 0.0, FOOT_HALF_WIDTH]:
+		for dy in [0.0, -FOOT_DEPTH]:
+			if not walkable(p + Vector2(dx, dy)):
+				return false
+	return true
 
 
 func nearest_walkable(p: Vector2) -> Vector2:
 	if can_stand(p):
 		return p
-	for r in range(4, 200, 4):
-		for i in 16:
-			var q := p + Vector2.from_angle(TAU * i / 16.0) * r
+	for r in range(2, 240, 2):
+		var steps := clampi(r * 2, 12, 64)
+		for i in steps:
+			var q := p + Vector2.from_angle(TAU * i / steps) * r
 			if can_stand(q):
 				return q
 	return p
@@ -143,8 +171,9 @@ func _process(delta: float) -> void:
 	if player == null:
 		return
 	_update_hud()
-	online.tick(delta, busy)
-	if busy:
+	props.update_fade(player, delta)
+	online.tick(delta, busy or editing)
+	if busy or editing:
 		player.move_velocity = Vector2.ZERO
 		for f in followers:
 			f.move_velocity = Vector2.ZERO

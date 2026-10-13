@@ -1,0 +1,17 @@
+{"props": [
+{"name":"castle_wall","shape":"rect","rect":[48,0,304,92],"base":92},
+{"name":"torch_nw","shape":"rect","rect":[170,126,17,30],"base":155,"foot":[172,149,13,6]},
+{"name":"torch_ne","shape":"rect","rect":[220,126,17,30],"base":155,"foot":[222,149,13,6]},
+{"name":"torch_w","shape":"rect","rect":[170,203,17,30],"base":232,"foot":[172,226,13,6]},
+{"name":"torch_e","shape":"rect","rect":[221,203,17,30],"base":232,"foot":[223,226,13,6]},
+{"name":"chain_sw","shape":"rect","rect":[170,373,17,30],"base":402,"foot":[172,396,13,6]},
+{"name":"chain_se","shape":"rect","rect":[221,373,17,30],"base":402,"foot":[223,396,13,6]},
+{"name":"spike_pillar_nw","shape":"rect","rect":[120,138,22,62],"base":199},
+{"name":"spike_pillar_ne","shape":"rect","rect":[264,138,22,62],"base":199},
+{"name":"spike_pillar_w","shape":"rect","rect":[70,168,22,64],"base":231},
+{"name":"spike_pillar_e","shape":"rect","rect":[313,168,22,64],"base":231},
+{"name":"spike_pillar_sw","shape":"rect","rect":[88,360,22,62],"base":421},
+{"name":"spike_pillar_se","shape":"rect","rect":[298,360,22,62],"base":421},
+{"name":"spike_pillar_bridge_e","shape":"rect","rect":[248,470,22,52],"base":520},
+{"name":"spike_pillar_bridge_w","shape":"rect","rect":[136,502,22,80],"base":580}
+]}
