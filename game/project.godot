@@ -7,7 +7,7 @@ config_version=5
 
 config/name="Mario & Luigi MMO"
 config/description="A Superstar Saga style RPG prototype for the browser."
-run/main_scene="res://scenes/overworld.tscn"
+run/main_scene="res://scenes/title.tscn"
 config/features=PackedStringArray("4.4", "GL Compatibility")
 config/icon="res://icon.svg"
 

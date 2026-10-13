@@ -1,0 +1,70 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/world.gd" id="1_world"]
+[ext_resource type="Script" path="res://scripts/choice_menu.gd" id="2_menu"]
+
+[node name="World" type="Node2D"]
+script = ExtResource("1_world")
+
+[node name="Map" type="Sprite2D" parent="."]
+z_index = -1
+centered = false
+
+[node name="Actors" type="Node2D" parent="."]
+y_sort_enabled = true
+
+[node name="Camera2D" type="Camera2D" parent="."]
+limit_left = 0
+limit_top = 0
+position_smoothing_enabled = true
+position_smoothing_speed = 8.0
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="Status" type="Label" parent="HUD"]
+offset_left = 6.0
+offset_top = 3.0
+offset_right = 378.0
+offset_bottom = 17.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 10
+
+[node name="AreaName" type="Label" parent="HUD"]
+offset_top = 40.0
+offset_right = 384.0
+offset_bottom = 62.0
+theme_override_colors/font_color = Color(1, 0.9, 0.4, 1)
+theme_override_colors/font_outline_color = Color(0.2, 0.1, 0, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1
+
+[node name="Hint" type="Label" parent="HUD"]
+offset_left = 6.0
+offset_top = 200.0
+offset_right = 378.0
+offset_bottom = 214.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 9
+
+[node name="Dialog" type="Label" parent="HUD"]
+offset_left = 16.0
+offset_top = 150.0
+offset_right = 368.0
+offset_bottom = 196.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0.05, 0.05, 0.2, 1)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 11
+autowrap_mode = 3
+
+[node name="Menu" type="PanelContainer" parent="HUD"]
+offset_left = 250.0
+offset_top = 24.0
+offset_right = 370.0
+offset_bottom = 60.0
+script = ExtResource("2_menu")
