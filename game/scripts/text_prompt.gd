@@ -29,21 +29,22 @@ func _init() -> void:
 	_edit.select_all_on_focus = true
 	_edit.text_submitted.connect(func(t: String): _done.emit(t.strip_edges()))
 	box.add_child(_edit)
+	# The hint shares its row with OK and Back buttons for the mouse.
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 3)
+	box.add_child(row)
 	_hint = Label.new()
 	_hint.theme_type_variation = &"InfoLabel"
-	box.add_child(_hint)
-	var buttons := HBoxContainer.new()
-	buttons.alignment = BoxContainer.ALIGNMENT_END
-	buttons.add_child(_button("OK", func(): _done.emit(_edit.text.strip_edges())))
-	buttons.add_child(_button("Back", func(): _done.emit("")))
-	box.add_child(buttons)
+	_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(_hint)
+	row.add_child(_button("OK", func(): _done.emit(_edit.text.strip_edges())))
+	row.add_child(_button("Back", func(): _done.emit("")))
 	visible = false
 
 
 func _button(text: String, on_press: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
-	b.custom_minimum_size = Vector2(40, 0)
 	b.focus_mode = Control.FOCUS_NONE  # typing stays in the text box
 	b.pressed.connect(on_press)
 	return b
@@ -63,7 +64,9 @@ func ask(title: String, initial := "", max_length := 16, hint := "Enter: OK   Es
 	visible = true
 	# Stay on screen however long the hint is.
 	reset_size()
-	position.x = clampf(position.x, 4.0, maxf(4.0, get_viewport_rect().size.x - size.x - 4.0))
+	var vp := get_viewport_rect().size
+	position.x = clampf(position.x, 4.0, maxf(4.0, vp.x - size.x - 4.0))
+	position.y = clampf(position.y, 2.0, maxf(2.0, vp.y - size.y - 2.0))
 	if _use_browser_box():
 		_ask_browser.call_deferred(title, initial, max_length)
 	else:
@@ -103,7 +106,7 @@ func _ask_browser(title: String, initial: String, max_length: int) -> void:
 	if not visible:
 		return  # closed in the meantime
 	var asked_at := Time.get_ticks_msec()
-	var answer: Variant = JavaScriptBridge.eval(browser_prompt_js(title, initial), true)
+	var answer: Variant = JavaScriptBridge.eval(browser_prompt_js(title if title != "" else "Type a message", initial), true)
 	if answer == null and Time.get_ticks_msec() - asked_at < 150:
 		# No box came up (some pages that embed the game block it): type here instead.
 		_edit.grab_focus()

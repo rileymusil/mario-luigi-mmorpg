@@ -156,10 +156,14 @@ func _show_all() -> void:
 
 
 func _process(delta: float) -> void:
+	# On touch screens, stay clear of the joystick (left) and the B button (right).
+	var touch: bool = TouchControls.stick.visible
+	_log.position.x = 88.0 if touch else 6.0
 	# Keep the log's bottom edge just above the hint bar (or the text box).
 	_log.size = _log.get_combined_minimum_size()
 	_log.position.y = (156.0 if is_typing() else 186.0) - _log.size.y
 	for line in _lines:
+		line["label"].custom_minimum_size.x = 200.0 if touch else 250.0
 		line["age"] += delta
 		var a: float = 1.0 if is_typing() else clampf((FADE_AFTER + 1.0 - line["age"]), 0.0, 1.0)
 		line["label"].modulate.a = a

@@ -42,9 +42,8 @@ func _main_menu() -> void:
 ## Returns a cleaned username, or "" if the player backed out.
 func _ask_username(suggested: String) -> String:
 	while true:
-		var keys := "" if TouchControls.active else "  Enter: OK  Esc: back"
 		var text := await prompt.ask("Pick a username", Game.clean_username(suggested), 16,
-			"Other players see this name." + keys)
+			"Other players see this name.")
 		if text == "":
 			return ""
 		var u := Game.clean_username(text)
