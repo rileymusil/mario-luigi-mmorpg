@@ -80,7 +80,7 @@ func _ready() -> void:
 
 	online = OnlinePlayers.new()
 	add_child(online)
-	online.setup(_spawn_character, player, map_id)
+	online.setup(self, _spawn_character, player, map_id)
 
 	dialog.visible = false
 	if arriving:

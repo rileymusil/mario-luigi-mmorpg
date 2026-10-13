@@ -9,17 +9,20 @@
 //     {t:"hello", name, character, x, y}   first message after connecting
 //     {t:"mv", x, y, vx, vy}               position + velocity, ~5 times a second while moving
 //     {t:"jump"}
+//     {t:"chat", text}                     at most one per CHAT_COOLDOWN_MS
 //   server -> client
 //     {t:"welcome", id, players:[Player]}  everyone already in the zone
 //     {t:"join", player:Player}
 //     {t:"mv", id, x, y, vx, vy}
 //     {t:"jump", id}
+//     {t:"chat", id, name, text}           sent to everyone, sender included
 //     {t:"leave", id}
 //     {t:"full"}                            zone is full; the socket is closed
 //   Player = {id, name, character, x, y}
 // The text "ping" is answered with "pong" without waking the zone.
 
 import { DurableObject } from "cloudflare:workers";
+import { cleanChat } from "./filter";
 
 export interface Env {
   ZONES: DurableObjectNamespace<Zone>;
@@ -34,6 +37,8 @@ const MAX_MESSAGES_PER_SECOND = 15;
 const MAX_MESSAGE_BYTES = 512;
 const MAX_COORD = 10000;
 const MAX_SPEED = 400;
+const MAX_CHAT_LENGTH = 80;
+const CHAT_COOLDOWN_MS = 1000;
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -65,6 +70,7 @@ interface Attachment {
   player: Player | null; // null until the client says hello
   windowStart: number;
   count: number;
+  lastChat?: number;
 }
 
 export class Zone extends DurableObject<Env> {
@@ -142,6 +148,15 @@ export class Zone extends DurableObject<Env> {
     } else if (msg.t === "jump") {
       ws.serializeAttachment(a);
       this.broadcast({ t: "jump", id: a.player.id }, ws);
+    } else if (msg.t === "chat") {
+      const text = cleanChat(
+        String(msg.text ?? "").replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, MAX_CHAT_LENGTH),
+      );
+      if (text && now - (a.lastChat ?? 0) >= CHAT_COOLDOWN_MS) {
+        a.lastChat = now;
+        this.broadcast({ t: "chat", id: a.player.id, name: a.player.name, text }, null);
+      }
+      ws.serializeAttachment(a);
     } else {
       ws.serializeAttachment(a);
     }
@@ -180,7 +195,7 @@ export class Zone extends DurableObject<Env> {
     return out;
   }
 
-  private broadcast(msg: object, skip: WebSocket): void {
+  private broadcast(msg: object, skip: WebSocket | null): void {
     const text = JSON.stringify(msg);
     for (const ws of this.ctx.getWebSockets()) {
       if (ws === skip) continue;

@@ -27,7 +27,7 @@ function open(name, character, x, y) {
     };
     ws.onerror = () => reject(new Error(`${name}: could not connect to ${base}`));
   });
-  return { ws, next, ready, send: (m) => ws.send(typeof m === "string" ? m : JSON.stringify(m)) };
+  return { ws, next, ready, inbox, send: (m) => ws.send(typeof m === "string" ? m : JSON.stringify(m)) };
 }
 
 function check(ok, what) {
@@ -68,6 +68,19 @@ const bad = open("Hax", "Not A Character!", 0, 0);
 await bad.ready;
 await new Promise((r) => (bad.ws.onclose = r));
 check(true, "malformed character id is rejected");
+
+a.send({ t: "chat", text: "  hello\u0007 shiiit world  " });
+const heard = await c.next("chat");
+const echo = await a.next("chat");
+check(heard.text === "hello ****** world" && heard.name === "Ann", "chat reaches everyone, trimmed and filtered");
+check(echo.id === wa.id, "sender gets their own chat back");
+a.send({ t: "chat", text: "spam" });
+a.send({ t: "chat", text: "x".repeat(200) });
+await new Promise((r) => setTimeout(r, 300));
+check(!c.inbox.some((m) => m.t === "chat"), "chat faster than once a second is dropped");
+await new Promise((r) => setTimeout(r, 900));
+a.send({ t: "chat", text: "x".repeat(200) });
+check((await c.next("chat")).text.length === 80, "long chat is cut to 80 characters");
 
 b.ws.close();
 const leave = await a.next("leave");

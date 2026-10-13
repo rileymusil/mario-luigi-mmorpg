@@ -16,6 +16,8 @@ signal player_joined(player: Dictionary)   # {id, name, character, x, y}
 signal player_moved(id: String, pos: Vector2, velocity: Vector2)
 signal player_jumped(id: String)
 signal player_left(id: String)
+signal player_arrived(player: Dictionary)  # someone walked in (not the roster on joining)
+signal chat_received(id: String, name: String, text: String)
 signal zone_reset                          # connection (re)opened: forget everyone
 
 var my_id := ""
@@ -74,6 +76,14 @@ func update_position(pos: Vector2, velocity: Vector2) -> void:
 
 func send_jump() -> void:
 	_send({"t": "jump"})
+
+
+## Returns false when not connected. The server trims, filters and echoes it back.
+func send_chat(text: String) -> bool:
+	if not is_online():
+		return false
+	_send({"t": "chat", "text": text})
+	return true
 
 
 func _connect() -> void:
@@ -146,6 +156,7 @@ func _handle(text: String) -> void:
 				_add(p)
 		"join":
 			_add(msg["player"])
+			player_arrived.emit(msg["player"])
 		"mv":
 			var id := str(msg["id"])
 			if players.has(id):
@@ -158,6 +169,8 @@ func _handle(text: String) -> void:
 			var id := str(msg["id"])
 			if players.erase(id):
 				player_left.emit(id)
+		"chat":
+			chat_received.emit(str(msg["id"]), str(msg["name"]), str(msg["text"]))
 		"full":
 			_zone = ""  # don't retry into a full zone
 

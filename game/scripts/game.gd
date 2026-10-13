@@ -124,6 +124,7 @@ func _ready() -> void:
 	_add_action("action", [KEY_Z, KEY_J, KEY_SPACE], [JOY_BUTTON_A])  # jump, confirm, timed hits
 	_add_action("talk", [KEY_X, KEY_K], [JOY_BUTTON_B])  # talk / ask, cancel in menus
 	_add_action("menu", [KEY_ENTER, KEY_ESCAPE], [JOY_BUTTON_START])
+	_add_action("chat", [KEY_T, KEY_SLASH], [])
 
 
 func _add_action(action: String, keys: Array, buttons: Array) -> void:
