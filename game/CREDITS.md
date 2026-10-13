@@ -19,6 +19,7 @@ Sprites and maps come from *Mario & Luigi: Superstar Saga* (Nintendo / AlphaDrea
   - Goombella: no ripper is named on the sheet.
   - Koops: Joshr_691 (from Rogultgot's Yoshi / Troopea sprites).
   - Yoshi Kid: Joshr_691, Rogul, Boo Mansion.
+- Townsfolk and building insides (cut by tools/slice_sprites.py and tools/make_maps.py from the Superstar Saga "Non-Playable Characters" and "Maps" sheets): Beanbean Kingdom residents and guards, Toads, Toadsworth, Dr. Toad, Lady Lima, Queen Bean, Koopa Troopas, Border Bros., Hoohoo villagers and the shopkeeper; the Castle Town, shop, Starbeans Cafe, Beanbean Castle and Hoohoo Village interiors and the Stardust Fields and Hoohoo Village maps. See the original sheets in the art folder for ripper credits.
 - Menus and text (game/assets/ui, cut by tools/slice_ui.py from the Superstar Saga "Miscellaneous" sheets):
   - MLSS alphabet (the game's font) and speech balloons: MajinPiccolo (Speech Boxes).
   - Notebook menu, place-name strip, gold digits and coin: Starpower (Save Menu).
