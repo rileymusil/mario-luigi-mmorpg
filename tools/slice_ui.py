@@ -6,6 +6,7 @@ Sources (in the "MISC UI AND MORE" folder of the art drop):
   Equipment Menu    - red / green stat cards, navy bar, HP/BP/POW/DEF icons (Mirax96)
   Emotion Bubbles   - "!" and "..." bubbles (A.J. Nitro)
   Introduction & File Select - title sky and logo (A.J. Nitro)
+  Action Icons      - red A / green B field icons for the touch buttons (SpaceSandwich)
 
 Outputs transparent PNGs plus two BMFont (.fnt) fonts that Godot imports as
 FontFile: mlss_font (plain glyphs, coloured by the theme) and
@@ -348,6 +349,93 @@ def build_pictures(root):
     save(largest_part(flood_clear(intro.crop((144, 380, 362, 424)), {WHITE})), "logo")
 
 
+# --- On-screen touch controls -------------------------------------------------
+ICON_BG = (156, 156, 246)  # background of the Action Icons sheet
+OUTLINE = (32, 32, 32)     # the speech balloon's palette
+PAPER = (248, 248, 248)
+PALE_BLUE = (184, 224, 248)
+BLUE = (120, 184, 248)
+DEEP_BLUE = (48, 88, 248)
+
+
+def build_touch(root):
+    """A and B buttons from the action icons, and a joystick in the balloon palette."""
+    icons = load(root, "Action Icons")
+    # A = Mario's red jump icon, as in the field.
+    save(flood_clear(icons.crop((8, 12, 36, 40)), {ICON_BG}), "touch_a")
+    # B = Luigi's green button with the "talk" balloon. The sheet only has the
+    # green talk icon with an A on it, so take the B letter from the red talk
+    # icon and recolour its red to the matching green of the blank templates.
+    red_a, red_b = icons.crop((264, 10, 292, 40)), icons.crop((264, 42, 292, 72))
+    green = icons.crop((264, 106, 292, 136))
+    red_t, green_t = icons.crop((8, 220, 36, 248)), icons.crop((40, 220, 68, 248))
+    to_green = {red_t.getpixel((x, y)): green_t.getpixel((x, y)) for y in range(28) for x in range(28)}
+    for y in range(30):
+        for x in range(28):
+            c = red_b.getpixel((x, y))
+            if c != red_a.getpixel((x, y)):
+                green.putpixel((x, y), to_green.get(c, c))
+    save(flood_clear(green, {ICON_BG}), "touch_b")
+    save(draw_ring(52), "touch_stick_base")
+    save(draw_knob(24), "touch_stick_knob")
+
+
+def _disc(size, paint):
+    """Calls paint(dx, dy, r) for every pixel; dx, dy from the centre."""
+    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    c = (size - 1) / 2.0
+    for y in range(size):
+        for x in range(size):
+            col = paint(x - c, y - c, ((x - c) ** 2 + (y - c) ** 2) ** 0.5)
+            if col:
+                img.putpixel((x, y), col)
+    return img
+
+
+def draw_ring(size):
+    """Joystick base: a see-through balloon-white disc with a dark rim and four arrows."""
+    outer = size / 2.0
+
+    def paint(dx, dy, r):
+        if r > outer:
+            return None
+        if r > outer - 1.2:
+            return OUTLINE + (220,)
+        if r > outer - 2.6:
+            return BLUE + (200,)
+        if r > outer - 3.6:
+            return PAPER + (150,)
+        return PAPER + (70,)
+    img = _disc(size, paint)
+    # Little arrowheads pointing up, down, left and right, like a D-pad.
+    mid = size // 2
+    for row in range(4):
+        for col in range(-row, row + 1):
+            for (x, y) in ((mid - 1 + col, 6 + row), (mid - 1 + col, size - 7 - row),
+                           (6 + row, mid - 1 + col), (size - 7 - row, mid - 1 + col)):
+                img.putpixel((x, y), DEEP_BLUE + (230,))
+    return img
+
+
+def draw_knob(size):
+    """Joystick knob: a solid balloon-coloured ball, shaded toward the bottom right."""
+    outer = size / 2.0
+
+    def paint(dx, dy, r):
+        if r > outer:
+            return None
+        if r > outer - 1.2:
+            return OUTLINE + (255,)
+        # Lit from the top left, like the balloon's shading.
+        light = ((dx + outer * 0.35) ** 2 + (dy + outer * 0.35) ** 2) ** 0.5
+        if light > outer * 1.15:
+            return BLUE + (255,)
+        if light > outer * 0.75:
+            return PALE_BLUE + (255,)
+        return PAPER + (255,)
+    return _disc(size, paint)
+
+
 if __name__ == "__main__":
     root = sys.argv[1]
     os.makedirs(OUT, exist_ok=True)
@@ -355,3 +443,4 @@ if __name__ == "__main__":
     write_font("mlss_font", glyphs)
     write_font("mlss_font_outline", glyphs, outline=True)
     build_pictures(root)
+    build_touch(root)

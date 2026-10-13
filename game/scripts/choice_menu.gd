@@ -2,12 +2,18 @@ class_name ChoiceMenu
 extends PanelContainer
 ## A small Superstar Saga style menu: a speech balloon (from the theme) with a
 ## yellow pointer. Up/Down to move, Z to pick, X to back out (when allowed).
-## Clicking or tapping an option also picks it.
+## Mouse: pointing at an option moves the pointer there, a click picks it, a
+## right click or a click outside the menu backs out. Touch: tap an option to
+## pick it (slide off it before lifting to change your mind), tap outside the
+## menu to back out.
 ##     var index: int = await menu.choose(["Jump", "Run"])   # -1 = cancelled
 ## Set theme_type_variation to "FlatPanel" to drop the balloon (e.g. inside
-## the pause notebook).
+## the pause notebook). Clicks on controls that stop the mouse (the notebook,
+## a speech balloon) don't count as "outside".
 
 signal chosen(index: int)
+## The pointer moved to another option (by keys, mouse, touch or highlight()).
+signal highlighted(index: int)
 
 const CURSOR := preload("res://assets/ui/cursor.png")
 
@@ -19,15 +25,18 @@ var _box: VBoxContainer
 var _title: Label
 var _info: Label
 var _infos: Array = []
+var _rows: Array[Control] = []
 var _labels: Array[Label] = []
 var _cursors: Array[TextureRect] = []
 var _active := false
 var _time := 0.0
+var _touch_row := -1  # the option a finger went down on
 ## Width the help text under the options wraps at.
 var info_width := 150.0
 
 
 func _init() -> void:
+	add_to_group(&"choice_menus")
 	_box = VBoxContainer.new()
 	_box.add_theme_constant_override("separation", 0)
 	add_child(_box)
@@ -40,7 +49,7 @@ func _init() -> void:
 func _make_label(variation := "") -> Label:
 	var l := Label.new()
 	l.theme_type_variation = variation
-	l.mouse_filter = Control.MOUSE_FILTER_STOP
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return l
 
 
@@ -52,28 +61,34 @@ func choose(options: Array, title := "", cancellable := false, enabled: Array = 
 	_infos = infos
 	_cancellable = cancellable
 	_index = 0
+	_touch_row = -1
 	for child in _box.get_children():
 		_box.remove_child(child)
 		if child != _title and child != _info:
 			child.queue_free()
+	_rows.clear()
 	_labels.clear()
 	_cursors.clear()
 	_title.text = title
 	if title != "":
 		_box.add_child(_title)
 	for i in options.size():
+		# The whole row (pointer and text, full menu width) takes the mouse.
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 2)
+		row.mouse_filter = Control.MOUSE_FILTER_STOP
+		row.gui_input.connect(_on_row_input.bind(i))
 		var cursor := TextureRect.new()
 		cursor.texture = CURSOR
 		cursor.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 		cursor.custom_minimum_size = Vector2(17, 12)
+		cursor.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(cursor)
 		var l := _make_label()
 		l.text = str(options[i])
-		l.gui_input.connect(_on_label_input.bind(i))
 		row.add_child(l)
 		_box.add_child(row)
+		_rows.append(row)
 		_labels.append(l)
 		_cursors.append(cursor)
 	if not infos.is_empty():
@@ -90,6 +105,34 @@ func choose(options: Array, title := "", cancellable := false, enabled: Array = 
 	visible = false
 	_active = false
 	return result
+
+
+## True while waiting for a choice.
+func is_choosing() -> bool:
+	return _active and visible
+
+
+## The options of the current (or last) choose().
+func options() -> Array:
+	return _options
+
+
+## Moves the pointer to option i, e.g. when something on screen that stands
+## for that option is pointed at.
+func highlight(i: int) -> void:
+	if i == _index or i < 0 or i >= _options.size():
+		return
+	_index = i
+	_refresh()
+	highlighted.emit(i)
+
+
+## Picks option i as if Z were pressed on it (not if it is greyed out).
+func pick(i: int) -> void:
+	if not is_choosing() or i < 0 or i >= _options.size():
+		return
+	highlight(i)
+	_pick(i)
 
 
 func _is_enabled(i: int) -> bool:
@@ -113,29 +156,47 @@ func _process(delta: float) -> void:
 	c.position.x = -1.0 + roundf(sin(_time * 7.0) * 1.5)
 
 
+func _input(event: InputEvent) -> void:
+	# A right click backs out wherever the mouse is.
+	if is_choosing() and _cancellable and Pointer.is_back(event):
+		get_viewport().set_input_as_handled()
+		_cancel()
+
+
 func _unhandled_input(event: InputEvent) -> void:
-	if not _active or not visible:
+	if not is_choosing():
 		return
 	if event.is_action_pressed("move_down"):
-		_index = (_index + 1) % _options.size()
-		_refresh()
+		highlight((_index + 1) % _options.size())
 	elif event.is_action_pressed("move_up"):
-		_index = (_index - 1 + _options.size()) % _options.size()
-		_refresh()
+		highlight((_index - 1 + _options.size()) % _options.size())
 	elif event.is_action_pressed("action"):
 		_pick(_index)
 	elif event.is_action_pressed("talk") and _cancellable:
-		_active = false
-		chosen.emit(-1)
+		_cancel()
+	elif Pointer.is_press(event) and _cancellable:
+		# A click or tap that no option, menu or other box took: outside.
+		_cancel()
 	else:
 		return
 	get_viewport().set_input_as_handled()
 
 
-func _on_label_input(event: InputEvent, i: int) -> void:
-	if _active and event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		_index = i
-		_refresh()
+func _on_row_input(event: InputEvent, i: int) -> void:
+	if not _active:
+		return
+	if Pointer.is_hover(event):
+		highlight(i)
+	elif event is InputEventScreenTouch:
+		# Picks on lifting the finger, if it is still on the option it went down on.
+		if event.pressed:
+			highlight(i)
+			_touch_row = i
+		elif _touch_row == i and Rect2(Vector2.ZERO, _rows[i].size).has_point(event.position):
+			_touch_row = -1
+			_pick(i)
+	elif Pointer.is_press(event):
+		highlight(i)
 		_pick(i)
 
 
@@ -144,3 +205,8 @@ func _pick(i: int) -> void:
 		return
 	_active = false
 	chosen.emit(i)
+
+
+func _cancel() -> void:
+	_active = false
+	chosen.emit(-1)
