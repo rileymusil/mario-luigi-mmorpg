@@ -99,6 +99,38 @@ def castle_walk(r, g, b):
     return True
 
 
+def never(r, g, b):
+    return False  # the mask comes only from the hand fixes (rooms drawn as rectangles)
+
+
+def house_walk(r, g, b):
+    # Castle Town houses and shops: orange planks and the pale yellow rug.
+    h, s, v = hsv(r, g, b)
+    if 0.07 < h < 0.15 and s > 0.6 and v > 0.8:
+        return True
+    return 0.11 < h < 0.18 and 0.3 < s <= 0.6 and v > 0.9
+
+
+def palace_walk(r, g, b):
+    # Beanbean Castle: green checker floor and the red carpet; teal ledges and walls block.
+    h, s, v = hsv(r, g, b)
+    if 0.2 < h < 0.25 and s > 0.5 and v > 0.65:
+        return True
+    return (h < 0.02 or h > 0.98) and s > 0.5 and v > 0.65  # carpet
+
+
+def stardust_walk(r, g, b):
+    # Stardust Fields: the violet ground and the pink plateaus walk; dark cliffs and the sky block.
+    h, s, v = hsv(r, g, b)
+    if 0.74 <= h < 0.81 and s > 0.4 and v > 0.75:
+        return True
+    return 0.79 <= h < 0.9 and 0.2 <= s < 0.42 and v > 0.86
+
+
+def sky(r, g, b):
+    return False  # nothing to keep blocked under props
+
+
 # crop: (left, top, right, bottom) on the source sheet.
 # walk: colour guess (True walk, False block, None decide by patch size).
 # hard: colours a prop never opens up (water, lava), even when it hides them.
@@ -144,6 +176,93 @@ MAPS = {
         ],
     },
 }
+
+# Phase 4: more of the kingdom. Extra keys:
+# fill_white: [(box, tile)] pure white pixels in box (a hole in the rip) are filled
+#   from the tile box, repeated. white: colour for the sheet's leftover white
+#   background (patches of pure white). paint: [(box, colour)] art fixes.
+# Interiors are small rooms: a door mat at the bottom leads back outside.
+_INTERIOR = "Maps/Game Boy Advance - Mario & Luigi_ Superstar Saga - Maps - Beanbean Castle Town (Interior).png"
+_SHOP = "Maps/Game Boy Advance - Mario & Luigi_ Superstar Saga - Maps - Beanbean Castle Town Shop (Interior).png"
+_PALACE = "Maps/Game Boy Advance - Mario & Luigi_ Superstar Saga - Maps - Beanbean Castle.gif"
+_HOOHOO_IN = "Maps/Game Boy Advance - Mario & Luigi_ Superstar Saga - Maps - Hoohoo Village (Interior).png"
+
+
+def _house(crop, floor, mats, seed):
+    """A Castle Town house: planks by colour, the open floor in front of the
+    furniture (rug included) and the door mats walk."""
+    return {"sheet": _INTERIOR, "crop": crop, "walk": house_walk, "hard": sky, "smooth": 5, "islands": 400,
+            "seeds": [seed], "fixes": [("walk", floor)] + [("walk", m) for m in mats]}
+
+
+MAPS.update({
+    # Castle Town houses (Mitchcom's sheet): one room per house, the big
+    # double house has two doors.
+    "house_nw": _house((15, 60, 227, 314), (26, 142, 186, 219), [(94, 208, 118, 241)], (106, 205)),
+    "house_sw": _house((265, 60, 477, 314), (26, 142, 186, 220), [(94, 208, 118, 242)], (106, 205)),
+    "house_s": _house((494, 60, 706, 314), (26, 142, 193, 221), [(94, 208, 118, 243)], (106, 205)),
+    "house_se": _house((727, 60, 939, 317), (26, 142, 186, 223), [(94, 210, 118, 245)], (106, 207)),
+    "house_ne": _house((5, 349, 425, 599), (26, 131, 399, 216), [(94, 205, 118, 238), (302, 205, 326, 238)], (106, 200)),
+    # Shops (Mario Gamer's sheet): counter at the back, two display tables.
+    "shop_mushroom": {"sheet": _SHOP, "crop": (6, 392, 246, 649), "walk": house_walk, "hard": sky, "smooth": 5,
+                      "islands": 300, "seeds": [(56, 200)],
+                      "fixes": [("walk", (41, 205, 71, 249)), ("block", (16, 0, 224, 130))]},
+    "shop_badge": {"sheet": _SHOP, "crop": (6, 656, 246, 913), "walk": house_walk, "hard": sky, "smooth": 5,
+                   "islands": 300, "seeds": [(56, 200)],
+                   "fixes": [("walk", (42, 205, 72, 250)), ("block", (16, 0, 224, 130))]},
+    "starbeans_cafe": {
+        "sheet": "Maps/Game Boy Advance - Mario & Luigi_ Superstar Saga - Maps - Starbeans Cafe (Interior).png",
+        "crop": (0, 0, 480, 269), "walk": never, "hard": sky, "smooth": 1, "islands": 1, "seeds": [(248, 220)],
+        "fixes": [
+            ("walk", (58, 99, 422, 240)), ("walk", (228, 230, 268, 262)),  # floor, door mat
+            ("block", (188, 0, 308, 147)),  # the bar
+            ("block", (54, 106, 84, 146)), ("block", (396, 140, 426, 180)),  # wall shelves
+        ],
+    },
+    # Beanbean Castle (Bacon's sheet): the entrance hall and the throne room.
+    "castle_hall": {"sheet": _PALACE, "crop": (390, 815, 836, 1128), "walk": palace_walk, "hard": sky, "smooth": 3,
+                    "islands": 200, "seeds": [(224, 280)],
+                    "fixes": [("walk", (50, 185, 98, 266)), ("walk", (370, 185, 418, 266)),  # floor emblems
+                              ("walk", (192, 285, 257, 313))]},  # corridor out to town
+    "throne_room": {"sheet": _PALACE, "crop": (508, 4, 722, 472), "walk": palace_walk, "hard": sky, "smooth": 3,
+                    "islands": 200, "seeds": [(107, 430)],
+                    "fixes": [("walk", (85, 199, 139, 278)), ("walk", (82, 440, 132, 468))]},  # carpet emblem, corridor
+    # Outdoors.
+    "stardust_fields": {
+        "sheet": "Maps/Game Boy Advance - Mario & Luigi_ Superstar Saga - Maps - Stardust Fields.png",
+        "crop": (720, 830, 1250, 1500), "walk": stardust_walk, "hard": sky, "smooth": 5, "islands": 300,
+        "seeds": [(40, 590)], "white": (123, 130, 222),
+        "fixes": [("walk", (0, 404, 44, 432)), ("walk", (0, 572, 34, 600))],  # west bridges
+    },
+    "hoohoo_village": {
+        "sheet": "Maps/Game Boy Advance - Mario & Luigi_ Superstar Saga - Maps - Hoohoo Village (Exterior).png",
+        "crop": (14, 8, 734, 452), "walk": never, "hard": sky, "smooth": 5, "islands": 200,
+        "seeds": [(60, 110)], "fill_white": [((241, 232, 478, 284), (182, 232, 224, 284))], "white": (16, 0, 0),
+        "fixes": [
+            ("walk", (0, 92, 150, 130)), ("walk", (35, 128, 140, 182)), ("walk", (35, 180, 108, 262)),  # west sand
+            ("block", (46, 198, 102, 242)),  # spiky bush
+            ("walk", (140, 84, 548, 150)),  # log deck (the huts block with their footprints)
+            ("walk", (548, 75, 595, 185)), ("walk", (595, 125, 622, 185)),  # east sand
+        ] + [("walk", (620 + 8 * i, 125 + 8 * i, 632 + 8 * i, 188 + 8 * i)) for i in range(6)] + [  # upper stairs
+            ("walk", (668, 170, 700, 262)), ("walk", (624, 262, 700, 344)),  # by the mountain door, lower ledge
+        ] + [("walk", (543 + 7 * i, 345 - 15 * i // 2, 555 + 7 * i, 392 - 15 * i // 2)) for i in range(12)] + [  # lower stairs
+            ("walk", (510, 340, 545, 438)),  # sand column down to the south path
+            ("walk", (152, 380, 516, 408)),  # bridges
+            ("walk", (228, 372, 316, 432)), ("block", (255, 355, 291, 386)),  # island, the cave's stone door
+            ("walk", (110, 336, 160, 420)),  # grass block
+        ],
+    },
+    "hoohoo_hut_w": {"sheet": _HOOHOO_IN, "crop": (26, 64, 238, 306), "walk": never, "hard": sky, "smooth": 1,
+                     "islands": 1, "seeds": [(160, 200)],
+                     "fixes": [("walk", (17, 143, 196, 208)), ("walk", (49, 131, 137, 143)), ("walk", (49, 96, 71, 131)),
+                               ("block", (17, 126, 48, 176)),  # pot
+                               ("walk", (146, 204, 177, 239))]},  # doorway
+    "hoohoo_hut_e": {"sheet": _HOOHOO_IN, "crop": (313, 70, 510, 312), "walk": never, "hard": sky, "smooth": 1,
+                     "islands": 1, "seeds": [(90, 190)],
+                     "fixes": [("walk", (10, 135, 154, 208)), ("walk", (39, 100, 67, 135)), ("walk", (137, 95, 154, 135)),
+                               ("block", (10, 110, 40, 158)),  # pot
+                               ("walk", (26, 206, 58, 238))]},  # doorway
+})
 
 
 def components(mask, value):
@@ -256,7 +375,8 @@ def build_mask(map_id, cfg, art):
     for area, edge, pixels in list(components(mask, 128)):
         for x, y in pixels:
             mp[x, y] = 255 if area < cfg.get("stones", 400) else 0
-    mask = mask.filter(ImageFilter.MedianFilter(cfg.get("smooth", 5)))
+    if cfg.get("smooth", 5) > 1:
+        mask = mask.filter(ImageFilter.MedianFilter(cfg.get("smooth", 5)))
     remove_specks(mask, cfg.get("islands", 150))
     hard = Image.new("L", (w, h), 0)
     hp = hard.load()
@@ -277,10 +397,37 @@ def build_mask(map_id, cfg, art):
     print(map_id, "mask", mask.size)
 
 
+def touch_up(art, cfg):
+    """Art fixes for a freshly cropped map (see the phase 4 notes above MAPS.update)."""
+    px = art.load()
+    white = (255, 255, 255)
+    for dst, src in cfg.get("fill_white", []):
+        tw, th = src[2] - src[0], src[3] - src[1]
+        for y in range(dst[1], dst[3]):
+            for x in range(dst[0], dst[2]):
+                if px[x, y] == white:
+                    px[x, y] = px[src[0] + (x - dst[0]) % tw, src[1] + (y - dst[1]) % th]
+    for box, colour in cfg.get("paint", []):
+        art.paste(colour, box)
+    if "white" in cfg:
+        w, h = art.size
+        bg = Image.new("L", (w, h), 0)
+        bp = bg.load()
+        for y in range(h):
+            for x in range(w):
+                if px[x, y] == white:
+                    bp[x, y] = 255
+        for area, edge, pixels in components(bg, 255):
+            if area >= 64:  # small white bits are part of the art (sparkles, eyes)
+                for x, y in pixels:
+                    px[x, y] = cfg["white"]
+
+
 def build(map_id, cfg, root):
     if root:
         src = Image.open(os.path.join(root, cfg["sheet"])).convert("RGB")
         art = src.crop(cfg["crop"])
+        touch_up(art, cfg)
         os.makedirs(OUT, exist_ok=True)
         art.save(os.path.join(OUT, map_id + ".png"))
     else:

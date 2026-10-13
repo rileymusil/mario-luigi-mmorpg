@@ -1,0 +1,4 @@
+{"props": [
+{"name":"hut_w","shape":"rect","rect":[190,10,130,128],"base":137,"foot":[194,90,122,47]},
+{"name":"hut_e","shape":"rect","rect":[368,10,132,128],"base":137,"foot":[374,90,120,47]}
+]}

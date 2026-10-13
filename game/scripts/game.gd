@@ -156,29 +156,83 @@ const ENEMIES := {
 		"recruit": 0.25, "move": "bone_toss"},
 }
 
+## Townsfolk you can talk to (sheets cut by tools/slice_sprites.py, same
+## layout as everyone else). What they say lives in res://data/dialogue.json.
+const NPCS := {
+	"bean_elder": {"name": "Beanish Elder", "frames": 1},
+	"bean_villager": {"name": "Beanish", "frames": 1},
+	"bean_kid": {"name": "Beanish Kid", "frames": 1},
+	"bean_girl": {"name": "Beanette", "frames": 1},
+	"bean_guard": {"name": "Beanbean Guard", "frames": 8},
+	"shopkeeper": {"name": "Shopkeeper", "frames": 5},
+	"toad_blue": {"name": "Toad", "frames": 8},
+	"toadsworth": {"name": "Toadsworth", "frames": 8},
+	"dr_toad": {"name": "Dr. Toad", "frames": 8},
+	"lady_lima": {"name": "Lady Lima", "frames": 5},
+	"queen_bean": {"name": "Queen Bean", "frames": 1},
+	"koopa_troop": {"name": "Koopa Troop", "frames": 8},
+	"koopa_troop_red": {"name": "Koopa Troop", "frames": 8},
+	"border_bro": {"name": "Border Bro", "frames": 4},
+	"hoohoo_villager": {"name": "Hoohoo Villager", "frames": 5},
+	"hoohoo_villager_b": {"name": "Hoohoo Villager", "frames": 5},
+}
+
+## What shops sell: `key` is the counter in the save that goes up.
+const ITEMS := {
+	"mushroom": {"name": "Mushroom", "key": "mushrooms", "info": "Restores 10 HP."},
+}
+
 ## Maps: art and walk mask in res://assets/maps/ (built by tools/make_maps.py).
 ## battle_bg: res://assets/battle/backgrounds/<id>.png, behind battles started here.
 ## exits: walking into `rect` moves you to `to` at that map's `spawn` point.
+## A `door` exit (a building's door) only opens while you push up into it.
+## npcs: {id, pos, talk (dialogue id, defaults to id), face ("down", "left",
+## "right" or "up"), fixed (stand exactly at pos, e.g. behind a counter),
+## reach (talking distance, for counters)}.
 const MAPS := {
 	"castle_town": {
 		"name": "Beanbean Castle Town", "battle_bg": "castle_town", "safe": true,
-		"spawns": {"start": Vector2(320, 560), "east_gate": Vector2(1350, 409), "west_gate": Vector2(70, 409)},
+		"spawns": {"start": Vector2(320, 560), "east_gate": Vector2(1350, 409), "west_gate": Vector2(70, 409),
+			"palace": Vector2(340, 135), "house_nw": Vector2(100, 272), "shop_badge": Vector2(500, 310),
+			"house_sw": Vector2(147, 562), "house_s": Vector2(579, 547), "cafe": Vector2(902, 540),
+			"house_ne_w": Vector2(1016, 205), "house_ne_e": Vector2(1146, 205), "shop_mushroom": Vector2(1096, 392),
+			"house_se": Vector2(1303, 562)},
 		"exits": [
 			{"rect": Rect2(1430, 380, 22, 60), "to": "outskirts", "spawn": "south_path"},
 			{"rect": Rect2(0, 380, 22, 60), "to": "outskirts", "spawn": "south_path"},
+			{"rect": Rect2(320, 116, 40, 12), "to": "castle_hall", "spawn": "entrance", "door": true},
+			{"rect": Rect2(84, 258, 32, 12), "to": "house_nw", "spawn": "door", "door": true},
+			{"rect": Rect2(484, 296, 32, 12), "to": "shop_badge", "spawn": "door", "door": true},
+			{"rect": Rect2(131, 548, 32, 12), "to": "house_sw", "spawn": "door", "door": true},
+			{"rect": Rect2(563, 533, 32, 12), "to": "house_s", "spawn": "door", "door": true},
+			{"rect": Rect2(886, 525, 32, 12), "to": "starbeans_cafe", "spawn": "door", "door": true},
+			{"rect": Rect2(1000, 190, 33, 12), "to": "house_ne", "spawn": "door_w", "door": true},
+			{"rect": Rect2(1130, 190, 33, 12), "to": "house_ne", "spawn": "door_e", "door": true},
+			{"rect": Rect2(1080, 378, 32, 12), "to": "shop_mushroom", "spawn": "door", "door": true},
+			{"rect": Rect2(1287, 548, 33, 12), "to": "house_se", "spawn": "door", "door": true},
 		],
 		"enemies": [],
-		"npcs": [{"id": "toad", "pos": Vector2(435, 311)}, {"id": "pianta", "pos": Vector2(560, 330)},
+		"npcs": [
+			{"id": "toad", "pos": Vector2(435, 311)}, {"id": "pianta", "pos": Vector2(560, 330)},
 			{"id": "bombette", "pos": Vector2(150, 290)}, {"id": "goombella", "pos": Vector2(640, 220)},
 			{"id": "bobbery", "pos": Vector2(1000, 230)}, {"id": "peasley", "pos": Vector2(1180, 215)},
-			{"id": "koops", "pos": Vector2(1120, 430)}, {"id": "bow", "pos": Vector2(980, 470)}],
+			{"id": "koops", "pos": Vector2(1120, 430)}, {"id": "bow", "pos": Vector2(980, 470)},
+			{"id": "bean_guard", "pos": Vector2(300, 150), "talk": "palace_guard"},
+			{"id": "bean_guard", "pos": Vector2(382, 150), "talk": "palace_guard"},
+			{"id": "bean_villager", "pos": Vector2(90, 420), "talk": "town_gate", "face": "right"},
+			{"id": "bean_kid", "pos": Vector2(640, 450), "talk": "town_kid"},
+			{"id": "bean_girl", "pos": Vector2(1180, 400), "talk": "town_girl", "face": "left"},
+			{"id": "toadsworth", "pos": Vector2(1330, 420), "talk": "toadsworth", "face": "left"},
+			{"id": "bean_villager", "pos": Vector2(250, 300), "talk": "town_gossip"},
+		],
 	},
 	"outskirts": {
 		"name": "Beanbean Outskirts", "battle_bg": "outskirts", "safe": false,
-		"spawns": {"south_path": Vector2(800, 615), "east_bridge": Vector2(1420, 65)},
+		"spawns": {"south_path": Vector2(800, 615), "east_bridge": Vector2(1420, 65), "east_path": Vector2(1425, 405)},
 		"exits": [
 			{"rect": Rect2(760, 630, 90, 7), "to": "castle_town", "spawn": "east_gate"},
 			{"rect": Rect2(1455, 30, 10, 70), "to": "bowser_castle", "spawn": "bridge"},
+			{"rect": Rect2(1452, 380, 13, 50), "to": "stardust_fields", "spawn": "west_low"},
 		],
 		"enemies": [
 			{"type": "goomba", "pos": Vector2(628, 178)}, {"type": "goomba", "pos": Vector2(607, 345)},
@@ -196,7 +250,157 @@ const MAPS := {
 		"spawns": {"start": Vector2(205, 250), "bridge": Vector2(205, 580)},
 		"exits": [{"rect": Rect2(170, 605, 70, 10), "to": "outskirts", "spawn": "east_bridge"}],
 		"enemies": [],
-		"npcs": [],
+		"npcs": [
+			{"id": "koopa_troop", "pos": Vector2(140, 240), "talk": "koopa_guard", "face": "right"},
+			{"id": "koopa_troop", "pos": Vector2(270, 240), "talk": "koopa_guard", "face": "left"},
+			{"id": "koopa_troop_red", "pos": Vector2(125, 330), "talk": "koopa_shop", "face": "right"},
+			{"id": "border_bro", "pos": Vector2(285, 330), "talk": "bowser_gatekeeper", "face": "left"},
+		],
+	},
+	# Castle Town buildings. Each door mat leads back out to its door.
+	"house_nw": {
+		"name": "Elder's House", "safe": true,
+		"spawns": {"door": Vector2(106, 216)},
+		"exits": [{"rect": Rect2(92, 232, 28, 14), "to": "castle_town", "spawn": "house_nw"}],
+		"enemies": [],
+		"npcs": [{"id": "bean_elder", "pos": Vector2(60, 160), "talk": "elder_rest"}],
+	},
+	"house_sw": {
+		"name": "Beanish House", "safe": true,
+		"spawns": {"door": Vector2(106, 216)},
+		"exits": [{"rect": Rect2(92, 232, 28, 14), "to": "castle_town", "spawn": "house_sw"}],
+		"enemies": [],
+		"npcs": [{"id": "bean_villager", "pos": Vector2(140, 170), "talk": "house_bean"}],
+	},
+	"house_s": {
+		"name": "Toad Lodge", "safe": true,
+		"spawns": {"door": Vector2(106, 216)},
+		"exits": [{"rect": Rect2(92, 232, 28, 14), "to": "castle_town", "spawn": "house_s"}],
+		"enemies": [],
+		"npcs": [{"id": "toad_blue", "pos": Vector2(70, 170), "talk": "lodge_toad"}],
+	},
+	"house_se": {
+		"name": "Dr. Toad's Clinic", "safe": true,
+		"spawns": {"door": Vector2(106, 220)},
+		"exits": [{"rect": Rect2(92, 236, 28, 14), "to": "castle_town", "spawn": "house_se"}],
+		"enemies": [],
+		"npcs": [{"id": "dr_toad", "pos": Vector2(106, 165), "talk": "dr_toad"}],
+	},
+	"house_ne": {
+		"name": "Beanbean Town Hall", "safe": true,
+		"spawns": {"door_w": Vector2(106, 212), "door_e": Vector2(314, 212)},
+		"exits": [
+			{"rect": Rect2(92, 228, 28, 14), "to": "castle_town", "spawn": "house_ne_w"},
+			{"rect": Rect2(300, 228, 28, 14), "to": "castle_town", "spawn": "house_ne_e"},
+		],
+		"enemies": [],
+		"npcs": [
+			{"id": "bean_elder", "pos": Vector2(200, 165), "talk": "mayor"},
+			{"id": "bean_kid", "pos": Vector2(300, 180), "talk": "town_hall_kid", "face": "left"},
+		],
+	},
+	"shop_mushroom": {
+		"name": "Mushroom Shop", "safe": true,
+		"spawns": {"door": Vector2(56, 222)},
+		"exits": [{"rect": Rect2(40, 238, 32, 14), "to": "castle_town", "spawn": "shop_mushroom"}],
+		"enemies": [],
+		"npcs": [{"id": "shopkeeper", "pos": Vector2(130, 96), "talk": "mushroom_shop", "fixed": true, "reach": 56.0}],
+	},
+	"shop_badge": {
+		"name": "Badge Shop", "safe": true,
+		"spawns": {"door": Vector2(57, 222)},
+		"exits": [{"rect": Rect2(41, 238, 32, 14), "to": "castle_town", "spawn": "shop_badge"}],
+		"enemies": [],
+		"npcs": [{"id": "shopkeeper", "pos": Vector2(130, 96), "talk": "badge_shop", "fixed": true, "reach": 56.0}],
+	},
+	"starbeans_cafe": {
+		"name": "Starbeans Cafe", "safe": true,
+		"spawns": {"door": Vector2(248, 228)},
+		"exits": [{"rect": Rect2(226, 250, 44, 14), "to": "castle_town", "spawn": "cafe"}],
+		"enemies": [],
+		"npcs": [
+			{"id": "bean_villager", "pos": Vector2(300, 160), "talk": "cafe_barista", "face": "left"},
+			{"id": "bean_girl", "pos": Vector2(130, 185), "talk": "cafe_customer", "face": "right"},
+		],
+	},
+	"castle_hall": {
+		"name": "Beanbean Castle", "safe": true,
+		"spawns": {"entrance": Vector2(224, 286), "arch": Vector2(224, 125)},
+		"exits": [
+			{"rect": Rect2(192, 300, 65, 13), "to": "castle_town", "spawn": "palace"},
+			{"rect": Rect2(198, 92, 52, 16), "to": "throne_room", "spawn": "south", "door": true},
+		],
+		"enemies": [],
+		"npcs": [
+			{"id": "bean_guard", "pos": Vector2(175, 135), "talk": "castle_guard"},
+			{"id": "bean_guard", "pos": Vector2(275, 135), "talk": "castle_guard"},
+			{"id": "lady_lima", "pos": Vector2(330, 240), "talk": "lady_lima", "face": "left"},
+		],
+	},
+	"throne_room": {
+		"name": "Throne Room", "safe": true,
+		"spawns": {"south": Vector2(107, 435)},
+		"exits": [{"rect": Rect2(82, 455, 50, 13), "to": "castle_hall", "spawn": "arch"}],
+		"enemies": [],
+		"npcs": [
+			{"id": "queen_bean", "pos": Vector2(107, 225), "talk": "queen_bean"},
+			{"id": "bean_guard", "pos": Vector2(60, 300), "talk": "throne_guard", "face": "right"},
+		],
+	},
+	# Beyond the Outskirts: Stardust Fields (wild) and Hoohoo Village (a town).
+	"stardust_fields": {
+		"name": "Stardust Fields", "battle_bg": "stardust_fields", "safe": false,
+		"spawns": {"west_low": Vector2(40, 590), "west_high": Vector2(30, 418), "north": Vector2(205, 30),
+			"east": Vector2(495, 134)},
+		"exits": [
+			{"rect": Rect2(0, 568, 12, 36), "to": "outskirts", "spawn": "east_path"},
+			{"rect": Rect2(0, 400, 12, 36), "to": "outskirts", "spawn": "east_path"},
+			{"rect": Rect2(180, 0, 50, 10), "to": "hoohoo_village", "spawn": "south"},
+			{"rect": Rect2(515, 118, 15, 32), "to": "hoohoo_village", "spawn": "west"},
+		],
+		"enemies": [
+			{"type": "goomba", "pos": Vector2(60, 200)}, {"type": "koopa", "pos": Vector2(200, 232)},
+			{"type": "shy_guy", "pos": Vector2(344, 160)}, {"type": "buzzy_beetle", "pos": Vector2(420, 300)},
+			{"type": "dry_bones", "pos": Vector2(300, 380)}, {"type": "galoomba", "pos": Vector2(85, 338)},
+			{"type": "beanie", "pos": Vector2(377, 123)}, {"type": "shy_guy", "pos": Vector2(230, 400)},
+			{"type": "buzzy_beetle", "pos": Vector2(440, 200)}, {"type": "koopa", "pos": Vector2(140, 520)},
+		],
+		"npcs": [
+			{"id": "border_bro", "pos": Vector2(160, 58), "talk": "border_bro"},
+			{"id": "hoohoo_villager_b", "pos": Vector2(90, 600), "talk": "stardust_traveler", "face": "left"},
+		],
+	},
+	"hoohoo_village": {
+		"name": "Hoohoo Village", "battle_bg": "hoohoo_mountain", "safe": true,
+		"spawns": {"west": Vector2(20, 112), "south": Vector2(527, 415), "hut_w": Vector2(233, 148),
+			"hut_e": Vector2(456, 148)},
+		"exits": [
+			{"rect": Rect2(0, 92, 10, 40), "to": "stardust_fields", "spawn": "east"},
+			{"rect": Rect2(508, 428, 40, 16), "to": "stardust_fields", "spawn": "north"},
+			{"rect": Rect2(219, 134, 28, 12), "to": "hoohoo_hut_w", "spawn": "door", "door": true},
+			{"rect": Rect2(442, 134, 28, 12), "to": "hoohoo_hut_e", "spawn": "door", "door": true},
+		],
+		"enemies": [],
+		"npcs": [
+			{"id": "hoohoo_villager", "pos": Vector2(90, 115), "talk": "hoohoo_greeter"},
+			{"id": "hoohoo_villager_b", "pos": Vector2(345, 110), "talk": "hoohoo_deck"},
+			{"id": "hoohoo_villager_b", "pos": Vector2(685, 215), "talk": "hoohoo_mountain", "face": "left"},
+			{"id": "hoohoo_villager", "pos": Vector2(300, 400), "talk": "hoohoo_cave", "face": "left"},
+		],
+	},
+	"hoohoo_hut_w": {
+		"name": "Hoohoo Hut", "safe": true,
+		"spawns": {"door": Vector2(161, 212)},
+		"exits": [{"rect": Rect2(146, 228, 31, 14), "to": "hoohoo_village", "spawn": "hut_w"}],
+		"enemies": [],
+		"npcs": [{"id": "hoohoo_villager", "pos": Vector2(100, 180), "talk": "hut_rest"}],
+	},
+	"hoohoo_hut_e": {
+		"name": "Hoohoo Hut", "safe": true,
+		"spawns": {"door": Vector2(42, 212)},
+		"exits": [{"rect": Rect2(26, 228, 32, 14), "to": "hoohoo_village", "spawn": "hut_e"}],
+		"enemies": [],
+		"npcs": [{"id": "hoohoo_villager_b", "pos": Vector2(100, 180), "talk": "hut_lore"}],
 	},
 }
 
