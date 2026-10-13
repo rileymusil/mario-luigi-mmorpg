@@ -23,7 +23,7 @@ A Superstar Saga style RPG starter that runs in the browser.
 ## Publish to the web for free (GitHub Pages)
 - `export_presets.cfg` has a **Web** preset with thread support off, so the build runs on plain static hosting like GitHub Pages (no special server headers needed).
 - Manual: Project > Export > Web > Export Project into `build/web/`, then upload that folder.
-- Automatic: the deploy workflow lives in `/deploy-pages/.github/workflows/deploy-pages.yml` in the project files; it uses this "Web" preset.
+- Automatic: `.github/workflows/deploy-pages.yml` exports this "Web" preset and publishes it on every push to `main` (set Settings > Pages > Source to "GitHub Actions" once).
 
 ## Screenshot
 ![prototype](screenshot.png)

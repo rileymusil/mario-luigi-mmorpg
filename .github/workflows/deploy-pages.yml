@@ -1,0 +1,112 @@
+# Exports the Godot project to HTML5 and publishes it on GitHub Pages.
+#
+# One-time setup in the repository: Settings > Pages > Build and deployment >
+# Source = "GitHub Actions". The project also needs an export preset named "Web"
+# (Project > Export > Add... > Web, then save; this writes export_presets.cfg).
+name: Deploy web build to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  # Pull requests only build the export, so a broken build shows up before merge.
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: "4.4.1"
+  GODOT_RELEASE: stable
+  # Folder holding project.godot, relative to the repository root.
+  PROJECT_DIR: "game"
+  EXPORT_PRESET: "Web"
+  # Only needed if the Web preset turns thread support on. The current preset
+  # has it off, so the build runs on Pages without any extra headers.
+  USE_COI_SERVICEWORKER: "false"
+  COI_SERVICEWORKER_VERSION: "0.1.7"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Cache Godot and export templates
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot
+            ~/.local/share/godot/export_templates
+          key: godot-${{ env.GODOT_VERSION }}-${{ env.GODOT_RELEASE }}
+
+      - name: Install Godot and export templates
+        run: |
+          set -euo pipefail
+          V="${GODOT_VERSION}-${GODOT_RELEASE}"
+          BASE="https://github.com/godotengine/godot/releases/download/${V}"
+          if [ ! -x ~/godot/godot ]; then
+            mkdir -p ~/godot
+            curl -fsSL -o /tmp/godot.zip "${BASE}/Godot_v${V}_linux.x86_64.zip"
+            unzip -q /tmp/godot.zip -d ~/godot
+            mv ~/godot/Godot_v${V}_linux.x86_64 ~/godot/godot
+          fi
+          TPL=~/.local/share/godot/export_templates/${GODOT_VERSION}.${GODOT_RELEASE}
+          if [ ! -f "${TPL}/web_nothreads_release.zip" ]; then
+            curl -fsSL -o /tmp/templates.tpz "${BASE}/Godot_v${V}_export_templates.tpz"
+            unzip -q /tmp/templates.tpz -d /tmp/templates
+            mkdir -p "${TPL}"
+            mv /tmp/templates/templates/* "${TPL}/"
+          fi
+
+      - name: Export for web
+        run: |
+          set -euo pipefail
+          if [ ! -f "${PROJECT_DIR}/export_presets.cfg" ]; then
+            echo "::error::No export_presets.cfg in ${PROJECT_DIR}. Add a Web export preset in the Godot editor and commit it."
+            exit 1
+          fi
+          OUT="${GITHUB_WORKSPACE}/build/web"
+          mkdir -p "${OUT}"
+          cd "${PROJECT_DIR}"
+          # Import assets first so the export does not run against an empty .godot cache.
+          ~/godot/godot --headless --import || true
+          ~/godot/godot --headless --export-release "${EXPORT_PRESET}" "${OUT}/index.html"
+          test -f "${OUT}/index.html"
+
+      - name: Add coi-serviceworker for cross-origin isolation
+        if: env.USE_COI_SERVICEWORKER == 'true'
+        # GitHub Pages cannot send the COOP/COEP headers that threaded Godot 4 web
+        # builds need for SharedArrayBuffer. coi-serviceworker re-serves the page
+        # with those headers from a service worker (it reloads once on first visit).
+        run: |
+          set -euo pipefail
+          OUT=build/web
+          curl -fsSL -o "${OUT}/coi-serviceworker.min.js" \
+            "https://cdn.jsdelivr.net/npm/coi-serviceworker@${COI_SERVICEWORKER_VERSION}/coi-serviceworker.min.js"
+          # It must load before Godot's own scripts, so put it first in <head>.
+          sed -i 's#<head>#<head>\n<script src="coi-serviceworker.min.js"></script>#' "${OUT}/index.html"
+          grep -q 'coi-serviceworker.min.js' "${OUT}/index.html"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
