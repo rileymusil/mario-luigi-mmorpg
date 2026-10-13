@@ -33,6 +33,7 @@ func _ready() -> void:
 		"hp": int(stats.get("hp", 1)), "max_hp": int(stats.get("max_hp", 1)), "pow": int(stats.get("pow", 1)),
 		"def": int(stats.get("def", 0)), "burn": 0, "stun": false, "home": node.position, "stats": stats}
 	foes.append(foe)
+	_setup_presentation(Game.player["map"])  # backdrop, party bar (battle.gd)
 	Net.duel_message.connect(func(msg): _inbox.append(msg))
 	Net.duel_over.connect(_on_duel_over)
 	bar.visible = false
