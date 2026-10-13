@@ -1,8 +1,10 @@
 class_name TargetPicker
 extends Control
 ## Points at a battle target with the bobbing yellow pointer. Arrows move, Z
-## picks, X backs out (returns -1). Hovering a character with the mouse
-## points at it, clicking or tapping it picks it.
+## picks, X backs out (returns -1). Pointing at a character with the mouse
+## points at it and clicking picks it; right-click backs out. On a touch
+## screen, tap a character (picked when the finger lifts on it) or press A;
+## B or a tap on nobody backs out.
 ##     var i: int = await picker.choose([{"node": sprite, "label": "Goomba"}, ...])
 
 signal chosen(index: int)
@@ -18,6 +20,7 @@ var _cancellable := true
 var _time := 0.0
 var _pointer: Sprite2D
 var _label: Label
+var _touch_hit := -1  # the target a finger went down on
 
 
 func _init() -> void:
@@ -48,11 +51,11 @@ func choose(targets: Array, cancellable := true) -> int:
 		hit.position = node.position - Vector2(w / 2.0, h)
 		hit.size = Vector2(w, h + 4.0)
 		hit.mouse_filter = Control.MOUSE_FILTER_STOP
-		hit.mouse_entered.connect(_on_hover.bind(i))
 		hit.gui_input.connect(_on_hit_input.bind(i))
 		add_child(hit)
 		_hits.append(hit)
 	_index = 0
+	_touch_hit = -1
 	_cancellable = cancellable
 	visible = true
 	_active = false
@@ -100,18 +103,20 @@ func _unhandled_input(event: InputEvent) -> void:
 		_pick(_index)
 	elif event.is_action_pressed("talk") and _cancellable:
 		_pick(-1)
+	elif (Pointer.is_back(event) or Pointer.is_press(event)) and _cancellable:
+		# A right click, or a click or tap that missed every target.
+		_pick(-1)
 	else:
 		return
 	get_viewport().set_input_as_handled()
 
 
 func _move(step: int) -> void:
-	_index = (_index + step + _targets.size()) % _targets.size()
-	_refresh()
+	_highlight((_index + step + _targets.size()) % _targets.size())
 
 
-func _on_hover(i: int) -> void:
-	if _active and i != _index:
+func _highlight(i: int) -> void:
+	if i != _index:
 		_index = i
 		_refresh()
 
@@ -119,11 +124,23 @@ func _on_hover(i: int) -> void:
 func _on_hit_input(event: InputEvent, i: int) -> void:
 	if not _active:
 		return
-	if CommandBlocks.is_tap(event):
-		_index = i
-		_refresh()
+	if Pointer.is_hover(event):
+		_highlight(i)
+	elif event is InputEventScreenTouch:
+		if event.pressed:
+			_highlight(i)
+			_touch_hit = i
+		elif _touch_hit == i and Rect2(Vector2.ZERO, _hits[i].size).has_point(event.position):
+			_touch_hit = -1
+			_pick(i)
+	elif Pointer.is_back(event) and _cancellable:
+		_pick(-1)
+	elif Pointer.is_press(event):
+		_highlight(i)
 		_pick(i)
-		get_viewport().set_input_as_handled()
+	else:
+		return
+	accept_event()
 
 
 func _pick(i: int) -> void:

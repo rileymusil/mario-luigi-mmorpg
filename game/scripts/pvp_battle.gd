@@ -61,7 +61,7 @@ func _my_turn() -> void:
 	var sp: Dictionary = Game.SPECIALS[sp_id]
 	var options := ["Jump", "%s (%d SP)" % [sp["name"], sp["sp"]], "Mushroom (%d)" % p["mushrooms"], "Run"]
 	var enabled := [true, p["sp"] >= sp["sp"], p["mushrooms"] > 0, true]
-	var infos := ["Stomp! Press Z as you land for a 2nd hit.", sp["info"], "Heal 10 HP.", "Try to escape."]
+	var infos := [_keys("Stomp! Press {a} as you land for a 2nd hit."), sp["info"], "Heal 10 HP.", "Try to escape."]
 	message.text = "Your turn"
 	var choice: String = options[await menu.choose(options, me["name"], false, enabled, infos)]
 	if over:
@@ -141,7 +141,7 @@ func _jump_at_foe() -> String:
 	var target: CharacterSprite = foe["node"]
 	var stand: Vector2 = target.position + Vector2(-40, 0)
 	var top: Vector2 = target.position + Vector2(0, -target.height() * SCALE * 0.8)
-	message.text = "Press Z just as you land!"
+	_say("Press {a} just as you land!")
 	await _walk(node, stand, 160.0)
 	var result := _rate_landing(await _arc(node, node.position, top, 50.0, 0.55, true))
 	_show_rating(result)
@@ -185,7 +185,7 @@ func _their_turn() -> void:
 func _take_attack(act: Dictionary) -> void:
 	var node: CharacterSprite = me["node"]
 	var fnode: CharacterSprite = foe["node"]
-	message.text = "%s uses %s! Press Z to jump!" % [foe["name"], act.get("name", "an attack")]
+	_say("%s uses %s! Press {a} to jump!", [foe["name"], act.get("name", "an attack")])
 	for i in 6:
 		fnode.position.x = foe["home"].x + (2.0 if i % 2 == 0 else -2.0)
 		await _wait(0.07)

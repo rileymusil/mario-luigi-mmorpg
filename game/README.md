@@ -28,7 +28,7 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
   - *Jump*: press Z as you land for a second stomp (Good / Excellent).
   - *Special* (costs SP): Mario's Fire Jump burns, Luigi's Thunderhand can stun, Peach's Heart heals the party, Bowser's Fire Breath hits every enemy, Waluigi's Wicked Whirl hits every enemy and can stun them, Rosalina's Star Spin hits and heals, Toadette's Pickaxe Pound ignores defense, Bowser Jr.'s Goop Paint can stun, Shadow Mario's Shadow Drain steals HP. Press Z in the gold zone.
   - *Enemy turns*: press Z so whoever is attacked is in the air when it hits.
-  - Pick a command block over whoever's turn it is (arrows and Z, or point and click / tap), then a target (X goes back). Each map has its own battle background.
+  - Pick a command block over whoever's turn it is (arrows and Z, point and click, or tap it), then a target (X, B, a right click or a tap on nobody goes back). Timed-press hints name the A button when you play by touch. Each map has its own battle background.
 - **Recruit.** Good players ask Toad or the Pianta in Castle Town (X to talk). Evil players use *Ask to join* in battle; hurt enemies say yes more often. Up to 2 follow you and fight on their own turn.
 - **Grow.** XP and levels (cap 50), coins, Mushrooms. Losing sends you home with a few coins lost.
 - **Switch sides** any time from the menu. **Saves** go to the browser automatically.

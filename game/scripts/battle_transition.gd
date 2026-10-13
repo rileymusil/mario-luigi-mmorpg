@@ -54,7 +54,7 @@ static func _start(tree: SceneTree) -> BattleTransition:
 
 
 func _init() -> void:
-	layer = 90
+	layer = 100  # over everything, the touch controls (90) too
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
 

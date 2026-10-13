@@ -1,8 +1,9 @@
 class_name CommandBlocks
 extends Control
 ## Superstar Saga style command blocks floating over whoever's turn it is.
-## Left/Right (or Up/Down) to move, Z to pick. The mouse picks too: hovering a
-## block highlights it, clicking or tapping it confirms.
+## Left/Right (or Up/Down) to move, Z to pick. The mouse picks too: pointing
+## at a block highlights it, clicking it confirms. On a touch screen, tap a
+## block (slide off it before lifting to change your mind), or press A.
 ##     var i: int = await blocks.choose(commands, character_node)
 ## commands: Array of {label, icon, enabled, info}; icon is a name from
 ## res://assets/battle/icon_<name>.png. Emits `highlighted` with the info line
@@ -25,6 +26,7 @@ var _active := false
 var _time := 0.0
 var _row_y := 0.0
 var _label: Label
+var _touch_block := -1  # the block a finger went down on
 
 
 func _init() -> void:
@@ -56,7 +58,6 @@ func choose(commands: Array, anchor: CharacterSprite, partner := false) -> int:
 		block.texture = block_tex
 		block.position = Vector2(x + i * (size.x + GAP), _row_y)
 		block.mouse_filter = Control.MOUSE_FILTER_STOP
-		block.mouse_entered.connect(_on_hover.bind(i))
 		block.gui_input.connect(_on_block_input.bind(i))
 		var icon := TextureRect.new()
 		icon.texture = load("res://assets/battle/icon_%s.png" % commands[i]["icon"])
@@ -72,6 +73,7 @@ func choose(commands: Array, anchor: CharacterSprite, partner := false) -> int:
 		add_child(block)
 		_blocks.append(block)
 	_index = 0
+	_touch_block = -1
 	visible = true
 	_active = false
 	_refresh()
@@ -133,12 +135,11 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _move(step: int) -> void:
-	_index = (_index + step + _commands.size()) % _commands.size()
-	_refresh()
+	_highlight((_index + step + _commands.size()) % _commands.size())
 
 
-func _on_hover(i: int) -> void:
-	if _active and i != _index:
+func _highlight(i: int) -> void:
+	if i != _index:
 		_index = i
 		_refresh()
 
@@ -146,19 +147,22 @@ func _on_hover(i: int) -> void:
 func _on_block_input(event: InputEvent, i: int) -> void:
 	if not _active:
 		return
-	if is_tap(event):
-		if i != _index:
-			_index = i
-			_refresh()
+	if Pointer.is_hover(event):
+		_highlight(i)
+	elif event is InputEventScreenTouch:
+		# Picks on lifting the finger, if it is still on the block it went down on.
+		if event.pressed:
+			_highlight(i)
+			_touch_block = i
+		elif _touch_block == i and Rect2(Vector2.ZERO, _blocks[i].size).has_point(event.position):
+			_touch_block = -1
+			_pick(i)
+	elif Pointer.is_press(event):
+		_highlight(i)
 		_pick(i)
-		get_viewport().set_input_as_handled()
-
-
-## A left click, or a tap (also when touch isn't turned into mouse clicks).
-static func is_tap(event: InputEvent) -> bool:
-	if event is InputEventMouseButton:
-		return event.pressed and event.button_index == MOUSE_BUTTON_LEFT
-	return event is InputEventScreenTouch and event.pressed
+	else:
+		return
+	accept_event()
 
 
 func _pick(i: int) -> void:

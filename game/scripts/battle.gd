@@ -49,6 +49,9 @@ var _rating_tween: Tween
 var _time := 0.0
 var _badges: Array = []  # [badge sprite, character it follows]
 var _presented := false
+var _hint := ""         # the hint in the message box, before key names went in
+var _hint_args: Array = []
+var _hint_shown := ""
 
 @onready var background: TextureRect = $Background
 @onready var stage: Node2D = $Stage
@@ -100,9 +103,32 @@ func _setup_presentation(map_id: String) -> void:
 	menu.visible = false
 	rating.text = ""
 	rating.modulate.a = 0.0
-	blocks.highlighted.connect(func(info: String): message.text = info)
+	blocks.highlighted.connect(func(info: String): _say(info))
+	TouchControls.active_changed.connect(_on_touch_mode_changed)
 	_build_party_bar()
 	_refresh()
+
+
+## Shows a hint in the message box. {a} and {b} in it name the buttons: the
+## Z and X keys, or the on-screen A and B buttons when playing by touch.
+## args fill its %s / %d after that. The wording follows along if the player
+## switches between keys and touch while the hint is up.
+func _say(hint: String, args: Array = []) -> void:
+	_hint = hint
+	_hint_args = args
+	_hint_shown = _keys(hint) % args if not args.is_empty() else _keys(hint)
+	message.text = _hint_shown
+
+
+## {a} / {b} in text as Z / X, or A / B when playing by touch.
+func _keys(text: String) -> String:
+	var touch: bool = TouchControls.active
+	return text.replace("{a}", "A" if touch else "Z").replace("{b}", "B" if touch else "X")
+
+
+func _on_touch_mode_changed(_touch: bool) -> void:
+	if _hint != "" and message.text == _hint_shown:
+		_say(_hint, _hint_args)
 
 
 func _load_background(id: String) -> void:
@@ -200,12 +226,12 @@ func _commands_for(a: Dictionary) -> Array:
 	var p: Dictionary = Game.player
 	if not _is_player(a):
 		return [
-			{"id": "attack", "label": "Attack", "icon": "hammer", "info": "Tackle! Press Z in the gold zone."},
+			{"id": "attack", "label": "Attack", "icon": "hammer", "info": "Tackle! Press {a} in the gold zone."},
 			{"id": "run", "label": "Run", "icon": "run", "info": "Try to escape."},
 		]
 	var sp: Dictionary = Game.SPECIALS[Game.CHARACTERS[p["character"]]["special"]]
 	return [
-		{"id": "jump", "label": "Jump", "icon": "jump", "info": "Stomp! Press Z as you land for a 2nd hit."},
+		{"id": "jump", "label": "Jump", "icon": "jump", "info": "Stomp! Press {a} as you land for a 2nd hit."},
 		{"id": "special", "label": "%s (%d SP)" % [sp["name"], sp["sp"]], "icon": "burst",
 			"enabled": p["sp"] >= sp["sp"], "info": sp["info"]},
 		{"id": "mushroom", "label": "Mushroom (%d)" % p["mushrooms"], "icon": "mushroom",
@@ -286,7 +312,7 @@ func _jump_attack(a: Dictionary, target: Dictionary, burn := 0) -> String:
 	var node: CharacterSprite = a["node"]
 	var stand: Vector2 = target["node"].position + Vector2(-40, 0)
 	var top: Vector2 = target["node"].position + Vector2(0, -target["node"].height() * SCALE * 0.8)
-	message.text = "Press Z just as you land!"
+	_say("Press {a} just as you land!")
 	await _walk(node, stand, 160.0)
 	var badge := _show_badge(a, "jump")
 	var timing := await _arc(node, node.position, top, 50.0, 0.55, true)
@@ -436,7 +462,7 @@ func _foe_turn(f: Dictionary) -> void:
 		return
 	var target: Dictionary = _alive(allies).pick_random()
 	var node: CharacterSprite = target["node"]
-	message.text = "%s charges at %s! Press Z to jump!" % [f["name"], target["name"]]
+	_say("%s charges at %s! Press {a} to jump!", [f["name"], target["name"]])
 	var badge := _show_badge(target, "jump")
 	var fnode: CharacterSprite = f["node"]
 	for i in 6:
@@ -523,7 +549,7 @@ func _timing_bar(duration: float, badge := "burst_red") -> String:
 	bar_zone.size.x = w * 0.16
 	bar_best.position.x = w * 0.77
 	bar_best.size.x = w * 0.06
-	message.text = "Press Z in the gold zone!"
+	_say("Press {a} in the gold zone!")
 	var t := 0.0
 	var result := "Miss"
 	await get_tree().process_frame
