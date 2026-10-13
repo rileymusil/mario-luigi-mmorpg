@@ -57,16 +57,17 @@ check((await a.next("jump")).id === wb.id, "jump is relayed");
 a.send("ping");
 check((await a.next("pong")).t === "pong", "ping gets pong");
 
-const c = open("Cy", "luigi", 0, 0);
+const c = open("Cy", "rosalina", 0, 0);
 await c.ready;
 const wc = await c.next("welcome");
 const ann = wc.players.find((p) => p.id === wa.id);
-check(wc.players.length === 2 && ann.x === 121, "late joiner sees everyone at their latest position");
+check(wc.players.length === 2 && ann.x === 121, "late joiner (a different character) sees everyone at their latest position");
+check((await a.next("join")).player.character === "rosalina", "others see a character the server has never heard of");
 
-const bad = open("Hax", "goomba", 0, 0);
+const bad = open("Hax", "Not A Character!", 0, 0);
 await bad.ready;
 await new Promise((r) => (bad.ws.onclose = r));
-check(true, "unknown character is rejected");
+check(true, "malformed character id is rejected");
 
 b.ws.close();
 const leave = await a.next("leave");
