@@ -334,12 +334,19 @@ func _talk_to(n: Dictionary) -> void:
 		joined = await _ask(n, branch, question, speaker)
 	if not joined:
 		node.facing = n["face"]
+	# Two frames, so the X that closed a menu can't start this talk again.
+	await get_tree().process_frame
 	await get_tree().process_frame
 	busy = false
 
 
+## Puts the choice menu just above (or below) the speech balloon, on screen.
+## Call it deferred, so the menu already has its size for the new options.
 func _place_menu() -> void:
-	menu.position = Vector2(270, dialog.box.position.y - 52 if dialog.box.position.y > 100 else dialog.box.position.y + dialog.box.size.y + 4)
+	var box: Control = dialog.box
+	var x := minf(270.0, get_viewport_rect().size.x - menu.size.x - 4.0)
+	var y := box.position.y - menu.size.y - 2.0 if box.position.y > 100 else box.position.y + box.size.y + 4.0
+	menu.position = Vector2(x, y).round()
 
 
 ## Shows the question with the branch's choices and does what the pick says.
@@ -348,7 +355,7 @@ func _ask(n: Dictionary, branch: Dictionary, question: String, speaker: String) 
 	var node: CharacterSprite = n["node"]
 	var choices: Array = branch["choices"]
 	dialog.open(question, speaker, node)
-	_place_menu()
+	_place_menu.call_deferred()
 	var labels := choices.map(func(c): return str(c["text"]))
 	var i := await menu.choose(labels, "", true)
 	dialog.close()
@@ -405,7 +412,7 @@ func _shop(stock: Array, speaker: String, node: Node2D) -> void:
 		enabled.append(true)
 		infos.append("You have %d coins." % p["coins"])
 		dialog.open("You have %d coins. What would you like?" % p["coins"], speaker, node)
-		_place_menu()
+		_place_menu.call_deferred()
 		var i := await menu.choose(labels, "", true, enabled, infos)
 		dialog.close()
 		if i < 0 or i >= stock.size():

@@ -270,7 +270,7 @@ const MAPS := {
 		"enemies": [
 			{"type": "goomba", "pos": Vector2(60, 200)}, {"type": "koopa", "pos": Vector2(200, 232)},
 			{"type": "shy_guy", "pos": Vector2(344, 160)}, {"type": "buzzy_beetle", "pos": Vector2(420, 300)},
-			{"type": "dry_bones", "pos": Vector2(300, 380)}, {"type": "galoomba", "pos": Vector2(103, 373)},
+			{"type": "dry_bones", "pos": Vector2(300, 380)}, {"type": "galoomba", "pos": Vector2(85, 338)},
 			{"type": "beanie", "pos": Vector2(377, 123)}, {"type": "shy_guy", "pos": Vector2(230, 400)},
 			{"type": "buzzy_beetle", "pos": Vector2(440, 200)}, {"type": "koopa", "pos": Vector2(140, 520)},
 		],
