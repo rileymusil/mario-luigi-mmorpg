@@ -27,6 +27,13 @@ var npcs: Array = []      # [{node, id}]
 var busy := false         # true while a menu or dialog is open
 var _grace := 1.5         # seconds after arriving before enemies can start a battle
 var _trail: Array[Vector2] = []
+## Z confirms menus and X closes them, but they also jump and talk out here.
+## After anything that took the keys (a menu, someone talking, a battle, a
+## text box), the world ignores them until they have been let go, so the
+## press that closed it doesn't also jump, talk or open the menu.
+var _keys_locked := true
+var _unlocked_frame := -1
+const WORLD_KEYS: Array[StringName] = [&"action", &"talk", &"menu"]
 var online: OnlinePlayers # other players on this map, see online_players.gd
 
 @onready var actors: Node2D = $Actors
@@ -207,6 +214,7 @@ func _process(delta: float) -> void:
 	props.update_fade(player, delta)
 	online.tick(delta, busy or editing)
 	if busy or editing:
+		_keys_locked = true
 		player.move_velocity = Vector2.ZERO
 		for f in followers:
 			f.move_velocity = Vector2.ZERO
@@ -223,7 +231,9 @@ func _process(delta: float) -> void:
 	_update_followers(delta)
 	_update_enemies(delta)
 
-	if Input.is_action_just_pressed("action"):
+	if not keys_ready():
+		pass
+	elif Input.is_action_just_pressed("action"):
 		if not player.is_airborne():
 			Net.send_jump()
 		player.jump()
@@ -239,6 +249,20 @@ func _process(delta: float) -> void:
 			busy = true
 			Game.go_to_map(exit["to"], exit["spawn"])
 			return
+
+
+## False while a key that closed a menu or a talk is still held down (and on
+## the frame it is let go), see _keys_locked.
+func keys_ready() -> bool:
+	if _keys_locked:
+		for action in WORLD_KEYS:
+			if Input.is_action_pressed(action) or Input.is_action_just_released(action):
+				return false
+		_keys_locked = false
+		_unlocked_frame = Engine.get_process_frames()
+	# A press and release in the same frame (a quick tap) still counts as
+	# "just pressed" then: let the frame it unlocked on go by too.
+	return _unlocked_frame != Engine.get_process_frames()
 
 
 func _update_followers(delta: float) -> void:
