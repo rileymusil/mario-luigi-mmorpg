@@ -8,6 +8,8 @@ name: Deploy web build to GitHub Pages
 on:
   push:
     branches: [main]
+  # Pull requests only build the export, so a broken build shows up before merge.
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -16,7 +18,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -99,6 +101,7 @@ jobs:
           path: build/web
 
   deploy:
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     environment:
