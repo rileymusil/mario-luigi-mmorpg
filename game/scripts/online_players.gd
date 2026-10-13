@@ -48,6 +48,7 @@ func setup(world: Node, spawn_character: Callable, local_player: CharacterSprite
 	Net.in_world = true
 	tree_exiting.connect(func(): Net.in_world = false)
 	Net.challenged.connect(_on_challenged)
+	Net.party_message.connect(_on_party_message)
 	Net.duel_started.connect(_on_duel_started)
 	Net.duel_over.connect(_on_duel_over)
 	add_name_tag(_player, Game.username())
@@ -166,6 +167,20 @@ func _answer_invite(inv: Dictionary) -> void:
 		["Travel together.", ""])
 	_world.busy = false
 	Net.answer_invite(inv["from"], i == 0)
+
+
+## Your partner touched an enemy: jump into their battle if you're free.
+func _on_party_message(d: Dictionary) -> void:
+	if d.get("kind") != "coop_start":
+		return
+	if _world.busy or not _challenge.is_empty() or Net.duel_foe != "":
+		Net.send_party({"kind": "coop_no"})
+		return
+	var p: Dictionary = Game.player
+	Net.send_party({"kind": "coop_yes", "name": Game.username(), "id": p["character"],
+		"hp": p["hp"], "max_hp": p["max_hp"], "pow": p["pow"], "def": p["def"]})
+	_world.busy = true
+	Game.join_coop(d, _player.position)
 
 
 func _on_challenged(foe: Dictionary) -> void:

@@ -15,6 +15,7 @@
 //     {t:"chat", text, party?}             at most one per CHAT_COOLDOWN_MS; party: partner only
 //     {t:"invite", to} / {t:"accept", from} / {t:"decline", from} / {t:"leave_party"}
 //     {t:"warp", map, spawn}               tell your partner you took an exit
+//     {t:"pmsg", d:{...}}                  anything for your partner on this map (co-op battles)
 //     {t:"duel", to, stats}                evil player attacks a good player (not in a safe zone)
 //     {t:"duel_ready", stats} / {t:"duel_busy"}   the attacked player's game answers
 //     {t:"duel_act", move, hits?, rating?, hp?}   your move in a duel, relayed to your foe
@@ -31,6 +32,7 @@
 //     {t:"party", id, name}                you and `id` are a party (also on rejoining a map)
 //     {t:"party_end"}                       your partner left the party
 //     {t:"warp", map, spawn}               your partner took an exit
+//     {t:"pmsg", d:{...}}                  from your partner
 //     {t:"challenge", from, name, character, stats}  an evil player attacks you
 //     {t:"duel_start", foe:Player+{stats}, first}  both sides, first = you move first
 //     {t:"duel_act", ...} / {t:"duel_hit", ...}    your foe's move / its result
@@ -53,7 +55,7 @@ const ZONE_NAME = /^[a-z0-9_]{1,32}$/;
 const CHARACTER_ID = /^[a-z0-9_]{1,32}$/;
 const MAX_PLAYERS_PER_ZONE = 50;
 const MAX_MESSAGES_PER_SECOND = 15;
-const MAX_MESSAGE_BYTES = 512;
+const MAX_MESSAGE_BYTES = 1024;
 const MAX_COORD = 10000;
 const MAX_SPEED = 400;
 const MAX_CHAT_LENGTH = 80;
@@ -246,6 +248,12 @@ export class Zone extends DurableObject<Env> {
       const partner = a.party ? this.socketFor(a.party) : null;
       if (partner && MAP_ID.test(map) && MAP_ID.test(spawn)) {
         partner.send(JSON.stringify({ t: "warp", map, spawn }));
+      }
+    } else if (msg.t === "pmsg") {
+      ws.serializeAttachment(a);
+      const partner = a.party ? this.socketFor(a.party) : null;
+      if (partner && typeof msg.d === "object" && msg.d !== null && !Array.isArray(msg.d)) {
+        partner.send(JSON.stringify({ t: "pmsg", d: msg.d }));
       }
     } else if (msg.t === "duel") {
       const target = this.socketFor(String(msg.to));
