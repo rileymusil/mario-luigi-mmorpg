@@ -3,4 +3,5 @@
 A browser-playable, Superstar Saga style RPG built with Godot 4.4.
 
 - `game/` is the Godot project. Open `game/project.godot` in Godot 4.4 or newer; see [game/README.md](game/README.md).
+- `server/` is the online game server (Cloudflare Workers, free plan); see [server/README.md](server/README.md).
 - Every push to `main` exports the game for the web and publishes it to GitHub Pages at https://rileymusil.github.io/mario-luigi-mmorpg/ (workflow in `.github/workflows/deploy-pages.yml`).
