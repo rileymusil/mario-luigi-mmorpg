@@ -1,8 +1,9 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/battle.gd" id="1_battle"]
 [ext_resource type="Script" path="res://ui/command_blocks.gd" id="2_blocks"]
 [ext_resource type="Script" path="res://ui/target_picker.gd" id="3_targets"]
+[ext_resource type="Script" path="res://scripts/choice_menu.gd" id="4_menu"]
 
 [node name="Battle" type="Node2D"]
 script = ExtResource("1_battle")
@@ -100,24 +101,28 @@ offset_bottom = 112.0
 mouse_filter = 2
 stretch_mode = 3
 
-[node name="Rating" type="Control" parent="UI"]
-layout_mode = 3
-anchors_preset = 0
-offset_left = 192.0
-offset_top = 70.0
-offset_right = 192.0
-offset_bottom = 70.0
-mouse_filter = 2
+[node name="Rating" type="Label" parent="UI"]
+offset_left = 72.0
+offset_top = 58.0
+offset_right = 312.0
+offset_bottom = 86.0
+pivot_offset = Vector2(120, 14)
+theme_type_variation = &"GoldLabel"
+theme_override_font_sizes/font_size = 24
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="Art" type="TextureRect" parent="UI/Rating"]
 layout_mode = 0
 mouse_filter = 2
 
-[node name="Text" type="Label" parent="UI/Rating"]
-layout_mode = 0
-theme_type_variation = &"GoldLabel"
-theme_override_font_sizes/font_size = 24
-horizontal_alignment = 1
+[node name="Menu" type="PanelContainer" parent="UI"]
+visible = false
+offset_left = 8.0
+offset_top = 30.0
+offset_right = 140.0
+offset_bottom = 60.0
+script = ExtResource("4_menu")
 
 [node name="Commands" type="Control" parent="UI"]
 layout_mode = 3

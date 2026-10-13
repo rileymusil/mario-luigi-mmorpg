@@ -48,6 +48,7 @@ var coins_earned := 0
 var _rating_tween: Tween
 var _time := 0.0
 var _badges: Array = []  # [badge sprite, character it follows]
+var _presented := false
 
 @onready var background: TextureRect = $Background
 @onready var stage: Node2D = $Stage
@@ -55,9 +56,11 @@ var _badges: Array = []  # [badge sprite, character it follows]
 @onready var party_bar: HBoxContainer = $UI/PartyBar
 @onready var foe_box: PanelContainer = $UI/FoeBox
 @onready var foe_list: VBoxContainer = $UI/FoeBox/FoeList
-@onready var rating: Control = $UI/Rating
+@onready var rating: Label = $UI/Rating
 @onready var rating_art: TextureRect = $UI/Rating/Art
-@onready var rating_text: Label = $UI/Rating/Text
+## The plain list menu. battle.gd uses the command blocks; scenes built on it
+## (pvp_battle.gd) can still use this.
+@onready var menu: ChoiceMenu = $UI/Menu
 @onready var blocks: CommandBlocks = $UI/Commands
 @onready var targets: TargetPicker = $UI/Targets
 @onready var bar: Control = $UI/TimingBar
@@ -73,19 +76,33 @@ func _ready() -> void:
 		Game.new_player("mario")
 		Game.pending_battle = {"enemies": ["goomba"], "key": "test"}
 	var p: Dictionary = Game.player
-	_load_background(Game.pending_battle.get("battle_bg", Game.MAPS.get(p["map"], {}).get("battle_bg", DEFAULT_BACKGROUND)))
 	_add_ally({"name": Game.character_name(), "id": p["character"], "member": p})
 	for m in p["party"]:
 		_add_ally({"name": m["name"], "id": m["id"], "member": m})
 	for type in Game.pending_battle.get("enemies", ["goomba"]):
 		_add_foe(type)
+	_setup_presentation(p["map"])
+	_refresh()
+	_run_battle()
+
+
+## The looks: the map's battle background, the HP boxes for `allies`, and the
+## UI pieces' starting state. Call it once the allies are added. Scenes built
+## on this one call it from their own _ready (if they don't, it runs on the
+## first frame).
+func _setup_presentation(map_id: String) -> void:
+	if _presented:
+		return
+	_presented = true
+	_load_background(Game.pending_battle.get("battle_bg", Game.MAPS.get(map_id, {}).get("battle_bg", DEFAULT_BACKGROUND)))
 	bar.visible = false
 	bar_badge.visible = false
+	menu.visible = false
+	rating.text = ""
 	rating.modulate.a = 0.0
 	blocks.highlighted.connect(func(info: String): message.text = info)
 	_build_party_bar()
 	_refresh()
-	_run_battle()
 
 
 func _load_background(id: String) -> void:
@@ -118,7 +135,7 @@ func _add_foe(type: String) -> void:
 	var count := foes.filter(func(f): return f["type"] == type).size()
 	foes.append({"name": e["name"] + (" B" if count > 0 else ""), "type": type, "node": node, "ally": false,
 		"hp": e["hp"], "max_hp": e["hp"], "pow": e["pow"], "def": e["def"], "burn": 0, "stun": false,
-		"home": node.position, "marks": _status_marks(node)})
+		"home": node.position})
 
 
 func _hp(a: Dictionary) -> int:
@@ -596,18 +613,21 @@ func _show_rating(text: String) -> void:
 	var art: Texture2D = RATING_ART.get(parts[0])
 	rating_art.texture = art
 	rating_art.visible = art != null
-	rating_text.text = text if art == null else (parts[1] if parts.size() > 1 else "")
-	rating_text.add_theme_font_size_override("font_size", 24 if art == null else 12)
-	rating_text.reset_size()
-	var half := Vector2.ZERO
-	if art:
-		half = (art.get_size() / 2.0).floor()
-		rating_art.position = -half
-		rating_text.position = Vector2(-floorf(rating_text.size.x / 2.0), half.y + 1.0)
+	if art == null:
+		rating.text = text
+		rating.add_theme_font_size_override("font_size", 24)
+		rating.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	else:
-		rating_text.position = -(rating_text.size / 2.0).floor()
+		var under: String = parts[1] if parts.size() > 1 else ""
+		rating.text = under
+		rating.add_theme_font_size_override("font_size", 12)
+		rating.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+		# Centred in the box, or above the line of text under it.
+		var middle := Vector2(rating.size.x / 2.0, rating.size.y / 2.0 if under == "" else 2.0)
+		rating_art.position = (middle - art.get_size() / 2.0).floor()
 	if _rating_tween:
 		_rating_tween.kill()
+	rating.pivot_offset = rating.size / 2.0
 	rating.modulate.a = 1.0
 	rating.scale = Vector2(0.4, 0.4)
 	_rating_tween = create_tween()
@@ -652,6 +672,8 @@ func _status_marks(node: CharacterSprite) -> Node2D:
 
 ## Message and enemy boxes only show while they have something to say.
 func _process(delta: float) -> void:
+	if not _presented:
+		_setup_presentation(Game.player.get("map", ""))
 	_time += delta
 	message.get_parent().visible = message.text != ""
 	bar_frame.visible = bar.visible
@@ -660,6 +682,8 @@ func _process(delta: float) -> void:
 	foe_box.reset_size()
 	foe_box.position.x = 376.0 - foe_box.size.x
 	for f in foes:
+		if not f.has("marks"):
+			f["marks"] = _status_marks(f["node"])
 		var star: Sprite2D = f["marks"].get_child(0)
 		var flame: Sprite2D = f["marks"].get_child(1)
 		star.visible = f["stun"] and f["hp"] > 0
@@ -699,7 +723,8 @@ func _build_party_bar() -> void:
 ## Lights up the box of whoever is choosing; {} lights them all.
 func _set_turn(who: Dictionary) -> void:
 	for a in allies:
-		a["panel"].modulate = Color.WHITE if who.is_empty() or is_same(a, who) else Color(0.6, 0.6, 0.65)
+		if a.has("panel"):
+			a["panel"].modulate = Color.WHITE if who.is_empty() or is_same(a, who) else Color(0.6, 0.6, 0.65)
 
 
 func _refresh() -> void:
