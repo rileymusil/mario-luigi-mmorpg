@@ -1,6 +1,7 @@
-# Mario & Luigi MMO (Godot 4 prototype)
+# Mario & Luigi MMO (Godot 4)
 
-A Superstar Saga style RPG starter that runs in the browser.
+A Superstar Saga style RPG that runs in the browser. Play the latest build at
+https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys).
 
 ## Open it
 1. Install Godot 4.4 or newer (standard version, not .NET).
@@ -10,25 +11,37 @@ A Superstar Saga style RPG starter that runs in the browser.
 | Action | Keyboard | Gamepad |
 |---|---|---|
 | Move | Arrows / WASD | D-pad |
-| Mario (jump, timed hits, dodge) | Z or J | A |
-| Luigi (jump, timed hits, dodge) | X or K | B |
+| Jump, confirm, timed presses | Z, J or Space | A |
+| Talk, ask, back | X or K | B |
+| Menu | Enter or Esc | Start |
 
-## What's here
-- `scenes/overworld.tscn` (main scene): a placeholder field. Mario leads and Luigi follows his path; each brother jumps with his own button. Goombas wander and start a battle on touch.
-- `scenes/battle.tscn` + `scripts/battle.gd`: turn-based battle stub with timed hits. Press the brother's button to Jump, then again right as he lands for a second stomp (Good / Excellent). On the enemy's turn, jump as it reaches you to dodge.
-- `scripts/game.gd` (autoload `Game`): input map, party stats, enemy table, scene switching.
-- `scripts/bro_sprite.gd`: shared brother sprite (8 frames x 5 directions, left is mirrored) with jump physics.
-- `assets/sprites/`: frames cut from the Superstar Saga sheets in the parent folder.
+## What you can do
+- **Pick a side and a character.** Good: Mario, Luigi, Princess Peach. Evil: Bowser.
+  Good players start in Beanbean Castle Town, evil players at Bowser's Castle.
+- **Explore three maps** built from the Superstar Saga map art: Castle Town, Beanbean Outskirts and Bowser's Castle, joined by exits at the town gates, the Outskirts' south path and east bridge, and the castle's rail bridge.
+- **Battle** enemies in the Outskirts (Goombas and Beanies). Touch one to fight; jump on it first for a first strike.
+  - *Jump*: press Z as you land for a second stomp (Good / Excellent).
+  - *Special* (costs SP): Mario's Fire Jump burns, Luigi's Thunderhand can stun, Peach's Heart heals the party, Bowser's Fire Breath hits every enemy. Press Z in the gold zone.
+  - *Enemy turns*: press Z so whoever is attacked is in the air when it hits.
+- **Recruit.** Good players ask Toad in Castle Town (X to talk). Evil players use *Ask to join* in battle; hurt enemies say yes more often. Up to 2 follow you and fight on their own turn.
+- **Grow.** XP and levels (cap 50), coins, Mushrooms. Losing sends you home with a few coins lost.
+- **Switch sides** any time from the menu. **Saves** go to the browser automatically.
 
-## Publish to the web for free (GitHub Pages)
-- `export_presets.cfg` has a **Web** preset with thread support off, so the build runs on plain static hosting like GitHub Pages (no special server headers needed).
-- Manual: Project > Export > Web > Export Project into `build/web/`, then upload that folder.
-- Automatic: `.github/workflows/deploy-pages.yml` exports this "Web" preset and publishes it on every push to `main` (set Settings > Pages > Source to "GitHub Actions" once).
+## Project layout
+- `scenes/title.tscn` (main scene), `scenes/world.tscn` (any map), `scenes/battle.tscn`.
+- `scripts/game.gd` (autoload `Game`): all data tables (characters, specials, partners, enemies, maps with exits, spawns, enemies and NPCs), the save, and scene changes. Most tuning happens here.
+- `scripts/world.gd`: map loading, walking on the walk mask, followers, enemies, talking, pause menu.
+- `scripts/battle.gd`: battle flow, timed presses, specials, recruiting, XP.
+- `scripts/character_sprite.gd`, `scripts/choice_menu.gd`: shared sprite and menu box.
+- `assets/characters/`: walk sheets, 3 rows (down, right, up). `assets/maps/`: map art plus `<map>_mask.png` (white = walkable).
+
+## Adding art
+Both tools read the original sheets from the `Mario&LuigiMMO` art folder (not in this repo):
+- `python3 tools/slice_sprites.py "<Mario&LuigiMMO folder>" [ids]` cuts walk cycles. Add a character with the pixel boxes of its down, side and up rows, then add it to `CHARACTERS`, `PARTNERS` or `ENEMIES` in `game.gd`.
+- `python3 tools/make_maps.py "<Mario&LuigiMMO folder>" [ids]` crops a map and guesses its walk mask from colours. You can touch up any `_mask.png` by hand in a paint program (white = walk, black = blocked); re-running the tool overwrites hand edits.
+
+## Publishing
+`export_presets.cfg` has a **Web** preset with thread support off, so the build runs on plain static hosting like GitHub Pages. `.github/workflows/deploy-pages.yml` (repo root) exports and publishes it on every push to `main`.
 
 ## Screenshot
 ![prototype](screenshot.png)
-
-## Next steps
-- Real maps: build a TileMapLayer from the `Maps` sheets in place of `scripts/ground.gd`.
-- Battle menu (Jump / Hammer / Bros. Attack / Items), more enemies from `Enemies/`.
-- Multiplayer: GitHub Pages only serves files, so players need a free relay or peer-to-peer (WebRTC) signaling service alongside it.
