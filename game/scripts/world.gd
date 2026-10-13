@@ -92,7 +92,7 @@ func _ready() -> void:
 	add_child(online)
 	# Their game may use an older mask; show them on our walkable ground.
 	online.snap = nearest_walkable
-	online.setup(_spawn_character, player, map_id)
+	online.setup(self, _spawn_character, player, map_id)
 	if MapEditor.available():
 		add_child(MapEditor.new())
 
