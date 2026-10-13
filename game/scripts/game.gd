@@ -5,6 +5,9 @@ extends Node
 const TITLE_SCENE := "res://scenes/title.tscn"
 const WORLD_SCENE := "res://scenes/world.tscn"
 const BATTLE_SCENE := "res://scenes/battle.tscn"
+const PVP_SCENE := "res://scenes/pvp_battle.tscn"
+const COOP_SCENE := "res://scenes/coop_battle.tscn"        # you started it, your partner joins
+const COOP_GUEST_SCENE := "res://scenes/coop_guest.tscn"   # your partner's battle, seen from your side
 const SAVE_PATH := "user://save.json"
 const MAX_LEVEL := 50
 const MAX_PARTY := 2
@@ -211,6 +214,7 @@ func _ready() -> void:
 	_add_action("action", [KEY_Z, KEY_J, KEY_SPACE], [JOY_BUTTON_A])  # jump, confirm, timed hits
 	_add_action("talk", [KEY_X, KEY_K], [JOY_BUTTON_B])  # talk / ask, cancel in menus
 	_add_action("menu", [KEY_ENTER, KEY_ESCAPE], [JOY_BUTTON_START])
+	_add_action("chat", [KEY_T, KEY_SLASH], [])
 
 
 func _add_action(action: String, keys: Array, buttons: Array) -> void:
@@ -231,7 +235,7 @@ func _add_action(action: String, keys: Array, buttons: Array) -> void:
 func new_player(character_id: String, username := "") -> void:
 	var c: Dictionary = CHARACTERS[character_id]
 	player = {
-		"username": clean_username(username), "character": character_id, "side": c["side"], "level": 1, "xp": 0, "coins": 20,
+		"username": clean_username(username), "uid": new_uid(), "character": character_id, "side": c["side"], "level": 1, "xp": 0, "coins": 20,
 		"max_hp": c["hp"], "hp": c["hp"], "max_sp": c["sp"], "sp": c["sp"], "pow": c["pow"], "def": c["def"],
 		"mushrooms": 3, "party": [], "map": HOME_MAP[c["side"]], "spawn": "start", "position": null,
 		"wins": 0,
@@ -248,6 +252,13 @@ func character_name() -> String:
 func username() -> String:
 	var u: String = player.get("username", "")
 	return u if u != "" else character_name()
+
+
+## A random id that stays the same for this save, so your party partner can
+## find you again on the next map.
+func new_uid() -> String:
+	var bytes := Crypto.new().generate_random_bytes(6)
+	return bytes.hex_encode()
 
 
 ## Same rule as the server: letters, numbers, spaces and _ . ' - , max 16.
@@ -325,11 +336,43 @@ func go_to_map(map_id: String, spawn: String) -> void:
 func start_battle(enemies: Array, defeated_key: String, overworld_position: Vector2) -> void:
 	player["position"] = [overworld_position.x, overworld_position.y]
 	pending_battle = {"enemies": enemies, "key": defeated_key}
-	get_tree().call_deferred("change_scene_to_file", BATTLE_SCENE)
+	# With your partner on this map, they're pulled into the fight too.
+	var scene := COOP_SCENE if Net.party_here and Net.is_online() else BATTLE_SCENE
+	get_tree().call_deferred("change_scene_to_file", scene)
+
+
+## Your partner started a battle and asked you in (see coop_guest.gd).
+func join_coop(start: Dictionary, overworld_position: Vector2) -> void:
+	player["position"] = [overworld_position.x, overworld_position.y]
+	pending_battle = {"coop": start, "key": ""}
+	get_tree().call_deferred("change_scene_to_file", COOP_GUEST_SCENE)
+
+
+## What a foe sees of you in an online duel (sent through the server).
+func pvp_stats() -> Dictionary:
+	var out := {}
+	for key in ["hp", "max_hp", "sp", "max_sp", "pow", "def", "level", "coins"]:
+		out[key] = player[key]
+	return out
+
+
+## An online duel with another player. foe: {id, name, character, stats}.
+func start_pvp(foe: Dictionary, first: bool, overworld_position: Vector2) -> void:
+	player["position"] = [overworld_position.x, overworld_position.y]
+	pending_battle = {"pvp": foe, "first": first, "key": ""}
+	player["in_duel"] = true  # cleared when the duel ends; quitting mid-duel counts as a loss
+	save()
+	get_tree().call_deferred("change_scene_to_file", PVP_SCENE)
+
+
+## Coins a player drops when they lose a duel (the winner picks them up).
+func pvp_drop(coins: int) -> int:
+	return coins - int(coins * 0.9)
 
 
 ## result: "won", "lost" or "fled".
 func end_battle(result: String) -> void:
+	player.erase("in_duel")
 	if result == "won":
 		defeated[pending_battle["key"]] = Time.get_ticks_msec() / 1000.0
 	if result == "lost":
@@ -382,6 +425,16 @@ func load_save() -> bool:
 	for member in data["party"]:
 		for key in ["max_hp", "hp", "pow", "def"]:
 			member[key] = int(member[key])
+	if not data.has("uid"):
+		data["uid"] = new_uid()
+	if data.get("in_duel", false):
+		# Closed the game mid-duel: that's a loss (coins dropped, back home).
+		data.erase("in_duel")
+		data["coins"] -= pvp_drop(data["coins"])
+		data["hp"] = data["max_hp"]
+		data["map"] = HOME_MAP.get(data.get("side", "good"), "castle_town")
+		data["spawn"] = "start"
+		data["position"] = null
 	player = data
 	return true
 

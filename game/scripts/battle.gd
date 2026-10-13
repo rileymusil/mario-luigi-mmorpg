@@ -438,6 +438,26 @@ func _status_tags(f: Dictionary) -> String:
 	return " (%s)" % ", ".join(tags) if not tags.is_empty() else ""
 
 
+## Start of an enemy's turn: a Magic Cube around it explodes instead of it
+## acting. True when that used up the turn. (coop_battle.gd's enemy turn
+## calls this and _foe_attack_taken too.)
+func _foe_trapped(f: Dictionary) -> bool:
+	if f.get("cube", 0) > 0:
+		await _cube_explode(f)
+		return true
+	return false
+
+
+## The enemy has picked who to attack: remember its move for Mimic, and a
+## veiled Vivian dodges and hits back. True when the veil took the attack.
+func _foe_attack_taken(f: Dictionary, target: Dictionary) -> bool:
+	f["last_move"] = Game.move_of("enemy", f["type"])
+	if target.get("veil", 0) > 0:
+		await _veil_counter(f, target)
+		return true
+	return false
+
+
 # --- Signature moves (the design roster) ----------------------------------------
 
 const VEIL_TINT := Color(0.35, 0.2, 0.5, 0.45)
@@ -782,8 +802,7 @@ func _foe_turn(f: Dictionary) -> void:
 		await _wait(0.7)
 		if f["hp"] <= 0:
 			return
-	if f.get("cube", 0) > 0:
-		await _cube_explode(f)  # trapped: the turn goes to the explosion
+	if await _foe_trapped(f):
 		return
 	if f["stun"]:
 		f["stun"] = false
@@ -791,9 +810,7 @@ func _foe_turn(f: Dictionary) -> void:
 		await _wait(0.8)
 		return
 	var target: Dictionary = _alive(allies).pick_random()
-	f["last_move"] = Game.move_of("enemy", f["type"])  # what Mimi copies
-	if target.get("veil", 0) > 0:
-		await _veil_counter(f, target)
+	if await _foe_attack_taken(f, target):
 		return
 	var node: CharacterSprite = target["node"]
 	message.text = "%s charges at %s! Press Z to jump!" % [f["name"], target["name"]]

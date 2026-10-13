@@ -3,9 +3,11 @@ extends Control
 ## Superstar Saga speech balloon: the text types in letter by letter, a blue
 ## arrow bobs when it is done, the speaker's name sits on a tab and a tail
 ## points at whoever is talking.
-##     await dialogue.say("Hello!", "Toad", toad_node)   # waits for Z / X
+##     await dialogue.say("Hello!", "Toad", toad_node)   # waits for Z / X / a click or tap
 ##     dialogue.open("Join us?", "Toad", toad_node)      # stays up, e.g. under a menu
 ##     dialogue.close()
+## Clicking or tapping works like Z: anywhere while say() waits, and on the
+## balloon itself (to show the rest of the text) when it sits under a menu.
 
 signal typed
 
@@ -18,6 +20,8 @@ var _anchor: Node2D
 var _shown := 0.0
 var _time := 0.0
 var _at_top := false
+var _waiting := false  # say() is waiting for Z / X / a click
+var _clicked := false
 
 @onready var box: PanelContainer = $Box
 @onready var text_label: Label = $Box/Text
@@ -34,6 +38,10 @@ func _ready() -> void:
 	sb.content_margin_top = 2
 	sb.content_margin_bottom = 1
 	name_tag.add_theme_stylebox_override("panel", sb)
+	# The touch screen buttons step aside while a balloon is up.
+	add_to_group(&"touch_blockers")
+	box.mouse_filter = Control.MOUSE_FILTER_STOP
+	box.gui_input.connect(_on_box_input)
 	visible = false
 
 
@@ -63,18 +71,22 @@ func open(text: String, speaker := "", anchor: Node2D = null) -> void:
 	visible = true
 
 
-## Shows the text, waits for Z or X, then closes. Pressing while it is still
-## typing shows the rest at once.
+## Shows the text, waits for Z or X (or a click or tap), then closes.
+## Pressing while it is still typing shows the rest at once.
 func say(text: String, speaker := "", anchor: Node2D = null) -> void:
 	open(text, speaker, anchor)
+	_clicked = false
 	await get_tree().process_frame
+	_waiting = true
 	while true:
 		await get_tree().process_frame
-		if Input.is_action_just_pressed("action") or Input.is_action_just_pressed("talk"):
+		if Input.is_action_just_pressed("action") or Input.is_action_just_pressed("talk") or _clicked:
+			_clicked = false
 			if typing:
 				skip()
 			else:
 				break
+	_waiting = false
 	close()
 
 
@@ -91,6 +103,20 @@ func close() -> void:
 	visible = false
 	typing = false
 	_anchor = null
+
+
+## While say() waits, a click or tap anywhere reads on (no menu is open then).
+func _input(event: InputEvent) -> void:
+	if _waiting and visible and Pointer.is_press(event):
+		_clicked = true
+		get_viewport().set_input_as_handled()
+
+
+func _on_box_input(event: InputEvent) -> void:
+	# Under a menu (open()), clicking the balloon only finishes the typing; it
+	# doesn't count as clicking outside the menu.
+	if Pointer.is_press(event) and typing:
+		skip()
 
 
 func _screen_pos(node: Node2D) -> Vector2:

@@ -18,7 +18,13 @@ func _ready() -> void:
 	prompt.position = Vector2(110, 80)
 	add_child(prompt)
 	_build_card()
+	TouchControls.active_changed.connect(_show_controls_hint)
+	_show_controls_hint(TouchControls.active)
 	_main_menu()
+
+
+func _show_controls_hint(touch: bool) -> void:
+	$HintBox/Hint.text = "Tap to choose   Tap outside: back" if touch else "Arrows: choose   Z: confirm   X: back"
 
 
 func _build_card() -> void:
@@ -64,7 +70,7 @@ func _main_menu() -> void:
 func _ask_username(suggested: String) -> String:
 	while true:
 		var text := await prompt.ask("Pick a username", Game.clean_username(suggested), 16,
-			"Other players see this name.  Enter: OK  Esc: back")
+			"Other players see this name.")
 		if text == "":
 			return ""
 		var u := Game.clean_username(text)

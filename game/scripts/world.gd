@@ -92,7 +92,7 @@ func _ready() -> void:
 	add_child(online)
 	# Their game may use an older mask; show them on our walkable ground.
 	online.snap = nearest_walkable
-	online.setup(_spawn_character, player, map_id)
+	online.setup(self, _spawn_character, player, map_id)
 	if MapEditor.available():
 		add_child(MapEditor.new())
 
@@ -262,6 +262,22 @@ func _nearest_npc():
 	return null
 
 
+## Clicking or tapping someone with the "!" bubble over them talks to them,
+## the same as pressing X.
+func _unhandled_input(event: InputEvent) -> void:
+	if not talk_bubble.visible or not Pointer.is_press(event):
+		return
+	var npc: Variant = _nearest_npc()
+	if npc == null:
+		return
+	var node: CharacterSprite = npc["node"]
+	var feet := node.get_global_transform_with_canvas().origin
+	var body := Rect2(feet - Vector2(14, node.height() + 4), Vector2(28, node.height() + 8))
+	if talk_bubble.get_global_rect().grow(6).has_point(event.position) or body.has_point(event.position):
+		get_viewport().set_input_as_handled()
+		Pointer.tap_action(&"talk")
+
+
 ## Shows a speech balloon until Z or X. speaker/anchor: who is talking (name
 ## tab and balloon tail), if anyone.
 func say(text: String, speaker := "", anchor: Node2D = null) -> void:
@@ -381,9 +397,10 @@ func _update_hud() -> void:
 	if busy:
 		hint.text = ""
 	elif npc != null:
-		hint.text = "X: Talk"
+		hint.text = "B or tap: Talk" if TouchControls.active else "X: Talk"
 	else:
-		hint.text = "Z: Jump   X: Talk   Enter: Menu" + ("" if map_info["safe"] else "   Jump on foes first!")
+		hint.text = ("A: Jump   B: Talk" if TouchControls.active else "Z: Jump   X: Talk   Enter: Menu") \
+			+ ("" if map_info["safe"] else "   Jump on foes first!")
 	var hint_box: Control = hint.get_parent()
 	hint_box.visible = hint.text != ""
 	hint_box.reset_size()
