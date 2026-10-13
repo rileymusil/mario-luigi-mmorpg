@@ -2,6 +2,8 @@ class_name PartyScreen
 extends Control
 ## The party menu: one equipment-menu stat card per party member (red for you,
 ## green for partners), with a menu beside them to send someone home.
+## Pointing at or clicking / tapping a partner's card works like their name
+## in the menu.
 
 const CARD_RED := preload("res://assets/ui/card_red.png")
 const CARD_GREEN := preload("res://assets/ui/card_green.png")
@@ -18,6 +20,8 @@ const CARD_GAP := 52.0
 @onready var pointer: TextureRect = $Pointer
 
 var _member_cards: Array[Control] = []
+var _names: Array = []  # the partners' names, as the menu lists them
+var _touch_card := -1
 var _time := 0.0
 
 
@@ -29,6 +33,7 @@ func open(p: Dictionary, character_name: String) -> void:
 	for c in cards.get_children():
 		c.queue_free()
 	_member_cards.clear()
+	_names.clear()
 	var y := 8.0
 	_add_card(Vector2(CARD_X, y), CARD_RED, character_name, "You", p["character"],
 		[["lv", p["level"]], ["heart", "%d/%d" % [p["hp"], p["max_hp"]]], ["bean", "%d/%d" % [p["sp"], p["max_sp"]]]],
@@ -37,7 +42,9 @@ func open(p: Dictionary, character_name: String) -> void:
 		y += CARD_GAP
 		var card := _add_card(Vector2(CARD_X, y), CARD_GREEN, m["name"], "Partner" if m["kind"] == "partner" else "Recruit",
 			m["id"], [["heart", "%d/%d" % [m["hp"], m["max_hp"]]]], [["pow", m["pow"]], ["def", m["def"]]])
+		card.gui_input.connect(_on_card_input.bind(_member_cards.size()))
 		_member_cards.append(card)
+		_names.append(m["name"])
 	visible = true
 
 
@@ -49,6 +56,8 @@ func _add_card(pos: Vector2, art: Texture2D, title: String, kind: String, id: St
 	var card := TextureRect.new()
 	card.texture = art
 	card.position = pos
+	# Clicks on a card are "inside" the menu (they don't back out of it).
+	card.mouse_filter = Control.MOUSE_FILTER_STOP
 	cards.add_child(card)
 	var name_label := Label.new()
 	name_label.theme_type_variation = &"LightLabel"
@@ -94,6 +103,23 @@ func _stat_row(stats: Array, pos: Vector2) -> HBoxContainer:
 		gap.custom_minimum_size.x = 8
 		row.add_child(gap)
 	return row
+
+
+func _on_card_input(event: InputEvent, i: int) -> void:
+	# Only while the menu lists the partners (not on "Send home / Keep").
+	if not menu.is_choosing() or menu.options() != _names:
+		return
+	if Pointer.is_hover(event):
+		menu.highlight(i)
+	elif event is InputEventScreenTouch:
+		if event.pressed:
+			menu.highlight(i)
+			_touch_card = i
+		elif _touch_card == i and Rect2(Vector2.ZERO, _member_cards[i].size).has_point(event.position):
+			_touch_card = -1
+			menu.pick(i)
+	elif Pointer.is_press(event):
+		menu.pick(i)
 
 
 func _process(delta: float) -> void:
