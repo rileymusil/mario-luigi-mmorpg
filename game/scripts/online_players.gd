@@ -15,6 +15,12 @@ const REACH_COLOR := Color(1, 0.9, 0.3)
 var others := {}  # id -> {node, target, velocity}
 var _spawn: Callable  # world._spawn_character
 var _player: CharacterSprite
+var _world: Node  # has `busy`, which pauses movement while you type
+var chat: ChatBox
+var _invites: Array = []  # [{from, name}] waiting for you to answer
+var _map_id := ""
+static var _announced := ""  # partner already announced, so map changes don't repeat it
+static var _followed := false  # arrived by following, so step aside from the partner
 ## Optional: maps a reported position onto ground walkable on this map.
 var snap := Callable()
 
