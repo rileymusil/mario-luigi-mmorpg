@@ -33,11 +33,18 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
 - `scripts/world.gd`: map loading, walking on the walk mask, followers, enemies, talking, pause menu.
 - `scripts/battle.gd`: battle flow, timed presses, specials, recruiting, XP.
 - `scripts/character_sprite.gd`, `scripts/choice_menu.gd`: shared sprite and menu box.
+- `ui/theme.tres`: the project's default theme (Superstar Saga font, speech-balloon panels and the
+  `NavyPanel`, `StripPanel`, `NotebookPanel`, `RedCard`/`GreenCard`, `FlatPanel` and
+  `LightLabel`, `InfoLabel`, `TitleLabel`, `OutlineLabel`, `GoldLabel` variations).
+  `ui/` also holds the reusable pieces: `dialogue_box` (typed-in speech balloon), `hud`,
+  `area_banner`, `pause_screen` (notebook), `party_screen` (stat cards) and `gold_number`.
+- `assets/ui/`: menu art and the bitmap fonts (`mlss_font.fnt`, `mlss_font_outline.fnt`).
 - `assets/characters/`: walk sheets, 3 rows (down, right, up). `assets/maps/`: map art plus `<map>_mask.png` (white = walkable).
 
 ## Adding art
-Both tools read the original sheets from the `Mario&LuigiMMO` art folder (not in this repo):
+The tools read the original sheets from the `Mario&LuigiMMO` art folder (not in this repo):
 - `python3 tools/slice_sprites.py "<Mario&LuigiMMO folder>" [ids]` cuts walk cycles. Add a character with the pixel boxes of its down, side and up rows (options for white backgrounds and drawn-on shadows are described at the top of the script), then add it to `CHARACTERS`, `PARTNERS` or `ENEMIES` in `game.gd`.
+- `python3 tools/slice_ui.py "<Mario&LuigiMMO folder>"` cuts the menu art (speech balloons, notebook, stat cards, gold digits, icons, title art) into `assets/ui/` and builds the two bitmap fonts from the MLSS alphabet. Re-run `godot --headless --import` afterwards.
 - `python3 tools/make_maps.py "<Mario&LuigiMMO folder>" [ids]` crops a map and guesses its walk mask from colours. You can touch up any `_mask.png` by hand in a paint program (white = walk, black = blocked); re-running the tool overwrites hand edits.
 
 ## Publishing

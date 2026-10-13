@@ -3,7 +3,6 @@ extends Control
 
 @onready var menu: ChoiceMenu = $Menu
 @onready var preview: CharacterSprite = $Preview
-@onready var subtitle: Label = $Subtitle
 
 
 func _ready() -> void:
@@ -23,20 +22,17 @@ func _main_menu() -> void:
 
 
 func _pick_side() -> void:
-	subtitle.text = "Choose your side"
-	var i := await menu.choose(["Good", "Evil"], "", true, [], [
+	var i := await menu.choose(["Good", "Evil"], "Choose your side", true, [], [
 		"Explore, collect items, recruit partners and grow stronger. Start in Beanbean Castle Town.",
 		"Recruit the enemies you meet and hunt good players. Start at Bowser's Castle.",
 	])
 	if i < 0:
-		subtitle.text = ""
 		_main_menu()
 		return
 	_pick_character("good" if i == 0 else "evil")
 
 
 func _pick_character(side: String) -> void:
-	subtitle.text = "Choose your character"
 	var ids: Array = []
 	var names: Array = []
 	var infos: Array = []
@@ -56,9 +52,9 @@ func _pick_character(side: String) -> void:
 	watcher.call()
 	# Room for the longer list and two-line special descriptions.
 	var home := menu.position
-	menu.position = Vector2(112, 64)
+	menu.position = Vector2(112, 52)
 	menu.info_width = 250.0
-	var i := await menu.choose(names, "", true, [], infos)
+	var i := await menu.choose(names, "Choose your character", true, [], infos)
 	menu.position = home
 	menu.info_width = 150.0
 	preview.visible = false

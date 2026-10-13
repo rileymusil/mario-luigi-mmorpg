@@ -19,9 +19,9 @@ var xp_earned := 0
 var coins_earned := 0
 
 @onready var stage: Node2D = $Stage
-@onready var message: Label = $UI/Message
-@onready var status: Label = $UI/Status
-@onready var foe_status: Label = $UI/FoeStatus
+@onready var message: Label = $UI/MessageBox/Message
+@onready var status: Label = $UI/StatusBox/Status
+@onready var foe_status: Label = $UI/FoeBox/FoeStatus
 @onready var rating: Label = $UI/Rating
 @onready var menu: ChoiceMenu = $UI/Menu
 @onready var bar: Control = $UI/TimingBar
@@ -480,10 +480,8 @@ func _flash(node: CanvasItem) -> void:
 func _popup(pos: Vector2, text: String) -> void:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 14)
-	l.add_theme_color_override("font_color", Color(1, 1, 1))
-	l.add_theme_color_override("font_outline_color", Color(0.6, 0, 0))
-	l.add_theme_constant_override("outline_size", 5)
+	l.theme_type_variation = &"OutlineLabel"
+	l.add_theme_font_size_override("font_size", 24)
 	l.position = pos - Vector2(10, 0)
 	stage.add_child(l)
 	var t := create_tween()
@@ -498,6 +496,15 @@ func _show_rating(text: String) -> void:
 	var tween := create_tween()
 	tween.tween_interval(0.6)
 	tween.tween_property(rating, "modulate:a", 0.0, 0.3)
+
+
+## Message and enemy boxes only show while they have something to say.
+func _process(_delta: float) -> void:
+	message.get_parent().visible = message.text != ""
+	foe_status.get_parent().visible = foe_status.text != ""
+	var box: Control = foe_status.get_parent()
+	box.reset_size()
+	box.position.x = 376.0 - box.size.x
 
 
 func _wait(seconds: float) -> void:

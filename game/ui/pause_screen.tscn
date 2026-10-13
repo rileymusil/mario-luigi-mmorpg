@@ -1,0 +1,130 @@
+[gd_scene load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://ui/pause_screen.gd" id="1_pause"]
+[ext_resource type="Texture2D" path="res://assets/ui/notebook.png" id="2_book"]
+[ext_resource type="Script" path="res://scripts/choice_menu.gd" id="3_menu"]
+[ext_resource type="Script" path="res://scripts/character_sprite.gd" id="4_sprite"]
+[ext_resource type="Script" path="res://ui/gold_number.gd" id="5_gold"]
+[ext_resource type="Texture2D" path="res://assets/ui/lv.png" id="6_lv"]
+[ext_resource type="Texture2D" path="res://assets/ui/coin.png" id="7_coin"]
+[ext_resource type="Texture2D" path="res://assets/ui/icon_heart.png" id="8_heart"]
+[ext_resource type="Texture2D" path="res://assets/ui/icon_bean.png" id="9_bean"]
+
+[node name="PauseScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_pause")
+
+[node name="Dim" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0.08, 0.4)
+
+[node name="Book" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 72.0
+offset_top = 28.0
+offset_right = 312.0
+offset_bottom = 188.0
+texture = ExtResource("2_book")
+
+[node name="Tab" type="Label" parent="Book"]
+layout_mode = 0
+offset_left = 137.0
+offset_top = 3.0
+offset_right = 183.0
+offset_bottom = 15.0
+text = "MENU"
+horizontal_alignment = 1
+
+[node name="Menu" type="PanelContainer" parent="Book"]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 38.0
+offset_right = 118.0
+offset_bottom = 110.0
+theme_type_variation = &"FlatPanel"
+script = ExtResource("3_menu")
+
+[node name="Name" type="Label" parent="Book"]
+layout_mode = 0
+offset_left = 122.0
+offset_top = 37.0
+offset_right = 214.0
+offset_bottom = 49.0
+theme_type_variation = &"TitleLabel"
+horizontal_alignment = 1
+
+[node name="Portrait" type="Node2D" parent="Book"]
+position = Vector2(168, 86)
+script = ExtResource("4_sprite")
+
+[node name="Stats" type="GridContainer" parent="Book"]
+layout_mode = 0
+offset_left = 128.0
+offset_top = 90.0
+offset_right = 212.0
+offset_bottom = 118.0
+theme_override_constants/h_separation = 2
+theme_override_constants/v_separation = 1
+columns = 4
+
+[node name="LvIcon" type="TextureRect" parent="Book/Stats"]
+custom_minimum_size = Vector2(12, 13)
+layout_mode = 2
+texture = ExtResource("6_lv")
+stretch_mode = 3
+
+[node name="Level" type="Control" parent="Book/Stats"]
+custom_minimum_size = Vector2(24, 13)
+layout_mode = 2
+script = ExtResource("5_gold")
+
+[node name="CoinIcon" type="TextureRect" parent="Book/Stats"]
+custom_minimum_size = Vector2(10, 13)
+layout_mode = 2
+texture = ExtResource("7_coin")
+stretch_mode = 3
+
+[node name="Coins" type="Control" parent="Book/Stats"]
+custom_minimum_size = Vector2(8, 13)
+layout_mode = 2
+script = ExtResource("5_gold")
+
+[node name="HeartIcon" type="TextureRect" parent="Book/Stats"]
+custom_minimum_size = Vector2(12, 13)
+layout_mode = 2
+texture = ExtResource("8_heart")
+stretch_mode = 3
+
+[node name="HP" type="Label" parent="Book/Stats"]
+layout_mode = 2
+text = "20/20"
+vertical_alignment = 1
+
+[node name="BeanIcon" type="TextureRect" parent="Book/Stats"]
+custom_minimum_size = Vector2(10, 13)
+layout_mode = 2
+texture = ExtResource("9_bean")
+stretch_mode = 3
+
+[node name="SP" type="Label" parent="Book/Stats"]
+layout_mode = 2
+text = "10/10"
+vertical_alignment = 1
+
+[node name="Place" type="Label" parent="Book"]
+layout_mode = 0
+offset_left = 19.0
+offset_top = 126.0
+offset_right = 221.0
+offset_bottom = 138.0
+horizontal_alignment = 1

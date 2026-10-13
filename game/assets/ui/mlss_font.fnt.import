@@ -1,0 +1,17 @@
+[remap]
+
+importer="font_data_bmfont"
+type="FontFile"
+uid="uid://hmessxf5sjsy"
+path="res://.godot/imported/mlss_font.fnt-21b1a8391856302dd0f499ce6ab65ad9.fontdata"
+
+[deps]
+
+source_file="res://assets/ui/mlss_font.fnt"
+dest_files=["res://.godot/imported/mlss_font.fnt-21b1a8391856302dd0f499ce6ab65ad9.fontdata"]
+
+[params]
+
+fallbacks=[]
+compress=true
+scaling_mode=1

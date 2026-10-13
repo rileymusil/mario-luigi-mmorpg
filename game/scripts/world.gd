@@ -24,11 +24,14 @@ var others := {}          # online players in this map: id -> {node, target, vel
 
 @onready var actors: Node2D = $Actors
 @onready var camera: Camera2D = $Camera2D
-@onready var status: Label = $HUD/Status
-@onready var hint: Label = $HUD/Hint
-@onready var area_name: Label = $HUD/AreaName
-@onready var dialog: Label = $HUD/Dialog
+@onready var status: Hud = $HUD/Hud
+@onready var hint: Label = $HUD/HintBox/Hint
+@onready var area_name: AreaBanner = $HUD/AreaName
+@onready var dialog: DialogueBox = $HUD/Dialogue
 @onready var menu: ChoiceMenu = $HUD/Menu
+@onready var pause_screen: PauseScreen = $HUD/PauseScreen
+@onready var party_screen: PartyScreen = $HUD/PartyScreen
+@onready var talk_bubble: TextureRect = $HUD/TalkBubble
 
 
 func _ready() -> void:
@@ -106,12 +109,10 @@ func _on_player_joined(p: Dictionary) -> void:
 	node.position = Vector2(p["x"], p["y"])
 	var tag := Label.new()
 	tag.text = p["name"]
-	tag.add_theme_font_size_override("font_size", 8)
-	tag.add_theme_color_override("font_outline_color", Color.BLACK)
-	tag.add_theme_constant_override("outline_size", 3)
+	tag.theme_type_variation = &"OutlineLabel"
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	tag.size = Vector2(80, 10)
-	tag.position = Vector2(-40, -node.height() - 12)
+	tag.size = Vector2(80, 14)
+	tag.position = Vector2(-40, -node.height() - 14)
 	node.add_child(tag)
 	others[p["id"]] = {"node": node, "target": node.position, "velocity": Vector2.ZERO}
 
@@ -300,109 +301,136 @@ func _nearest_npc():
 	return null
 
 
-func say(text: String) -> void:
+## Shows a speech balloon until Z or X. speaker/anchor: who is talking (name
+## tab and balloon tail), if anyone.
+func say(text: String, speaker := "", anchor: Node2D = null) -> void:
+	var was_busy := busy
 	busy = true
-	dialog.text = text
-	dialog.visible = true
+	await dialog.say(text, speaker, anchor)
 	await get_tree().process_frame
-	while not (Input.is_action_just_pressed("action") or Input.is_action_just_pressed("talk")):
-		await get_tree().process_frame
-	dialog.visible = false
-	await get_tree().process_frame
-	busy = false
+	busy = was_busy
 
 
 func _talk_to(n: Dictionary) -> void:
 	var info: Dictionary = Game.PARTNERS[n["id"]]
+	var node: CharacterSprite = n["node"]
 	if Game.player["side"] == "evil":
-		await say("%s: Eek! You're one of Bowser's bunch! Stay back!" % info["name"])
+		await say("Eek! You're one of Bowser's bunch! Stay back!", info["name"], node)
 		return
 	busy = true
-	dialog.text = "%s: Going out to the Outskirts? It's dangerous out there..." % info["name"]
-	dialog.visible = true
+	dialog.open("Going out to the Outskirts? It's dangerous out there...", info["name"], node)
+	menu.position = Vector2(270, dialog.box.position.y - 52 if dialog.box.position.y > 100 else dialog.box.position.y + dialog.box.size.y + 4)
 	var i := await menu.choose(["Ask to join", "Never mind"], "", true)
-	dialog.visible = false
-	busy = false
+	dialog.close()
 	if i != 0:
+		await get_tree().process_frame
+		busy = false
 		return
 	if not Game.can_recruit():
 		await say("Your party is full. Send someone home from the menu (Enter) first.")
+		busy = false
 		return
 	if randf() < info["recruit"]:
 		Game.player["party"].append(Game.make_member("partner", n["id"]))
-		var node: CharacterSprite = n["node"]
 		npcs.erase(n)
 		followers.append(node)
 		Game.save()
 		await say("%s joined your party!" % info["name"])
 	else:
-		await say("%s: Hmm... I'm not sure yet. Ask me again?" % info["name"])
+		await say("Hmm... I'm not sure yet. Ask me again?", info["name"], node)
+	busy = false
 
 
 func _pause_menu() -> void:
 	busy = true
 	var p: Dictionary = Game.player
 	var other := "Evil" if p["side"] == "good" else "Good"
-	var options := ["Use Mushroom (%d)" % p["mushrooms"], "Party", "Switch to %s side" % other, "Save", "Quit to title", "Close"]
-	var i := await menu.choose(options, "Menu", true)
-	match i:
-		0:
-			if p["mushrooms"] > 0 and p["hp"] < p["max_hp"]:
-				p["mushrooms"] -= 1
-				p["hp"] = mini(p["max_hp"], p["hp"] + 10)
-				await say("You ate a Mushroom. +10 HP")
-		1:
-			await _party_menu()
-		2:
-			var c := await menu.choose(["Yes, switch", "No"], "Switch sides? Your party goes home.", true)
-			if c == 0:
-				Game.switch_side()
+	while true:
+		pause_screen.open(p, Game.character_name(), map_info["name"])
+		var options := ["Mushroom x%d" % p["mushrooms"], "Party", "Go %s" % other, "Save", "Quit", "Close"]
+		var i := await pause_screen.menu.choose(options, "", true)
+		match i:
+			0:
+				if p["mushrooms"] <= 0:
+					await say("You don't have any Mushrooms.")
+				elif p["hp"] >= p["max_hp"]:
+					await say("Your HP is already full.")
+				else:
+					p["mushrooms"] -= 1
+					p["hp"] = mini(p["max_hp"], p["hp"] + 10)
+					await say("You ate a Mushroom. +10 HP")
+				continue
+			1:
+				pause_screen.close()
+				await _party_menu()
+				continue
+			2:
+				dialog.open("Switch to the %s side? Your party goes home." % other.to_lower())
+				var c := await pause_screen.menu.choose(["Yes, switch", "No"], "", true)
+				dialog.close()
+				if c == 0:
+					pause_screen.close()
+					Game.switch_side()
+					return
+				continue
+			3:
+				Game.save()
+				await say("Game saved in this browser.")
+			4:
+				Game.save()
+				Net.leave()
+				get_tree().change_scene_to_file(Game.TITLE_SCENE)
 				return
-		3:
-			Game.save()
-			await say("Game saved in this browser.")
-		4:
-			Game.save()
-			Net.leave()
-			get_tree().change_scene_to_file(Game.TITLE_SCENE)
-			return
+		break
+	pause_screen.close()
+	await get_tree().process_frame
 	busy = false
 
 
 func _party_menu() -> void:
 	var party: Array = Game.player["party"]
+	party_screen.open(Game.player, Game.character_name())
 	if party.is_empty():
 		await say("Nobody is with you yet. Good players can ask partners in town; evil players can ask enemies in battle.")
+		party_screen.close()
 		return
 	var names: Array = []
 	for m in party:
-		names.append("%s  HP %d/%d" % [m["name"], m["hp"], m["max_hp"]])
-	var i := await menu.choose(names, "Send someone home?", true)
-	if i < 0:
-		return
-	var c := await menu.choose(["Send home", "Keep"], "", true)
-	if c == 0:
-		party.remove_at(i)
-		var f: CharacterSprite = followers[i]
-		followers.remove_at(i)
-		f.queue_free()
-		Game.save()
+		names.append(m["name"])
+	var i := await party_screen.menu.choose(names, "Send home?", true)
+	if i >= 0:
+		var c := await party_screen.menu.choose(["Send home", "Keep"], party[i]["name"], true)
+		if c == 0:
+			party.remove_at(i)
+			var f: CharacterSprite = followers[i]
+			followers.remove_at(i)
+			f.queue_free()
+			Game.save()
+	party_screen.close()
 
 
 func _show_area_name() -> void:
-	area_name.text = map_info["name"]
-	area_name.modulate.a = 1.0
-	var t := create_tween()
-	t.tween_interval(1.5)
-	t.tween_property(area_name, "modulate:a", 0.0, 0.6)
+	area_name.show_name(map_info["name"])
 
 
 func _update_hud() -> void:
 	var p: Dictionary = Game.player
-	status.text = "%s Lv%d   HP %d/%d   SP %d/%d   Coins %d" % [Game.character_name(), p["level"], p["hp"], p["max_hp"], p["sp"], p["max_sp"], p["coins"]]
+	status.refresh(p, Game.character_name())
+	var npc: Variant = null if busy else _nearest_npc()
 	if busy:
 		hint.text = ""
-	elif _nearest_npc() != null:
+	elif npc != null:
 		hint.text = "X: Talk"
 	else:
-		hint.text = "Arrows: move   Z: jump   X: talk   Enter: menu" + ("" if map_info["safe"] else "   Jump on enemies for a first strike!")
+		hint.text = "Z: Jump   X: Talk   Enter: Menu" + ("" if map_info["safe"] else "   Jump on foes first!")
+	var hint_box: Control = hint.get_parent()
+	hint_box.visible = hint.text != ""
+	hint_box.reset_size()
+	hint_box.position.x = roundf((get_viewport_rect().size.x - hint_box.size.x) / 2.0)
+	# A "!" bubble pops up over whoever you can talk to.
+	talk_bubble.visible = npc != null
+	if npc != null:
+		var node: CharacterSprite = npc["node"]
+		var head := node.get_global_transform_with_canvas().origin - Vector2(0, node.height() + 6)
+		var bob := roundf(absf(sin(Time.get_ticks_msec() / 160.0)) * 2.0)
+		talk_bubble.position = (head - Vector2(talk_bubble.size.x / 2.0, talk_bubble.size.y + bob)).round()
