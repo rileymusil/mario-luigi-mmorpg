@@ -141,10 +141,10 @@ func _add_action(action: String, keys: Array, buttons: Array) -> void:
 
 # --- Player ---------------------------------------------------------------
 
-func new_player(character_id: String) -> void:
+func new_player(character_id: String, username := "") -> void:
 	var c: Dictionary = CHARACTERS[character_id]
 	player = {
-		"character": character_id, "side": c["side"], "level": 1, "xp": 0, "coins": 20,
+		"username": clean_username(username), "character": character_id, "side": c["side"], "level": 1, "xp": 0, "coins": 20,
 		"max_hp": c["hp"], "hp": c["hp"], "max_sp": c["sp"], "sp": c["sp"], "pow": c["pow"], "def": c["def"],
 		"mushrooms": 3, "party": [], "map": HOME_MAP[c["side"]], "spawn": "start", "position": null,
 		"wins": 0,
@@ -154,6 +154,19 @@ func new_player(character_id: String) -> void:
 
 func character_name() -> String:
 	return CHARACTERS[player["character"]]["name"]
+
+
+## The name other players see over your head. Falls back to the character's
+## name for saves made before usernames existed.
+func username() -> String:
+	var u: String = player.get("username", "")
+	return u if u != "" else character_name()
+
+
+## Same rule as the server: letters, numbers, spaces and _ . ' - , max 16.
+func clean_username(text: String) -> String:
+	var re := RegEx.create_from_string("[^\\p{L}\\p{N} _.'-]")
+	return re.sub(text, "", true).strip_edges().left(16)
 
 
 func xp_to_next(level: int) -> int:

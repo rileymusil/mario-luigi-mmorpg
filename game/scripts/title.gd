@@ -3,10 +3,14 @@ extends Control
 
 @onready var menu: ChoiceMenu = $Menu
 @onready var preview: CharacterSprite = $Preview
+var prompt: TextPrompt
 
 
 func _ready() -> void:
 	preview.visible = false
+	prompt = TextPrompt.new()
+	prompt.position = Vector2(110, 80)
+	add_child(prompt)
 	_main_menu()
 
 
@@ -17,8 +21,30 @@ func _main_menu() -> void:
 	var i := await menu.choose(options)
 	if options[i] == "New Game":
 		_pick_side()
-	else:
-		Game.continue_game()
+		return
+	# Saves from before usernames existed pick one now.
+	if Game.player.get("username", "") == "":
+		var u := await _ask_username(Game.character_name())
+		if u == "":
+			_main_menu()
+			return
+		Game.player["username"] = u
+		Game.save()
+	Game.continue_game()
+
+
+## Returns a cleaned username, or "" if the player backed out.
+func _ask_username(suggested: String) -> String:
+	while true:
+		var text := await prompt.ask("Pick a username", Game.clean_username(suggested), 16,
+			"Other players see this name.  Enter: OK  Esc: back")
+		if text == "":
+			return ""
+		var u := Game.clean_username(text)
+		if u != "":
+			return u
+		suggested = ""
+	return ""
 
 
 func _pick_side() -> void:
@@ -61,7 +87,11 @@ func _pick_character(side: String) -> void:
 	if i < 0:
 		_pick_side()
 		return
-	Game.new_player(ids[i])
+	var u := await _ask_username(names[i])
+	if u == "":
+		_pick_character(side)
+		return
+	Game.new_player(ids[i], u)
 	Game.go_to_map(Game.HOME_MAP[side], "start")
 
 
