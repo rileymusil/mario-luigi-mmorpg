@@ -31,6 +31,7 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
 - `scenes/title.tscn` (main scene), `scenes/world.tscn` (any map), `scenes/battle.tscn`.
 - `scripts/game.gd` (autoload `Game`): all data tables (characters, specials, partners, enemies, maps with exits, spawns, enemies and NPCs), the save, and scene changes. Most tuning happens here.
 - `scripts/world.gd`: map loading, walking on the walk mask, followers, enemies, talking, pause menu.
+- `scripts/map_props.gd`: trees, buildings and other tall things you can walk behind (props), the walk mask loader. `scripts/map_editor.gd`: the debug-only map editor (F2).
 - `scripts/battle.gd`: battle flow, timed presses, specials, recruiting, XP.
 - `scripts/character_sprite.gd`, `scripts/choice_menu.gd`: shared sprite and menu box.
 - `ui/theme.tres`: the project's default theme (Superstar Saga font, speech-balloon panels and the
@@ -39,13 +40,27 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
   `ui/` also holds the reusable pieces: `dialogue_box` (typed-in speech balloon), `hud`,
   `area_banner`, `pause_screen` (notebook), `party_screen` (stat cards) and `gold_number`.
 - `assets/ui/`: menu art and the bitmap fonts (`mlss_font.fnt`, `mlss_font_outline.fnt`).
-- `assets/characters/`: walk sheets, 3 rows (down, right, up). `assets/maps/`: map art plus `<map>_mask.png` (white = walkable).
+- `assets/characters/`: walk sheets, 3 rows (down, right, up). `assets/maps/`: map art, `<map>_mask.png` (the ground: white = walkable) and `<map>_props.json` (trees and buildings, see below).
+
+## Maps: ground, props and the map editor
+Each map is one picture plus two data files:
+- **`<map>_mask.png`** says where the *ground* is walkable (white) or blocked (black): water, lava, cliffs, ledges, walls and the map edge. It does not block trees or buildings.
+- **`<map>_props.json`** lists the tall things: trees, houses, shops, lamp posts, statues, pillars. Each prop is a rectangle of the map picture, a **base line** (the y where its trunk or wall meets the ground) and an optional **footprint** (a small rectangle that blocks walking: a trunk, the front wall of a house). The game redraws each prop over the characters, sorted at its base line, so anyone whose feet are above the base line is behind it. The prop fades to half see-through while it hides the player, like in Superstar Saga. `shape` is `rect` for buildings and posts or `tree` for a rounded canopy with a trunk.
+- Everyone (player, followers, enemies) collides with a 10px-wide box at their feet; other online players are shown on the nearest walkable ground.
+
+### Map editor (debug builds only)
+Run the game from the Godot editor (F5), walk to a map and press **F2**. Players never see it: the published web game is a release build. (A release build started with `-- --map-editor` also has it.)
+- The mask shows tinted red where the ground is blocked. Props show as green boxes, the base line in pink and the footprint in orange.
+- **1** paints walkable ground, **2** paints blocked ground (left mouse; right mouse paints the opposite). **[** and **]** change the brush size.
+- **3** edits props: click a prop to select it and drag to move it (base line and footprint move with it). Drag the yellow corner squares to resize, the pink line to move just the base line, the orange box to move the footprint (its corner square resizes it). **N** adds a tree at the mouse, **C** copies the selected prop, **Delete** removes it, **T** switches tree/rectangle shape, **F** adds or removes the footprint.
+- Arrow keys or WASD pan, the mouse wheel zooms. **Ctrl+S** saves `<map>_mask.png` and `<map>_props.json` straight into `assets/maps/` (in an exported debug build they go to `user://maps/` instead and are used from there). **F2** closes the editor; the game uses your edits right away.
+- After saving, commit the two files. `tools/make_maps.py` rebuilds masks from scratch and would overwrite hand edits, so only re-run it for a new map.
 
 ## Adding art
 The tools read the original sheets from the `Mario&LuigiMMO` art folder (not in this repo):
 - `python3 tools/slice_sprites.py "<Mario&LuigiMMO folder>" [ids]` cuts walk cycles. Add a character with the pixel boxes of its down, side and up rows (options for white backgrounds and drawn-on shadows are described at the top of the script), then add it to `CHARACTERS`, `PARTNERS` or `ENEMIES` in `game.gd`.
 - `python3 tools/slice_ui.py "<Mario&LuigiMMO folder>"` cuts the menu art (speech balloons, notebook, stat cards, gold digits, icons, title art) into `assets/ui/` and builds the two bitmap fonts from the MLSS alphabet. Re-run `godot --headless --import` afterwards.
-- `python3 tools/make_maps.py "<Mario&LuigiMMO folder>" [ids]` crops a map and guesses its walk mask from colours. You can touch up any `_mask.png` by hand in a paint program (white = walk, black = blocked); re-running the tool overwrites hand edits.
+- `python3 tools/make_maps.py "<Mario&LuigiMMO folder>" [ids]` crops a map and guesses its walk mask from colours, opening up the ground behind the props in `<map>_props.json` (`python3 tools/make_maps.py --mask-only [ids]` rebuilds just the masks from the art in the repo). Touch up masks and props in the map editor (or `_mask.png` in any paint program: white = walk, black = blocked); re-running the tool overwrites hand-painted masks.
 
 ## Publishing
 `export_presets.cfg` has a **Web** preset with thread support off, so the build runs on plain static hosting like GitHub Pages. `.github/workflows/deploy-pages.yml` (repo root) exports and publishes it on every push to `main`.

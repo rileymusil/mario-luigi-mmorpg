@@ -15,12 +15,8 @@ const REACH_COLOR := Color(1, 0.9, 0.3)
 var others := {}  # id -> {node, target, velocity}
 var _spawn: Callable  # world._spawn_character
 var _player: CharacterSprite
-var _world: Node  # has `busy`, which pauses movement while you type
-var chat: ChatBox
-var _invites: Array = []  # [{from, name}] waiting for you to answer
-var _map_id := ""
-static var _announced := ""  # partner already announced, so map changes don't repeat it
-static var _followed := false  # arrived by following, so step aside from the partner
+## Optional: maps a reported position onto ground walkable on this map.
+var snap := Callable()
 
 
 func setup(world: Node, spawn_character: Callable, local_player: CharacterSprite, map_id: String) -> void:
@@ -199,15 +195,19 @@ func _on_player_joined(p: Dictionary) -> void:
 	# newer build) is drawn as Mario rather than hidden.
 	var character: String = p["character"] if Game.CHARACTERS.has(p["character"]) else "mario"
 	var node: CharacterSprite = _spawn.call(character)
-	node.position = Vector2(p["x"], p["y"])
+	node.position = _snapped(Vector2(p["x"], p["y"]))
 	add_name_tag(node, p["name"])
 	others[p["id"]] = {"node": node, "target": node.position, "velocity": Vector2.ZERO}
 
 
 func _on_player_moved(id: String, pos: Vector2, velocity: Vector2) -> void:
 	if others.has(id):
-		others[id]["target"] = pos
+		others[id]["target"] = _snapped(pos)
 		others[id]["velocity"] = velocity
+
+
+func _snapped(pos: Vector2) -> Vector2:
+	return snap.call(pos) if snap.is_valid() else pos
 
 
 func _on_player_jumped(id: String) -> void:
