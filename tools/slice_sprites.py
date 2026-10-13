@@ -101,6 +101,40 @@ CHARACTERS = {
               "rows": [(0, 3, 170, 42), (0, 83, 232, 121), (0, 43, 170, 82)], "side_faces_left": True, "flood": True},
 }
 
+# Townsfolk you can talk to (the NPCS table in game.gd). They stand still, so a
+# row may be a box around a single pose. The Beanbean Kingdom Residents sheet
+# has one column per direction (left, front, back, right), so its boxes pick
+# one pose each.
+_NPC = "NPCs/Game Boy Advance - Mario & Luigi_ Superstar Saga - Non-Playable Characters - "
+_RESIDENTS = _NPC + "Beanbean Kingdom Residents.png"
+NPCS = {
+    "bean_elder": {"sheet": _RESIDENTS, "rows": [(23, 2, 40, 28), (60, 2, 77, 28), (41, 2, 58, 28)], "side_faces_left": False},
+    "bean_villager": {"sheet": _RESIDENTS, "rows": [(101, 2, 119, 36), (141, 2, 159, 36), (121, 2, 139, 36)], "side_faces_left": False},
+    "bean_kid": {"sheet": _RESIDENTS, "rows": [(264, 2, 281, 36), (302, 2, 319, 36), (283, 2, 300, 36)], "side_faces_left": False},
+    "bean_girl": {"sheet": _RESIDENTS, "rows": [(21, 180, 38, 211), (60, 180, 77, 211), (40, 180, 57, 211)], "side_faces_left": False},
+    "bean_guard": {"sheet": _NPC + "Beanbean Guards.png",
+                   "rows": [(0, 3, 226, 39), (0, 42, 180, 78), (0, 79, 226, 115)], "side_faces_left": True},
+    "shopkeeper": {"sheet": "Maps/Game Boy Advance - Mario & Luigi_ Superstar Saga - Maps - Beanbean Castle Town Shop (Interior).png",
+                   "rows": [(188, 116, 295, 153), (188, 44, 295, 82), (188, 153, 295, 190)], "side_faces_left": True, "flood": True},
+    "toad_blue": {"sheet": _NPC + "Toads.png", "rows": [(0, 2, 176, 35), (0, 35, 176, 67), (0, 69, 176, 101)], "side_faces_left": True},
+    "toadsworth": {"sheet": _NPC + "Toadsworth.png", "rows": [(0, 60, 145, 89), (0, 29, 145, 58), (0, 91, 145, 120)], "side_faces_left": True},
+    "dr_toad": {"sheet": _NPC + "Dr. Toad.png", "rows": [(0, 4, 176, 35), (0, 75, 176, 106), (0, 40, 176, 71)],
+                "side_faces_left": True, "flood": True},
+    "lady_lima": {"sheet": _NPC + "Lady Lima.png", "rows": [(225, 48, 350, 85), (225, 86, 360, 123), (225, 12, 350, 49)],
+                  "side_faces_left": False, "flood": True},
+    "queen_bean": {"sheet": _NPC + "Queen Bean.png", "rows": [(3, 670, 54, 715), (423, 670, 464, 715), (213, 670, 264, 715)],
+                   "side_faces_left": False},
+    "koopa_troop": {"sheet": _NPC + "Koopa Troopas.png", "rows": [(0, 5, 212, 40), (0, 40, 212, 75), (0, 76, 212, 111)], "side_faces_left": False},
+    "koopa_troop_red": {"sheet": _NPC + "Koopa Troopas.png", "rows": [(0, 117, 212, 152), (0, 152, 212, 187), (0, 188, 212, 223)],
+                        "side_faces_left": False},
+    "border_bro": {"sheet": _NPC + "Border Bros.png", "rows": [(12, 32, 128, 74), (12, 82, 146, 122), (130, 32, 250, 74)],
+                   "side_faces_left": False, "flood": True},
+    "hoohoo_villager": {"sheet": _NPC + "Hoohooligans.png", "rows": [(0, 104, 150, 142), (0, 67, 150, 103), (0, 29, 150, 67)],
+                        "side_faces_left": False, "strip": [(80, 80, 80)]},
+    "hoohoo_villager_b": {"sheet": _NPC + "Hoohooligans.png", "rows": [(150, 104, 295, 142), (150, 141, 295, 179), (150, 29, 295, 67)],
+                          "side_faces_left": False, "strip": [(80, 80, 80)]},
+}
+
 
 def bands(mask):
     out, start = [], None
@@ -189,7 +223,7 @@ def build(name, cfg, root):
 
 if __name__ == "__main__":
     root = sys.argv[1]
-    for name, cfg in CHARACTERS.items():
+    for name, cfg in {**CHARACTERS, **NPCS}.items():
         if len(sys.argv) > 2 and name not in sys.argv[2:]:
             continue
         build(name, cfg, root)

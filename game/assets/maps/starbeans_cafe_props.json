@@ -1,0 +1,5 @@
+{"props": [
+{"name":"stool_w","shape":"rect","rect":[111,111,36,46],"base":156,"foot":[118,147,22,9]},
+{"name":"stool_s","shape":"rect","rect":[159,159,36,47],"base":205,"foot":[166,196,22,9]},
+{"name":"stool_e","shape":"rect","rect":[319,143,36,47],"base":189,"foot":[326,180,22,9]}
+]}

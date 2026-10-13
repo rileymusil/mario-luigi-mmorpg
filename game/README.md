@@ -25,8 +25,9 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
   Good: Mario, Luigi, Princess Peach, Professor E. Gadd, Vivian, Waluigi, Rosalina, Toadette.
   Evil: Bowser, Rookie Bowser, Dimentio, Grodus, Mimi, the Koopa Bros., Bowser Jr., Shadow Mario.
   Good players start in Beanbean Castle Town, evil players at Bowser's Castle.
-- **Explore three maps** built from the Superstar Saga map art: Castle Town, Beanbean Outskirts and Bowser's Castle, joined by exits at the town gates, the Outskirts' south path and east bridge, and the castle's rail bridge.
-- **Battle** enemies in the Outskirts (Goombas, Galoombas, Beanies, Koopa Troopas, Shy Guys, Buzzy Beetles and Dry Bones). Touch one to fight; jump on it first for a first strike.
+- **Explore** maps built from the Superstar Saga map art (see *Maps* below): Castle Town with ten buildings you can walk into, Beanbean Outskirts, Stardust Fields, Hoohoo Village and Bowser's Castle. Walk up into a door to go in; walk down onto the door mat to go back out.
+- **Talk** to the townsfolk (X): they give hints, and some do more. The Mushroom Shop (and the Badge Shop, which is out of badges) sells Mushrooms for coins, so does a Koopa at Bowser's Castle (heroes pay extra, and so do villains in town). The Elder, Dr. Toad, the Starbeans Cafe and the west Hoohoo hut heal your party for free.
+- **Battle** enemies in the Outskirts and Stardust Fields (Goombas, Galoombas, Beanies, Koopa Troopas, Shy Guys, Buzzy Beetles and Dry Bones). Touch one to fight; jump on it first for a first strike.
   - *Jump*: press Z as you land for a second stomp (Good / Excellent).
   - *Special* (costs SP), each a timed press (Z in the gold zone unless it says otherwise):
 
@@ -68,14 +69,14 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
   | Buzzy Beetle | Shell Spin | Tackle; Excellent lowers DEF by 1. |
   | Dry Bones | Bone Toss | Throw. |
   - Pick a command block over whoever's turn it is (arrows and Z, point and click, or tap it), then a target (X, B, a right click or a tap on nobody goes back). Timed-press hints name the A button when you play by touch. Each map has its own battle background.
-- **Recruit.** Good players ask Toad or the Pianta in Castle Town (X to talk). Evil players use *Ask to join* in battle; hurt enemies say yes more often. Up to 2 follow you and fight on their own turn.
 - **Grow.** XP and levels (cap 50), coins, Mushrooms. Losing sends you home with a few coins lost.
 - **Switch sides** any time from the menu. **Saves** go to the browser automatically.
 
 ## Project layout
 - `scenes/title.tscn` (main scene), `scenes/world.tscn` (any map), `scenes/battle.tscn`.
 - `scripts/game.gd` (autoload `Game`): all data tables (characters, specials, battle moves of partners and recruits, partners, enemies, maps with exits, spawns, enemies and NPCs), the save, and scene changes. Most tuning happens here.
-- `scripts/world.gd`: map loading, walking on the walk mask, followers, enemies, talking, pause menu.
+- `scripts/world.gd`: map loading, walking on the walk mask, doors and exits, followers, enemies, talking (choices, shops, heals), pause menu.
+- `data/dialogue.json` and `scripts/dialogue_data.gd`: what NPCs say (see *Dialogue* below).
 - `scripts/map_props.gd`: trees, buildings and other tall things you can walk behind (props), the walk mask loader. `scripts/map_editor.gd`: the debug-only map editor (F2).
 - `scripts/battle.gd`: battle flow, timed presses, specials, recruiting, XP. `ui/command_blocks.gd` and
   `ui/target_picker.gd` are its command blocks and target pointer; `scripts/battle_transition.gd` is the
@@ -90,6 +91,52 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
 - `assets/ui/`: menu art and the bitmap fonts (`mlss_font.fnt`, `mlss_font_outline.fnt`).
 - `assets/battle/`: battle art. `backgrounds/<id>.png` are 240x160 battle backgrounds; a map's `battle_bg` in `MAPS` picks one (falls back to `outskirts`).
 - `assets/characters/`: walk sheets, 3 rows (down, right, up). `assets/maps/`: map art, `<map>_mask.png` (the ground: white = walkable) and `<map>_props.json` (trees and buildings, see below).
+
+## Maps
+| Map id | Name | Kind | Exits |
+|---|---|---|---|
+| `castle_town` | Beanbean Castle Town | town | gates to the Outskirts; doors into the palace and nine buildings |
+| `house_nw` | Elder's House | inside | door to Castle Town |
+| `house_sw` | Beanish House | inside | door to Castle Town |
+| `house_s` | Toad Lodge | inside | door to Castle Town |
+| `house_se` | Dr. Toad's Clinic | inside | door to Castle Town |
+| `house_ne` | Beanbean Town Hall | inside | two doors to Castle Town |
+| `shop_mushroom` | Mushroom Shop | inside | door to Castle Town |
+| `shop_badge` | Badge Shop | inside | door to Castle Town |
+| `starbeans_cafe` | Starbeans Cafe | inside | door to Castle Town |
+| `castle_hall` | Beanbean Castle | inside | palace door to Castle Town, arch to the throne room |
+| `throne_room` | Throne Room | inside | back to the castle hall |
+| `outskirts` | Beanbean Outskirts | wild | south path to Castle Town, east bridge to Bowser's Castle, east path to Stardust Fields |
+| `stardust_fields` | Stardust Fields | wild | west paths to the Outskirts, north path and east edge to Hoohoo Village |
+| `hoohoo_village` | Hoohoo Village | town | west and south to Stardust Fields, doors into two huts |
+| `hoohoo_hut_w`, `hoohoo_hut_e` | Hoohoo Hut | inside | door to Hoohoo Village |
+| `bowser_castle` | Bowser's Castle | evil home | rail bridge to the Outskirts |
+
+Towns and insides are `safe` (no enemies, no duels). The online server takes any map id made of `a-z`, `0-9` and `_` (up to 32), so new maps need no server change.
+
+### Adding an area or a building inside
+1. Add the map to `MAPS` in `tools/make_maps.py` (its sheet, crop box and how to find the floor, plus hand `walk`/`block` boxes) and run `python3 tools/make_maps.py "<Mario&LuigiMMO folder>" <id>`; or drop `<id>.png` and `<id>_mask.png` into `assets/maps/` yourself. Add `<id>_props.json` for anything to walk behind. Run `godot --headless --path game --import`.
+2. Add an entry to `MAPS` in `scripts/game.gd`: `name`, `safe`, `battle_bg` (wild maps), `spawns` (named points where you arrive), `exits`, `enemies` and `npcs`.
+3. Join it up: each exit is `{"rect": Rect2(...), "to": map, "spawn": name}`. For a building, put a `"door": true` exit over the door in the outside map (it only opens while you push up into it) and a plain exit over the inside door mat; give each side a spawn just in front of the other's exit (not inside it), so going in and back out lands you where you started.
+4. Check that every spawn, NPC and enemy stands on walkable ground and every exit can be reached (open the map editor with F2 to see the mask). Rooms smaller than the screen are centred on black.
+
+NPC keys: `id` (sprite sheet: an entry in `NPCS`, `PARTNERS`, `CHARACTERS` or `ENEMIES`), `pos`, `talk` (dialogue id; defaults to `id`), `face` (`down`, `up`, `left`, `right`), `fixed` (stand exactly at `pos`, e.g. behind a counter) and `reach` (how close you must be to talk; shopkeepers use 56 to talk over the counter).
+
+### Dialogue
+`data/dialogue.json` maps a talk id to `{"name"?: speaker, "branches": [...]}`. The first branch whose `if` matches the player is used:
+```json
+"mushroom_shop": {"name": "Shopkeeper", "branches": [
+  {"if": {"side": "evil"}, "say": ["It costs more for you!"], "choices": [...], "shop": [...]},
+  {"say": ["Welcome to the Mushroom Shop! What can I get you?"],
+   "choices": [{"text": "Buy", "do": "shop"}, {"text": "Just looking"}],
+   "shop": [{"item": "mushroom", "count": 1, "price": 8, "thanks": "Thank you!"}]}
+]}
+```
+- `say`: pages shown in turn (`"random": true` picks one). With `choices`, the last page stays up as the question.
+- Conditions in `if`: `side` (`good`/`evil`), `min_level`, `max_level`, `party_full` (true/false).
+- A choice can `say` more pages and `do` one of `recruit` (partners only), `shop` (sells the branch's `shop` list; items are in `ITEMS` in game.gd) or `heal` (full HP and SP for the party; `done` is the line shown after).
+- `{name}` and `{character}` in any line become the player's name and character.
+- Partners need no entry: they say their `line` from `PARTNERS` and offer to join (and back away from evil players). An entry with their id overrides that.
 
 ## Maps: ground, props and the map editor
 Each map is one picture plus two data files:
