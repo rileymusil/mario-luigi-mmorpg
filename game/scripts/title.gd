@@ -50,11 +50,17 @@ func _pick_character(side: String) -> void:
 	preview.visible = true
 	preview.character_id = ids[0]
 	var watcher := func():
-		while menu.visible:
+		while preview.visible:
 			preview.character_id = ids[menu._index]
 			await get_tree().process_frame
 	watcher.call()
+	# Room for the longer list and two-line special descriptions.
+	var home := menu.position
+	menu.position = Vector2(112, 64)
+	menu.info_width = 250.0
 	var i := await menu.choose(names, "", true, [], infos)
+	menu.position = home
+	menu.info_width = 150.0
 	preview.visible = false
 	if i < 0:
 		_pick_side()

@@ -18,8 +18,18 @@ const CHARACTERS := {
 		"special": "thunderhand"},
 	"peach": {"name": "Princess Peach", "side": "good", "frames": 8, "hp": 18, "sp": 14, "pow": 4, "def": 2,
 		"special": "peach_heart"},
+	"waluigi": {"name": "Waluigi", "side": "good", "frames": 5, "hp": 21, "sp": 10, "pow": 5, "def": 2,
+		"special": "wicked_whirl"},
+	"rosalina": {"name": "Rosalina", "side": "good", "frames": 7, "hp": 18, "sp": 14, "pow": 4, "def": 2,
+		"special": "star_spin"},
+	"toadette": {"name": "Toadette", "side": "good", "frames": 10, "hp": 17, "sp": 12, "pow": 4, "def": 2,
+		"special": "pickaxe_pound"},
 	"bowser": {"name": "Bowser", "side": "evil", "frames": 5, "hp": 26, "sp": 10, "pow": 6, "def": 3,
 		"special": "fire_breath"},
+	"bowser_jr": {"name": "Bowser Jr.", "side": "evil", "frames": 1, "hp": 22, "sp": 12, "pow": 5, "def": 2,
+		"special": "goop_paint"},
+	"shadow_mario": {"name": "Shadow Mario", "side": "evil", "frames": 1, "hp": 20, "sp": 12, "pow": 5, "def": 2,
+		"special": "shadow_drain"},
 }
 
 const SPECIALS := {
@@ -27,12 +37,18 @@ const SPECIALS := {
 	"thunderhand": {"name": "Thunderhand", "sp": 4, "info": "Electric punch. Great timing stuns."},
 	"peach_heart": {"name": "Peach's Heart", "sp": 5, "info": "Heals the whole party."},
 	"fire_breath": {"name": "Fire Breath", "sp": 5, "info": "Burns every enemy at once."},
+	"wicked_whirl": {"name": "Wicked Whirl", "sp": 5, "info": "Hits every enemy. Excellent stuns all."},
+	"star_spin": {"name": "Star Spin", "sp": 5, "info": "Hits one enemy, heals the party a bit."},
+	"pickaxe_pound": {"name": "Pickaxe Pound", "sp": 4, "info": "Heavy hit that ignores defense."},
+	"goop_paint": {"name": "Goop Paint", "sp": 4, "info": "Goopy hit. Great timing stuns."},
+	"shadow_drain": {"name": "Shadow Drain", "sp": 5, "info": "Steals HP from an enemy."},
 }
 
 ## Partners (good side) and recruitable enemies (evil side). `recruit` is the
 ## base chance that asking works; it goes up as the enemy gets weaker.
 const PARTNERS := {
 	"toad": {"name": "Toad", "frames": 8, "hp": 14, "pow": 3, "def": 1, "recruit": 0.5},
+	"pianta": {"name": "Pianta", "frames": 3, "hp": 20, "pow": 4, "def": 2, "recruit": 0.35},
 }
 
 const ENEMIES := {
@@ -40,6 +56,16 @@ const ENEMIES := {
 		"recruit": 0.4},
 	"beanie": {"name": "Beanie", "frames": 8, "hp": 14, "pow": 5, "def": 1, "xp": 6, "coins": 5,
 		"recruit": 0.3},
+	"galoomba": {"name": "Galoomba", "frames": 8, "hp": 9, "pow": 3, "def": 0, "xp": 3, "coins": 2,
+		"recruit": 0.45},
+	"koopa": {"name": "Koopa Troopa", "frames": 5, "hp": 14, "pow": 4, "def": 2, "xp": 6, "coins": 4,
+		"recruit": 0.35},
+	"shy_guy": {"name": "Shy Guy", "frames": 6, "hp": 12, "pow": 5, "def": 1, "xp": 5, "coins": 4,
+		"recruit": 0.35},
+	"buzzy_beetle": {"name": "Buzzy Beetle", "frames": 8, "hp": 12, "pow": 4, "def": 4, "xp": 7, "coins": 5,
+		"recruit": 0.3},
+	"dry_bones": {"name": "Dry Bones", "frames": 5, "hp": 16, "pow": 5, "def": 2, "xp": 10, "coins": 7,
+		"recruit": 0.25},
 }
 
 ## Maps: art and walk mask in res://assets/maps/ (built by tools/make_maps.py).
@@ -53,7 +79,7 @@ const MAPS := {
 			{"rect": Rect2(0, 380, 22, 60), "to": "outskirts", "spawn": "south_path"},
 		],
 		"enemies": [],
-		"npcs": [{"id": "toad", "pos": Vector2(435, 311)}],
+		"npcs": [{"id": "toad", "pos": Vector2(435, 311)}, {"id": "pianta", "pos": Vector2(560, 330)}],
 	},
 	"outskirts": {
 		"name": "Beanbean Outskirts", "safe": false,
@@ -66,6 +92,10 @@ const MAPS := {
 			{"type": "goomba", "pos": Vector2(628, 178)}, {"type": "goomba", "pos": Vector2(607, 345)},
 			{"type": "beanie", "pos": Vector2(1046, 178)}, {"type": "goomba", "pos": Vector2(816, 492)},
 			{"type": "beanie", "pos": Vector2(1004, 544)}, {"type": "beanie", "pos": Vector2(1318, 345)},
+			{"type": "koopa", "pos": Vector2(700, 222)}, {"type": "shy_guy", "pos": Vector2(883, 300)},
+			{"type": "buzzy_beetle", "pos": Vector2(1150, 250)}, {"type": "galoomba", "pos": Vector2(678, 545)},
+			{"type": "dry_bones", "pos": Vector2(1250, 130)}, {"type": "koopa", "pos": Vector2(1228, 457)},
+			{"type": "shy_guy", "pos": Vector2(1100, 600)}, {"type": "galoomba", "pos": Vector2(548, 447)},
 		],
 		"npcs": [],
 	},

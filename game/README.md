@@ -16,14 +16,14 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
 | Menu | Enter or Esc | Start |
 
 ## What you can do
-- **Pick a side and a character.** Good: Mario, Luigi, Princess Peach. Evil: Bowser.
+- **Pick a side and a character.** Good: Mario, Luigi, Princess Peach, Waluigi, Rosalina, Toadette. Evil: Bowser, Bowser Jr., Shadow Mario.
   Good players start in Beanbean Castle Town, evil players at Bowser's Castle.
 - **Explore three maps** built from the Superstar Saga map art: Castle Town, Beanbean Outskirts and Bowser's Castle, joined by exits at the town gates, the Outskirts' south path and east bridge, and the castle's rail bridge.
-- **Battle** enemies in the Outskirts (Goombas and Beanies). Touch one to fight; jump on it first for a first strike.
+- **Battle** enemies in the Outskirts (Goombas, Galoombas, Beanies, Koopa Troopas, Shy Guys, Buzzy Beetles and Dry Bones). Touch one to fight; jump on it first for a first strike.
   - *Jump*: press Z as you land for a second stomp (Good / Excellent).
-  - *Special* (costs SP): Mario's Fire Jump burns, Luigi's Thunderhand can stun, Peach's Heart heals the party, Bowser's Fire Breath hits every enemy. Press Z in the gold zone.
+  - *Special* (costs SP): Mario's Fire Jump burns, Luigi's Thunderhand can stun, Peach's Heart heals the party, Bowser's Fire Breath hits every enemy, Waluigi's Wicked Whirl hits every enemy and can stun them, Rosalina's Star Spin hits and heals, Toadette's Pickaxe Pound ignores defense, Bowser Jr.'s Goop Paint can stun, Shadow Mario's Shadow Drain steals HP. Press Z in the gold zone.
   - *Enemy turns*: press Z so whoever is attacked is in the air when it hits.
-- **Recruit.** Good players ask Toad in Castle Town (X to talk). Evil players use *Ask to join* in battle; hurt enemies say yes more often. Up to 2 follow you and fight on their own turn.
+- **Recruit.** Good players ask Toad or the Pianta in Castle Town (X to talk). Evil players use *Ask to join* in battle; hurt enemies say yes more often. Up to 2 follow you and fight on their own turn.
 - **Grow.** XP and levels (cap 50), coins, Mushrooms. Losing sends you home with a few coins lost.
 - **Switch sides** any time from the menu. **Saves** go to the browser automatically.
 
@@ -37,7 +37,7 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
 
 ## Adding art
 Both tools read the original sheets from the `Mario&LuigiMMO` art folder (not in this repo):
-- `python3 tools/slice_sprites.py "<Mario&LuigiMMO folder>" [ids]` cuts walk cycles. Add a character with the pixel boxes of its down, side and up rows, then add it to `CHARACTERS`, `PARTNERS` or `ENEMIES` in `game.gd`.
+- `python3 tools/slice_sprites.py "<Mario&LuigiMMO folder>" [ids]` cuts walk cycles. Add a character with the pixel boxes of its down, side and up rows (options for white backgrounds and drawn-on shadows are described at the top of the script), then add it to `CHARACTERS`, `PARTNERS` or `ENEMIES` in `game.gd`.
 - `python3 tools/make_maps.py "<Mario&LuigiMMO folder>" [ids]` crops a map and guesses its walk mask from colours. You can touch up any `_mask.png` by hand in a paint program (white = walk, black = blocked); re-running the tool overwrites hand edits.
 
 ## Publishing

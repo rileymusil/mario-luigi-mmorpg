@@ -229,7 +229,7 @@ func _special(a: Dictionary, target: Dictionary) -> void:
 	match id:
 		"fire_jump":
 			await _jump_attack(a, target, 3)
-		"thunderhand":
+		"thunderhand", "goop_paint":
 			var result := await _timing_bar(1.2)
 			await _walk(a["node"], target["node"].position + Vector2(-22, 0), 220.0)
 			_damage(target, a["pow"] + 2 + (2 if result == "Excellent" else 0))
@@ -245,12 +245,36 @@ func _special(a: Dictionary, target: Dictionary) -> void:
 			for ally in _alive(allies):
 				_set_hp(ally, _hp(ally) + heal)
 			_show_rating("%s  +%d HP" % [result, heal])
-		"fire_breath":
+		"fire_breath", "wicked_whirl":
 			var result := await _timing_bar(1.0)
 			var bonus: int = {"Excellent": 3, "Good": 1, "Miss": -1}[result]
 			_show_rating(result)
 			for f in _alive(foes):
 				_damage(f, a["pow"] + bonus)
+				if id == "wicked_whirl" and result == "Excellent" and f["hp"] > 0:
+					f["stun"] = true
+		"star_spin":
+			var result := await _timing_bar(1.0)
+			var bonus: int = {"Excellent": 3, "Good": 1, "Miss": 0}[result]
+			_damage(target, a["pow"] + 1 + bonus)
+			var heal: int = {"Excellent": 6, "Good": 4, "Miss": 2}[result]
+			for ally in _alive(allies):
+				_set_hp(ally, _hp(ally) + heal)
+			_show_rating("%s  +%d HP" % [result, heal])
+		"pickaxe_pound":
+			var result := await _timing_bar(1.1)
+			await _walk(a["node"], target["node"].position + Vector2(-22, 0), 220.0)
+			var bonus: int = {"Excellent": 4, "Good": 2, "Miss": 0}[result]
+			_damage(target, a["pow"] + bonus + int(target["def"]))
+			_show_rating(result)
+			await _walk(a["node"], a["home"], 160.0)
+			a["node"].facing = Vector2.RIGHT
+		"shadow_drain":
+			var result := await _timing_bar(1.0)
+			var bonus: int = {"Excellent": 3, "Good": 1, "Miss": 0}[result]
+			var dealt := _damage(target, a["pow"] + bonus)
+			_set_hp(a, _hp(a) + dealt)
+			_show_rating("%s  +%d HP" % [result, dealt])
 	await _wait(0.6)
 
 
@@ -274,7 +298,7 @@ func _ask(target: Dictionary) -> void:
 		await _wait(0.8)
 
 
-func _damage(target: Dictionary, amount: int) -> void:
+func _damage(target: Dictionary, amount: int) -> int:
 	var dmg := maxi(1, amount - int(target["def"]))
 	_set_hp(target, _hp(target) - dmg)
 	_flash(target["node"])
@@ -287,6 +311,7 @@ func _damage(target: Dictionary, amount: int) -> void:
 		t.tween_interval(0.3)
 		t.tween_property(target["node"], "modulate:a", 0.0, 0.4)
 	_refresh()
+	return dmg
 
 
 # --- Enemy turn ----------------------------------------------------------------
