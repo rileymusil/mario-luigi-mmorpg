@@ -56,4 +56,10 @@ jobs:
         if: github.event_name != 'pull_request' && env.CLOUDFLARE_API_TOKEN != ''
         run: |
           URL=$(grep -o 'https://[^ ]*\.workers\.dev' deploy.log | head -1)
-          SERVER="${URL/https:/wss:}" npm test
+          # A new version can take a few seconds to reach every Cloudflare
+          # location, so give it up to three tries.
+          for try in 1 2 3; do
+            sleep 15
+            SERVER="${URL/https:/wss:}" npm test && exit 0
+          done
+          exit 1
