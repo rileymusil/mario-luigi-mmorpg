@@ -34,4 +34,7 @@ web build add `?server=ws://127.0.0.1:8787` to the page address.
 6. Put that address in `SERVER_URL` in `game/scripts/net.gd`, with `wss://`
    in place of `https://`, and push. Pages redeploys the game.
 
-After that, every push to `main` that touches `server/` redeploys the server.
+After that, every push to `main` that touches `server/` redeploys the server
+and runs the smoke test against the live address.
+
+Live server: `wss://mario-luigi-mmo.rileymusil2006.workers.dev`
