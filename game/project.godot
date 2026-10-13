@@ -15,6 +15,7 @@ config/icon="res://icon.svg"
 
 Game="*res://scripts/game.gd"
 Net="*res://scripts/net.gd"
+TouchControls="*res://ui/touch_controls.gd"
 
 [display]
 
@@ -24,6 +25,7 @@ window/size/window_width_override=1152
 window/size/window_height_override=648
 window/stretch/mode="canvas_items"
 window/stretch/aspect="keep"
+window/handheld/orientation=4
 
 [gui]
 
