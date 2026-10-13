@@ -135,7 +135,7 @@ func _process(_delta: float) -> void:
 	_show(stick, roaming)
 	_show(menu_button, roaming)
 	_show(fullscreen_button, _can_fullscreen and active and not blocked and (roaming or path == Game.TITLE_SCENE))
-	_layout()
+	_layout(path == Game.BATTLE_SCENE or path == Game.PVP_SCENE)
 
 
 func _show(c: Control, on: bool) -> void:
@@ -153,12 +153,19 @@ func _any_visible(group: StringName) -> bool:
 	return false
 
 
-func _layout() -> void:
+func _layout(battle := false) -> void:
 	var vp := _root.get_viewport_rect().size
 	stick.position = (Vector2(44, vp.y - 56) - stick.size / 2.0).round()
-	# Clear of the bottom bars (hint, battle status), touch circles not overlapping.
-	a_button.position = (Vector2(vp.x - 30, vp.y - 72) - a_button.size / 2.0).round()
-	b_button.position = (Vector2(vp.x - 70, vp.y - 46) - b_button.size / 2.0).round()
+	if battle:
+		# Battles (and duels): A over B on the right edge, under the foe list,
+		# above the party bar and clear of where enemies stand and of the
+		# characters you tap to pick a target (battle.gd ENEMY_SPOTS).
+		a_button.position = (Vector2(vp.x - 21, 96) - a_button.size / 2.0).round()
+		b_button.position = (Vector2(vp.x - 21, 146) - b_button.size / 2.0).round()
+	else:
+		# Clear of the bottom bars (hint, chat), touch circles not overlapping.
+		a_button.position = (Vector2(vp.x - 30, vp.y - 72) - a_button.size / 2.0).round()
+		b_button.position = (Vector2(vp.x - 70, vp.y - 46) - b_button.size / 2.0).round()
 	var x := vp.x - 4.0
 	for b in [menu_button, fullscreen_button]:
 		var panel: Control = b.get_child(0)
