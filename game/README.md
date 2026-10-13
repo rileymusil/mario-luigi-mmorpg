@@ -21,23 +21,65 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
 **Phones and tablets.** Hold the phone sideways. The on-screen controls show on touch screens (or after your first touch) and hide when you press a key; several fingers work at once, so you can walk and jump together. Only the buttons that make sense show: none on the title screen (tap the menus), A and B in battle, all of them while walking around, and none while someone is talking. On Android, the corners button next to MENU goes full screen and keeps the game sideways; on iPhone, use Share > Add to Home Screen to play full screen. Typing (your username, or chat with the Chat button) opens the browser's own text box, so the phone's keyboard comes up.
 
 ## What you can do
-- **Pick a side and a character.** Good: Mario, Luigi, Princess Peach, Waluigi, Rosalina, Toadette. Evil: Bowser, Bowser Jr., Shadow Mario.
+- **Pick a side and a character** (eight a side; the card on the right shows stats and the signature move).
+  Good: Mario, Luigi, Princess Peach, Professor E. Gadd, Vivian, Waluigi, Rosalina, Toadette.
+  Evil: Bowser, Rookie Bowser, Dimentio, Grodus, Mimi, the Koopa Bros., Bowser Jr., Shadow Mario.
   Good players start in Beanbean Castle Town, evil players at Bowser's Castle.
 - **Explore three maps** built from the Superstar Saga map art: Castle Town, Beanbean Outskirts and Bowser's Castle, joined by exits at the town gates, the Outskirts' south path and east bridge, and the castle's rail bridge.
 - **Battle** enemies in the Outskirts (Goombas, Galoombas, Beanies, Koopa Troopas, Shy Guys, Buzzy Beetles and Dry Bones). Touch one to fight; jump on it first for a first strike.
   - *Jump*: press Z as you land for a second stomp (Good / Excellent).
-  - *Special* (costs SP): Mario's Fire Jump burns, Luigi's Thunderhand can stun, Peach's Heart heals the party, Bowser's Fire Breath hits every enemy, Waluigi's Wicked Whirl hits every enemy and can stun them, Rosalina's Star Spin hits and heals, Toadette's Pickaxe Pound ignores defense, Bowser Jr.'s Goop Paint can stun, Shadow Mario's Shadow Drain steals HP. Press Z in the gold zone.
+  - *Special* (costs SP), each a timed press (Z in the gold zone unless it says otherwise):
+
+    | Character | Special | What it does |
+    |---|---|---|
+    | Mario | Fire Jump | Jump (Z as you land) that burns the enemy for 3 turns (4 on Excellent). |
+    | Luigi | Thunderhand | Electric punch. Excellent stuns (Good: half the time); a stunned enemy loses its next turn. |
+    | Princess Peach | Peach's Heart | Heals the whole party 6 / 10 / 14 HP (Miss / Good / Excellent). |
+    | Professor E. Gadd | Poltergust Pull | Sucks HP out of an enemy into E. Gadd. Excellent also steals its item: a Mushroom, then coins once it has nothing left. |
+    | Vivian | Shade Veil | Vivian hides in the shadows: the next attack on her misses and she hits back with fire (Excellent also burns). If nobody attacks, the fire comes out at her next turn. |
+    | Bowser | Fire Breath | Hits every enemy. |
+    | Rookie Bowser | Rookie Rush | Up to 3 shell bashes, Z as each one hits. Every Excellent in a row adds 2 damage; a miss ends the rush. |
+    | Dimentio | Magic Cube | Traps an enemy in a box. On its next turn the box explodes (POW+3, +6 on Excellent) instead of it acting. A miss only fizzles. |
+    | Grodus | Grodus Bolt | Lightning on every enemy; lowers their DEF for the battle (1 on Good, 2 on Excellent). |
+    | Mimi | Mimic | Copies the last move the target used (what it is known for if it hasn't acted yet), with Mimi's power. |
+    | Koopa Bros. | Bros. Tower | The other three brothers jump onto the stack, Z as each lands (a miss knocks him off); then the tower spins into the enemy. More brothers, more damage. |
+    | Waluigi / Rosalina / Toadette | Wicked Whirl / Star Spin / Pickaxe Pound | Hits all and can stun all / hits and heals the party / ignores DEF. |
+    | Bowser Jr. / Shadow Mario | Goop Paint / Shadow Drain | Can stun / steals HP. |
+
+    The enemy box lists burn, stun, cube and lowered DEF next to each enemy.
   - *Enemy turns*: press Z so whoever is attacked is in the air when it hits.
+- **Recruit.** Good players talk to partners (X) and ask them to join: Toad, the Pianta, Bombette, Goombella, Bobbery, Prince Peasley, Koops and Bow in Castle Town, Yoshi Kid and Yoshi in the Outskirts. Evil players use *Ask to join* in battle on any enemy; hurt enemies say yes more often and stronger ones less. Up to 2 follow you and fight on their own turn with their own timed move:
+
+  | Partner / recruit | Move | Kind |
+  |---|---|---|
+  | Toad | Mushroom Toss | Throw; Excellent also heals the party 3 HP. |
+  | Pianta | Pianta Slam | Heavy tackle. |
+  | Bombette | Bomb | Hits every enemy. |
+  | Bow | Smack | Up to 3 slaps, a press each. |
+  | Bobbery | Bob-ombast | Hits every enemy; Excellent burns them. |
+  | Goombella, Goomba | Headbonk | Jump, Z as you land for a 2nd hit. |
+  | Koops, Koopa Troopa | Shell Toss | Throw; Excellent hits the next enemy too. |
+  | Yoshi Kid | Gulp | Tackle that ignores DEF. |
+  | Prince Peasley | Rose Toss | Throw; Excellent lowers DEF by 2. |
+  | Yoshi | Ground Pound | Jump; Excellent stuns. |
+  | Beanie | Bean Bash | Tackle; Excellent stuns. |
+  | Galoomba | Rolling Bump | Tackle. |
+  | Shy Guy | Shy Spin | Up to 2 hits. |
+  | Buzzy Beetle | Shell Spin | Tackle; Excellent lowers DEF by 1. |
+  | Dry Bones | Bone Toss | Throw. |
+  - Pick a command block over whoever's turn it is (arrows and Z, point and click, or tap it), then a target (X, B, a right click or a tap on nobody goes back). Timed-press hints name the A button when you play by touch. Each map has its own battle background.
 - **Recruit.** Good players ask Toad or the Pianta in Castle Town (X to talk). Evil players use *Ask to join* in battle; hurt enemies say yes more often. Up to 2 follow you and fight on their own turn.
 - **Grow.** XP and levels (cap 50), coins, Mushrooms. Losing sends you home with a few coins lost.
 - **Switch sides** any time from the menu. **Saves** go to the browser automatically.
 
 ## Project layout
 - `scenes/title.tscn` (main scene), `scenes/world.tscn` (any map), `scenes/battle.tscn`.
-- `scripts/game.gd` (autoload `Game`): all data tables (characters, specials, partners, enemies, maps with exits, spawns, enemies and NPCs), the save, and scene changes. Most tuning happens here.
+- `scripts/game.gd` (autoload `Game`): all data tables (characters, specials, battle moves of partners and recruits, partners, enemies, maps with exits, spawns, enemies and NPCs), the save, and scene changes. Most tuning happens here.
 - `scripts/world.gd`: map loading, walking on the walk mask, followers, enemies, talking, pause menu.
 - `scripts/map_props.gd`: trees, buildings and other tall things you can walk behind (props), the walk mask loader. `scripts/map_editor.gd`: the debug-only map editor (F2).
-- `scripts/battle.gd`: battle flow, timed presses, specials, recruiting, XP.
+- `scripts/battle.gd`: battle flow, timed presses, specials, recruiting, XP. `ui/command_blocks.gd` and
+  `ui/target_picker.gd` are its command blocks and target pointer; `scripts/battle_transition.gd` is the
+  star swipe into battles and the fade out of them.
 - `scripts/character_sprite.gd`, `scripts/choice_menu.gd`: shared sprite and menu box (keys, mouse and touch).
 - `ui/touch_controls.gd` (autoload `TouchControls`): the on-screen joystick (`ui/touch_stick.gd`) and buttons (`ui/touch_button.gd`). They press the same input actions as the keys, so game code just reads `Input` as usual. Anything that should hide them while it is open joins the `touch_blockers` group (the speech balloon and text box do). `ui/pointer.gd` has small helpers that treat a click and a tap alike.
 - `ui/theme.tres`: the project's default theme (Superstar Saga font, speech-balloon panels and the
@@ -46,6 +88,7 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
   `ui/` also holds the reusable pieces: `dialogue_box` (typed-in speech balloon), `hud`,
   `area_banner`, `pause_screen` (notebook), `party_screen` (stat cards) and `gold_number`.
 - `assets/ui/`: menu art and the bitmap fonts (`mlss_font.fnt`, `mlss_font_outline.fnt`).
+- `assets/battle/`: battle art. `backgrounds/<id>.png` are 240x160 battle backgrounds; a map's `battle_bg` in `MAPS` picks one (falls back to `outskirts`).
 - `assets/characters/`: walk sheets, 3 rows (down, right, up). `assets/maps/`: map art, `<map>_mask.png` (the ground: white = walkable) and `<map>_props.json` (trees and buildings, see below).
 
 ## Maps: ground, props and the map editor
@@ -66,6 +109,7 @@ Run the game from the Godot editor (F5), walk to a map and press **F2**. Players
 The tools read the original sheets from the `Mario&LuigiMMO` art folder (not in this repo):
 - `python3 tools/slice_sprites.py "<Mario&LuigiMMO folder>" [ids]` cuts walk cycles. Add a character with the pixel boxes of its down, side and up rows (options for white backgrounds and drawn-on shadows are described at the top of the script), then add it to `CHARACTERS`, `PARTNERS` or `ENEMIES` in `game.gd`.
 - `python3 tools/slice_ui.py "<Mario&LuigiMMO folder>"` cuts the menu art (speech balloons, notebook, stat cards, gold digits, icons, title art, the touch A / B buttons and joystick) into `assets/ui/` and builds the two bitmap fonts from the MLSS alphabet. Re-run `godot --headless --import` afterwards.
+- `python3 tools/slice_battle.py "<Mario&LuigiMMO folder>"` cuts the battle art into `assets/battle/`: backgrounds (add one by giving its id and spot on the sheet in `BACKGROUNDS`), command blocks and their pictures, A-button badges, rating word art, status icons and the battle start swipe.
 - `python3 tools/make_maps.py "<Mario&LuigiMMO folder>" [ids]` crops a map and guesses its walk mask from colours, opening up the ground behind the props in `<map>_props.json` (`python3 tools/make_maps.py --mask-only [ids]` rebuilds just the masks from the art in the repo). Touch up masks and props in the map editor (or `_mask.png` in any paint program: white = walk, black = blocked); re-running the tool overwrites hand-painted masks.
 
 ## Publishing

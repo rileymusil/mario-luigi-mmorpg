@@ -50,7 +50,7 @@ offset_bottom = 120.0
 script = ExtResource("2_menu")
 
 [node name="Preview" type="Node2D" parent="."]
-position = Vector2(60, 150)
+position = Vector2(52, 156)
 scale = Vector2(2, 2)
 script = ExtResource("3_sprite")
 

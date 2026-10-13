@@ -21,6 +21,9 @@ extends RefCounted
 ## "heal" (full HP and SP for you and your party).
 ## Conditions: side ("good"/"evil"), min_level, max_level, party_full (bool).
 ## In any text, {name} becomes the player's name and {character} their character.
+##
+## Partners (Game.PARTNERS) need no entry: they say their `line` and offer to
+## join, and back away from evil players. An entry with their id overrides that.
 
 const PATH := "res://data/dialogue.json"
 const CONDITIONS := ["side", "min_level", "max_level", "party_full"]
@@ -40,13 +43,25 @@ static func all() -> Dictionary:
 
 
 static func has(id: String) -> bool:
-	return all().has(id)
+	return not entry(id).is_empty()
+
+
+## Dialogue `id` from the file, or the standard one for a partner.
+static func entry(id: String) -> Dictionary:
+	if all().has(id):
+		return all()[id]
+	if Game.PARTNERS.has(id):
+		return {"branches": [
+			{"if": {"side": "evil"}, "say": ["Eek! You're one of Bowser's bunch! Stay back!"]},
+			{"say": [Game.PARTNERS[id].get("line", "Want to team up?")],
+			 "choices": [{"text": "Ask to join", "do": "recruit"}, {"text": "Never mind"}]},
+		]}
+	return {}
 
 
 ## The first branch of dialogue `id` whose conditions match player `p`.
 static func pick(id: String, p: Dictionary) -> Dictionary:
-	var entry: Dictionary = all().get(id, {})
-	for branch in entry.get("branches", []):
+	for branch in entry(id).get("branches", []):
 		if matches(branch.get("if", {}), p):
 			return branch
 	return {"say": ["..."]}
@@ -76,9 +91,9 @@ static func matches(cond: Dictionary, p: Dictionary) -> bool:
 
 ## The name on the speech balloon's tab.
 static func speaker(id: String, npc_id: String) -> String:
-	var entry: Dictionary = all().get(id, {})
-	if entry.has("name"):
-		return str(entry["name"])
+	var e := entry(id)
+	if e.has("name"):
+		return str(e["name"])
 	for table in [Game.NPCS, Game.PARTNERS, Game.CHARACTERS, Game.ENEMIES]:
 		if table.has(npc_id):
 			return table[npc_id]["name"]

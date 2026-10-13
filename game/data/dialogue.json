@@ -1,19 +1,4 @@
 {
-  "toad": {
-    "branches": [
-      {"if": {"side": "evil"}, "say": ["Eek! You're one of Bowser's bunch! Stay back!"]},
-      {"say": ["Going out to the Outskirts? It's dangerous out there..."],
-       "choices": [{"text": "Ask to join", "do": "recruit"}, {"text": "Never mind"}]}
-    ]
-  },
-  "pianta": {
-    "branches": [
-      {"if": {"side": "evil"}, "say": ["Eek! You're one of Bowser's bunch! Stay back!"]},
-      {"say": ["Going out to the Outskirts? It's dangerous out there..."],
-       "choices": [{"text": "Ask to join", "do": "recruit"}, {"text": "Never mind"}]}
-    ]
-  },
-
   "palace_guard": {
     "branches": [
       {"if": {"side": "evil"}, "say": ["Halt! We know one of Bowser's lot when we see one.", "...Fine, go in. But the whole castle guard will be watching you, {character}!"]},

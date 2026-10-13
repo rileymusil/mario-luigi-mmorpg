@@ -98,6 +98,12 @@ func choose(options: Array, title := "", cancellable := false, enabled: Array = 
 	_active = false
 	_refresh()
 	reset_size()
+	pivot_offset = size / 2.0
+	scale = Vector2(0.92, 0.92)
+	modulate.a = 0.5
+	var tw := create_tween()
+	tw.tween_property(self, "scale", Vector2.ONE, 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(self, "modulate:a", 1.0, 0.08)
 	# Wait a frame so the press that opened the menu doesn't also pick.
 	await get_tree().process_frame
 	_active = true
@@ -124,6 +130,8 @@ func highlight(i: int) -> void:
 		return
 	_index = i
 	_refresh()
+	if i < _cursors.size() and is_instance_valid(_cursors[i]):
+		_cursors[i].position.x = 2.0
 	highlighted.emit(i)
 
 
@@ -153,7 +161,7 @@ func _process(delta: float) -> void:
 	# The pointer nudges left and right like in the save menu.
 	_time += delta
 	var c := _cursors[clampi(_index, 0, _cursors.size() - 1)]
-	c.position.x = -1.0 + roundf(sin(_time * 7.0) * 1.5)
+	c.position.x = lerpf(c.position.x, -1.0 + sin(_time * 7.0) * 1.5, clampf(18.0 * delta, 0.0, 1.0))
 
 
 func _input(event: InputEvent) -> void:
@@ -204,6 +212,12 @@ func _pick(i: int) -> void:
 	if not _is_enabled(i):
 		return
 	_active = false
+	if i < _cursors.size() and is_instance_valid(_cursors[i]):
+		var c := _cursors[i]
+		var tw := create_tween()
+		tw.tween_property(c, "position:x", 3.0, 0.05)
+		tw.tween_property(c, "position:x", -1.0, 0.05)
+		await tw.finished
 	chosen.emit(i)
 
 
