@@ -19,7 +19,8 @@ OUT = os.path.join(os.path.dirname(__file__), "..", "game", "assets", "character
 # only has one direction). side_faces_left: the side row looks left on the
 # source sheet and gets mirrored. Optional: "bg" overrides the background colour,
 # "strip" lists extra colours to clear (drawn-on shadows), "flood" clears only
-# background that touches the frame edge (for white sheets with white sprites).
+# background that touches the frame edge (for white sheets with white sprites),
+# "recolor" writes extra palette-swapped copies ({new id: {old rgb: new rgb}}).
 CHARACTERS = {
     "mario": {"sheet": "Playable Characters GOOD/Game Boy Advance - Mario & Luigi_ Superstar Saga - Playable Characters - Mario (Overworld).png",
               "rows": [(0, 8, 176, 48), (0, 86, 176, 126), (0, 169, 176, 209)], "side_faces_left": False},
@@ -58,6 +59,46 @@ CHARACTERS = {
                 "rows": [(0, 30, 175, 75)] * 3, "side_faces_left": True, "strip": [(84, 109, 142)]},
     "buzzy_beetle": {"sheet": "Enemies/Custom _ Edited - Mario Customs - Buzzy Beetle, Spiny & Related Enemies - Buzzy Beetle (Mario & Luigi_ Superstar Saga-Style).png",
                      "rows": [(0, 27, 220, 55)] * 3, "side_faces_left": True},
+    # Phase 6 roster. Battle-style sheets with one pose (Vivian, Dimentio, Mimi,
+    # Bombette) repeat the same box for all three rows.
+    "egadd": {"sheet": "Playable Characters GOOD/Game Boy Advance - Mario & Luigi_ Superstar Saga - Non-Playable Characters - Professor E. Gadd.png",
+              "rows": [(0, 4, 230, 48), (0, 100, 230, 146), (0, 52, 230, 97)], "side_faces_left": False},
+    "vivian": {"sheet": "Playable Characters GOOD/Custom _ Edited - Paper Mario Customs - Thousand-Year Door Partners - Vivian (Mario & Luigi_ Superstar Saga-Style).png",
+               "rows": [(0, 0, 58, 42)] * 3, "side_faces_left": False, "flood": True},
+    "rookie_bowser": {"sheet": "Playable Characters EVIL/Game Boy Advance - Mario & Luigi_ Superstar Saga - Non-Playable Characters - Rookie Bowser (USA).png",
+                      "rows": [(0, 20, 300, 70), (0, 138, 365, 186), (0, 82, 300, 132)], "side_faces_left": False},
+    "dimentio": {"sheet": "Playable Characters EVIL/Custom _ Edited - Paper Mario Customs - Dimentio - Dimentio (Mario & Luigi_ Superstar Saga-Style).png",
+                 "rows": [(0, 30, 90, 98)] * 3, "side_faces_left": False},
+    "grodus": {"sheet": "Playable Characters EVIL/Custom _ Edited - Paper Mario Customs - Grodus & the X-Nauts - Grodus (Mario & Luigi_ Superstar Saga-Style).png",
+               "rows": [(300, 160, 620, 216), (300, 284, 620, 340), (300, 220, 606, 276)], "side_faces_left": False,
+               "bg": (255, 255, 255), "flood": True},
+    "mimi": {"sheet": "Playable Characters EVIL/Custom _ Edited - Paper Mario Customs - Other Bosses - Mimi (Mario & Luigi Superstar Saga Battle-Style).png",
+             "rows": [(0, 32, 130, 80)] * 3, "side_faces_left": True, "flood": True},
+    # recolor: extra sheets with the red shell/mask swapped for the other three
+    # brothers' colours (swatches from the sheet's "Pallets" box).
+    "koopa_bros": {"sheet": "Playable Characters EVIL/Custom _ Edited - Paper Mario Customs - Paper Mario 64 Bosses - Koopa Bros (Mario & Luigi_ Superstar Saga-Style).png",
+                   "rows": [(374, 256, 492, 296), (374, 332, 492, 368), (374, 296, 492, 331)], "side_faces_left": False,
+                   "flood": True, "recolor": {
+                       "koopa_bros_green": {(255, 8, 8): (128, 216, 48), (200, 0, 0): (0, 176, 0), (160, 0, 0): (0, 120, 32)},
+                       "koopa_bros_yellow": {(255, 8, 8): (247, 195, 0), (200, 0, 0): (224, 152, 0), (160, 0, 0): (173, 115, 0)},
+                       "koopa_bros_black": {(255, 8, 8): (132, 132, 132), (200, 0, 0): (98, 98, 98), (160, 0, 0): (69, 69, 69)},
+                   }},
+    "bombette": {"sheet": "Partners GOOD/Custom _ Edited - Paper Mario Customs - Paper Mario 64 Partners - Bombette (Mario & Luigi_ Superstar Saga-Style).png",
+                 "rows": [(0, 0, 136, 35)] * 3, "side_faces_left": False, "flood": True, "strip": [(41, 48, 66)]},
+    "bow": {"sheet": "Partners GOOD/Custom _ Edited - Paper Mario Customs - Paper Mario 64 Partners - Bow (Mario & Luigi_ Superstar Saga-Style).png",
+            "rows": [(68, 383, 198, 412), (208, 383, 328, 412), (338, 383, 468, 412)], "side_faces_left": False},
+    "bobbery": {"sheet": "Partners GOOD/Custom _ Edited - Paper Mario Customs - Thousand-Year Door Partners - Bobbery (Mario & Luigi_ Superstar Saga-Style).png",
+                "rows": [(223, 88, 298, 122), (28, 88, 123, 122), (298, 88, 363, 122)], "side_faces_left": False, "flood": True},
+    "goombella": {"sheet": "Partners GOOD/Custom _ Edited - Paper Mario Customs - Thousand-Year Door Partners - Goombella (Mario & Luigi_ Superstar Saga-Style).png",
+                  "rows": [(0, 2, 75, 32), (8, 32, 132, 62), (75, 2, 148, 32)], "side_faces_left": False, "flood": True},
+    "koops": {"sheet": "Partners GOOD/Custom _ Edited - Paper Mario Customs - Thousand-Year Door Partners - Koops (Mario & Luigi_ Superstar Saga-Style).png",
+              "rows": [(25, 85, 180, 121), (20, 47, 240, 84), (25, 120, 180, 155)], "side_faces_left": True, "flood": True},
+    "yoshi_kid": {"sheet": "Partners GOOD/Custom _ Edited - Paper Mario Customs - Thousand-Year Door Partners - Yoshi Kid (Mario & Luigi_ Superstar Saga-Style).png",
+                  "rows": [(462, 2, 508, 32), (0, 2, 160, 32), (509, 2, 555, 32)], "side_faces_left": True, "flood": True},
+    "peasley": {"sheet": "Partners GOOD/Game Boy Advance - Mario & Luigi_ Superstar Saga - Non-Playable Characters - Prince Peasley.png",
+                "rows": [(0, 3, 220, 44), (0, 141, 210, 182), (0, 46, 220, 88)], "side_faces_left": False},
+    "yoshi": {"sheet": "Partners GOOD/Game Boy Advance - Mario & Luigi_ Superstar Saga - Non-Playable Characters - Yoshi.png",
+              "rows": [(0, 3, 170, 42), (0, 83, 232, 121), (0, 43, 170, 82)], "side_faces_left": True, "flood": True},
 }
 
 
@@ -130,6 +171,16 @@ def build(name, cfg, root):
     os.makedirs(OUT, exist_ok=True)
     sheet.save(os.path.join(OUT, name + ".png"))
     print(name, [len(r) for r in rows], (cw, ch))
+    for other, swap in cfg.get("recolor", {}).items():
+        copy = sheet.copy()
+        px = copy.load()
+        for y in range(copy.size[1]):
+            for x in range(copy.size[0]):
+                c = px[x, y]
+                if c[3] > 0 and c[:3] in swap:
+                    px[x, y] = (*swap[c[:3]], c[3])
+        copy.save(os.path.join(OUT, other + ".png"))
+        print(other, "(recolour of %s)" % name)
 
 
 if __name__ == "__main__":
