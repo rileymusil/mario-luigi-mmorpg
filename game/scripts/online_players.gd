@@ -3,7 +3,8 @@ extends Node
 ## Draws the other players on this map (from Net), puts name tags over
 ## everyone (you included), runs text chat with speech bubbles, and handles
 ## parties: X next to another player to team up; your partner's tag is green
-## and taking an exit brings them along.
+## and taking an exit brings them along. Evil players can also pick "Battle!"
+## on a good player outside town to start an online duel (pvp_battle.gd).
 ## The world creates one and calls setup(), then tick() every frame.
 
 const GLIDE_SPEED := 96.0
@@ -11,6 +12,8 @@ const BUBBLE_SECONDS := 5.0
 const REACH := 26.0  # how close you must be to press X on someone
 const PARTNER_COLOR := Color(0.55, 1, 0.55)
 const REACH_COLOR := Color(1, 0.9, 0.3)
+const CHALLENGE_WAIT := 10.0  # give up if the other game doesn't answer by then
+const BUSY_GRACE := 6.0       # an attacked player in a menu gets this long to close it
 
 var others := {}  # id -> {node, target, velocity}
 var _spawn: Callable  # world._spawn_character
@@ -21,6 +24,9 @@ var _invites: Array = []  # [{from, name}] waiting for you to answer
 var _map_id := ""
 static var _announced := ""  # partner already announced, so map changes don't repeat it
 static var _followed := false  # arrived by following, so step aside from the partner
+var _challenge := {}  # an evil player attacked you: start once you're free
+var _challenge_age := 0.0
+var _waiting := 0.0  # seconds left waiting for the player you attacked
 ## Optional: maps a reported position onto ground walkable on this map.
 var snap := Callable()
 
@@ -39,6 +45,11 @@ func setup(world: Node, spawn_character: Callable, local_player: CharacterSprite
 	Net.invited.connect(func(from_id, who): _invites.append({"from": from_id, "name": who}))
 	Net.invite_declined.connect(func(who): chat.system("%s said no thanks." % who))
 	Net.party_changed.connect(_on_party_changed)
+	Net.in_world = true
+	tree_exiting.connect(func(): Net.in_world = false)
+	Net.challenged.connect(_on_challenged)
+	Net.duel_started.connect(_on_duel_started)
+	Net.duel_over.connect(_on_duel_over)
 	add_name_tag(_player, Game.username())
 	Net.player_joined.connect(_on_player_joined)
 	Net.player_moved.connect(_on_player_moved)
@@ -58,6 +69,19 @@ func tick(delta: float, busy: bool) -> void:
 	for id in others:
 		var tag: Label = others[id]["node"].get_node("NameTag")
 		tag.modulate = PARTNER_COLOR if id == Net.party_id else (REACH_COLOR if id == near and not busy else Color.WHITE)
+	if _waiting > 0.0:
+		_waiting -= delta
+		if _waiting <= 0.0:
+			Net.end_duel("cancel")
+			chat.system("They didn't answer.")
+	if not _challenge.is_empty():
+		_challenge_age += delta
+		if not busy:
+			Net.answer_challenge(true)
+			_challenge = {}
+		elif _challenge_age > BUSY_GRACE:
+			Net.answer_challenge(false)
+			_challenge = {}
 	if busy:
 		return
 	if not Net.pending_warp.is_empty():
@@ -110,12 +134,21 @@ func _interact(id: String) -> void:
 		options = ["Leave party", "Cancel"]
 		enabled = [true, true]
 		infos = ["Go separate ways.", ""]
+	elif Game.player["side"] == "evil" and Net.players[id].get("side", "good") == "good":
+		var town: bool = Game.MAPS[_map_id].get("safe", true)
+		options.insert(0, "Battle!")
+		enabled.insert(0, not town and _waiting <= 0.0)
+		infos.insert(0, "No fighting in town." if town else "Take them down!")
 	_world.busy = true
 	var i: int = await _world.menu.choose(options, who, true, enabled, infos)
 	_world.busy = false
 	if i < 0 or options[i] == "Cancel" or not Net.players.has(id):
 		return
 	match options[i]:
+		"Battle!":
+			Net.challenge(id)
+			_waiting = CHALLENGE_WAIT
+			chat.system("You attack %s!" % who)
 		"Team up":
 			Net.send_invite(id)
 			chat.system("You asked %s to team up." % who)
@@ -133,6 +166,28 @@ func _answer_invite(inv: Dictionary) -> void:
 		["Travel together.", ""])
 	_world.busy = false
 	Net.answer_invite(inv["from"], i == 0)
+
+
+func _on_challenged(foe: Dictionary) -> void:
+	_challenge = foe
+	_challenge_age = 0.0
+	chat.system("%s attacks you!" % foe["name"])
+
+
+func _on_duel_started(foe: Dictionary, first: bool) -> void:
+	_waiting = 0.0
+	_world.busy = true
+	Game.start_pvp(foe, first, _player.position)
+
+
+func _on_duel_over(result: String) -> void:
+	_waiting = 0.0
+	_challenge = {}
+	match result:
+		"busy":
+			chat.system("They're busy. Try again in a moment.")
+		"refused":
+			chat.system("You can't attack them right now.")
 
 
 func _on_party_changed() -> void:
