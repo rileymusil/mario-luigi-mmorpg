@@ -46,6 +46,12 @@ var _layer: CanvasLayer
 var _status: Label
 var _message := ""
 var _saved_zoom := Vector2.ONE
+var _mouse_screen := Vector2.ZERO  # last mouse position from input events
+
+
+## The mouse in map pixels (follows the camera when it pans or zooms).
+func _mouse() -> Vector2:
+	return make_canvas_position_local(_mouse_screen)
 
 
 static func available() -> bool:
@@ -70,13 +76,14 @@ func _ready() -> void:
 	add_child(_layer)
 	var panel := ColorRect.new()
 	panel.color = Color(0, 0, 0, 0.55)
-	panel.position = Vector2(0, 18)
+	panel.position = Vector2(0, 20)
 	panel.size = Vector2(384, 56)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_layer.add_child(panel)
 	_status = Label.new()
-	_status.position = Vector2(4, 18)
+	_status.position = Vector2(4, 20)
 	_status.size = Vector2(376, 56)
+	_status.add_theme_font_override("font", ThemeDB.fallback_font)  # small and plain, whatever the game theme
 	_status.add_theme_font_size_override("font_size", 8)
 	_status.add_theme_color_override("font_color", Color(1, 1, 0.8))
 	_status.add_theme_color_override("font_outline_color", Color.BLACK)
@@ -112,12 +119,15 @@ func _input(event: InputEvent) -> void:
 		return
 	if not is_open:
 		return
+	if event is InputEventMouse:
+		_mouse_screen = event.position
 	if event is InputEventKey and event.pressed and not event.echo:
 		_key(event)
 	elif event is InputEventMouseButton:
 		_mouse_button(event)
-	elif event is InputEventMouseMotion and _drag != "":
-		_mouse_drag()
+	elif event is InputEventMouseMotion:
+		if _drag != "":
+			_mouse_drag()
 	else:
 		return
 	get_viewport().set_input_as_handled()
@@ -139,7 +149,7 @@ func _key(event: InputEventKey) -> void:
 			if event.ctrl_pressed or event.meta_pressed:
 				save()
 		KEY_N:
-			_new_prop(get_global_mouse_position())
+			_new_prop(_mouse())
 		KEY_C:
 			if selected:
 				var d := selected.to_dict()
@@ -175,7 +185,7 @@ func _mouse_button(event: InputEventMouseButton) -> void:
 	if event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 		cam.zoom = (cam.zoom / 1.25).clamp(Vector2(0.25, 0.25), Vector2(4, 4))
 		return
-	var pt := get_global_mouse_position()
+	var pt := _mouse()
 	if not event.pressed:
 		if _drag == "paint":
 			world.rebuild_collision()
@@ -203,7 +213,7 @@ func _mouse_button(event: InputEventMouseButton) -> void:
 
 
 func _mouse_drag() -> void:
-	var pt := get_global_mouse_position()
+	var pt := _mouse()
 	if _drag == "paint":
 		_paint_line(_last_paint, pt)
 		_last_paint = pt
@@ -352,4 +362,4 @@ func _draw() -> void:
 			draw_rect(Rect2(c - Vector2(h, h), Vector2(h, h) * 2), Color(1, 1, 0.2))
 		draw_polyline(selected.polygon + PackedVector2Array([selected.polygon[0]]), Color(0.4, 0.9, 1), -1.0)
 	if mode != Mode.PROPS:
-		draw_arc(get_global_mouse_position(), brush, 0, TAU, 24, Color.WHITE if mode == Mode.WALK else Color.RED, -1.0)
+		draw_arc(_mouse(), brush, 0, TAU, 24, Color.WHITE if mode == Mode.WALK else Color.RED, -1.0)
