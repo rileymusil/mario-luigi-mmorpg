@@ -48,4 +48,12 @@ jobs:
 
       - name: Deploy to Cloudflare
         if: github.event_name != 'pull_request' && env.CLOUDFLARE_API_TOKEN != ''
-        run: npx wrangler deploy
+        run: |
+          set -o pipefail
+          npx wrangler deploy | tee deploy.log
+
+      - name: Smoke test the deployed server
+        if: github.event_name != 'pull_request' && env.CLOUDFLARE_API_TOKEN != ''
+        run: |
+          URL=$(grep -o 'https://[^ ]*\.workers\.dev' deploy.log | head -1)
+          SERVER="${URL/https:/wss:}" npm test

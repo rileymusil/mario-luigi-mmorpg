@@ -7,7 +7,7 @@ extends Node
 
 ## wss:// address of the deployed Worker. On the web build you can also
 ## override it with ?server=wss://... in the page address.
-const SERVER_URL := ""
+const SERVER_URL := "wss://mario-luigi-mmo.rileymusil2006.workers.dev"
 const SEND_RATE := 5.0        # position updates per second while moving
 const PING_SECONDS := 20.0    # keeps idle connections from being dropped
 const RETRY_SECONDS := [2.0, 5.0, 10.0, 30.0]
