@@ -23,6 +23,7 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
   - *Jump*: press Z as you land for a second stomp (Good / Excellent).
   - *Special* (costs SP): Mario's Fire Jump burns, Luigi's Thunderhand can stun, Peach's Heart heals the party, Bowser's Fire Breath hits every enemy, Waluigi's Wicked Whirl hits every enemy and can stun them, Rosalina's Star Spin hits and heals, Toadette's Pickaxe Pound ignores defense, Bowser Jr.'s Goop Paint can stun, Shadow Mario's Shadow Drain steals HP. Press Z in the gold zone.
   - *Enemy turns*: press Z so whoever is attacked is in the air when it hits.
+  - Pick a command block over whoever's turn it is (arrows and Z, or point and click / tap), then a target (X goes back). Each map has its own battle background.
 - **Recruit.** Good players ask Toad or the Pianta in Castle Town (X to talk). Evil players use *Ask to join* in battle; hurt enemies say yes more often. Up to 2 follow you and fight on their own turn.
 - **Grow.** XP and levels (cap 50), coins, Mushrooms. Losing sends you home with a few coins lost.
 - **Switch sides** any time from the menu. **Saves** go to the browser automatically.
@@ -32,7 +33,9 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
 - `scripts/game.gd` (autoload `Game`): all data tables (characters, specials, partners, enemies, maps with exits, spawns, enemies and NPCs), the save, and scene changes. Most tuning happens here.
 - `scripts/world.gd`: map loading, walking on the walk mask, followers, enemies, talking, pause menu.
 - `scripts/map_props.gd`: trees, buildings and other tall things you can walk behind (props), the walk mask loader. `scripts/map_editor.gd`: the debug-only map editor (F2).
-- `scripts/battle.gd`: battle flow, timed presses, specials, recruiting, XP.
+- `scripts/battle.gd`: battle flow, timed presses, specials, recruiting, XP. `ui/command_blocks.gd` and
+  `ui/target_picker.gd` are its command blocks and target pointer; `scripts/battle_transition.gd` is the
+  star swipe into battles and the fade out of them.
 - `scripts/character_sprite.gd`, `scripts/choice_menu.gd`: shared sprite and menu box.
 - `ui/theme.tres`: the project's default theme (Superstar Saga font, speech-balloon panels and the
   `NavyPanel`, `StripPanel`, `NotebookPanel`, `RedCard`/`GreenCard`, `FlatPanel` and
@@ -40,6 +43,7 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
   `ui/` also holds the reusable pieces: `dialogue_box` (typed-in speech balloon), `hud`,
   `area_banner`, `pause_screen` (notebook), `party_screen` (stat cards) and `gold_number`.
 - `assets/ui/`: menu art and the bitmap fonts (`mlss_font.fnt`, `mlss_font_outline.fnt`).
+- `assets/battle/`: battle art. `backgrounds/<id>.png` are 240x160 battle backgrounds; a map's `battle_bg` in `MAPS` picks one (falls back to `outskirts`).
 - `assets/characters/`: walk sheets, 3 rows (down, right, up). `assets/maps/`: map art, `<map>_mask.png` (the ground: white = walkable) and `<map>_props.json` (trees and buildings, see below).
 
 ## Maps: ground, props and the map editor
@@ -60,6 +64,7 @@ Run the game from the Godot editor (F5), walk to a map and press **F2**. Players
 The tools read the original sheets from the `Mario&LuigiMMO` art folder (not in this repo):
 - `python3 tools/slice_sprites.py "<Mario&LuigiMMO folder>" [ids]` cuts walk cycles. Add a character with the pixel boxes of its down, side and up rows (options for white backgrounds and drawn-on shadows are described at the top of the script), then add it to `CHARACTERS`, `PARTNERS` or `ENEMIES` in `game.gd`.
 - `python3 tools/slice_ui.py "<Mario&LuigiMMO folder>"` cuts the menu art (speech balloons, notebook, stat cards, gold digits, icons, title art) into `assets/ui/` and builds the two bitmap fonts from the MLSS alphabet. Re-run `godot --headless --import` afterwards.
+- `python3 tools/slice_battle.py "<Mario&LuigiMMO folder>"` cuts the battle art into `assets/battle/`: backgrounds (add one by giving its id and spot on the sheet in `BACKGROUNDS`), command blocks and their pictures, A-button badges, rating word art, status icons and the battle start swipe.
 - `python3 tools/make_maps.py "<Mario&LuigiMMO folder>" [ids]` crops a map and guesses its walk mask from colours, opening up the ground behind the props in `<map>_props.json` (`python3 tools/make_maps.py --mask-only [ids]` rebuilds just the masks from the art in the repo). Touch up masks and props in the map editor (or `_mask.png` in any paint program: white = walk, black = blocked); re-running the tool overwrites hand-painted masks.
 
 ## Publishing

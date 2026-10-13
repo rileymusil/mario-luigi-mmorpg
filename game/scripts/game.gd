@@ -69,10 +69,11 @@ const ENEMIES := {
 }
 
 ## Maps: art and walk mask in res://assets/maps/ (built by tools/make_maps.py).
+## battle_bg: res://assets/battle/backgrounds/<id>.png, behind battles started here.
 ## exits: walking into `rect` moves you to `to` at that map's `spawn` point.
 const MAPS := {
 	"castle_town": {
-		"name": "Beanbean Castle Town", "safe": true,
+		"name": "Beanbean Castle Town", "battle_bg": "castle_town", "safe": true,
 		"spawns": {"start": Vector2(320, 560), "east_gate": Vector2(1350, 409), "west_gate": Vector2(70, 409)},
 		"exits": [
 			{"rect": Rect2(1430, 380, 22, 60), "to": "outskirts", "spawn": "south_path"},
@@ -82,7 +83,7 @@ const MAPS := {
 		"npcs": [{"id": "toad", "pos": Vector2(435, 311)}, {"id": "pianta", "pos": Vector2(560, 330)}],
 	},
 	"outskirts": {
-		"name": "Beanbean Outskirts", "safe": false,
+		"name": "Beanbean Outskirts", "battle_bg": "outskirts", "safe": false,
 		"spawns": {"south_path": Vector2(800, 615), "east_bridge": Vector2(1420, 65)},
 		"exits": [
 			{"rect": Rect2(760, 630, 90, 7), "to": "castle_town", "spawn": "east_gate"},
@@ -100,7 +101,7 @@ const MAPS := {
 		"npcs": [],
 	},
 	"bowser_castle": {
-		"name": "Bowser's Castle", "safe": true,
+		"name": "Bowser's Castle", "battle_bg": "bowser_castle", "safe": true,
 		"spawns": {"start": Vector2(205, 250), "bridge": Vector2(205, 580)},
 		"exits": [{"rect": Rect2(170, 605, 70, 10), "to": "outskirts", "spawn": "east_bridge"}],
 		"enemies": [],
@@ -232,7 +233,7 @@ func go_to_map(map_id: String, spawn: String) -> void:
 func start_battle(enemies: Array, defeated_key: String, overworld_position: Vector2) -> void:
 	player["position"] = [overworld_position.x, overworld_position.y]
 	pending_battle = {"enemies": enemies, "key": defeated_key}
-	get_tree().call_deferred("change_scene_to_file", BATTLE_SCENE)
+	BattleTransition.into_battle(get_tree(), BATTLE_SCENE)
 
 
 ## result: "won", "lost" or "fled".
