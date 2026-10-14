@@ -88,10 +88,10 @@ offset_right = 221.0
 offset_bottom = 138.0
 horizontal_alignment = 1
 
-[node name="Targets" type="PanelContainer" parent="."]
+[node name="Targets" type="PanelContainer" parent="Book"]
 layout_mode = 0
-offset_left = 196.0
-offset_top = 96.0
-offset_right = 296.0
-offset_bottom = 136.0
+offset_left = 124.0
+offset_top = 68.0
+offset_right = 224.0
+offset_bottom = 108.0
 script = ExtResource("3_menu")

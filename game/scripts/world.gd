@@ -611,8 +611,6 @@ func _shop(branch: Dictionary, speaker: String, node: Node2D) -> void:
 	var markup := float(branch.get("markup", 1.0))
 	menu.max_rows = 5
 	menu.info_width = 190.0
-	# The help line under the list can change height: keep the menu on screen.
-	menu.resized.connect(_place_menu)
 	var question := "What can I do for you?"
 	while true:
 		dialog.open("%s You have %d coins." % [question, Game.player["coins"]], speaker)
@@ -626,7 +624,6 @@ func _shop(branch: Dictionary, speaker: String, node: Node2D) -> void:
 		else:
 			break
 		question = "Anything else?"
-	menu.resized.disconnect(_place_menu)
 	menu.max_rows = 0
 	menu.info_width = 150.0
 

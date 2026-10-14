@@ -7,7 +7,7 @@ extends Control
 ## world.gd runs the menus and does what the item does.
 
 @onready var menu: ChoiceMenu = $Book/Menu
-@onready var targets: ChoiceMenu = $Targets
+@onready var targets: ChoiceMenu = $Book/Targets
 @onready var name_label: Label = $Book/Name
 @onready var icon: TextureRect = $Book/Icon
 @onready var info: Label = $Book/Info
@@ -21,6 +21,13 @@ func _ready() -> void:
 	menu.max_rows = 5
 	menu.custom_minimum_size.x = 64
 	menu.highlighted.connect(_show)
+	get_tree().root.size_changed.connect(_center_book)
+
+
+## Same place as the pause notebook (pause_screen.gd): the middle of the screen.
+func _center_book() -> void:
+	var book: Control = $Book
+	book.position = ((get_viewport_rect().size - book.size) / 2.0).round()
 
 
 static func icon_of(id: String) -> Texture2D:
@@ -33,6 +40,7 @@ func choose_item(ids: Array, usable: Array, start := 0) -> int:
 	_ids = ids
 	var labels := ids.map(func(id): return "x%d" % Game.item_count(id))
 	var icons := ids.map(func(id): return icon_of(id))
+	_center_book()
 	visible = true
 	start = clampi(start, 0, maxi(ids.size() - 1, 0))
 	_show(start)
