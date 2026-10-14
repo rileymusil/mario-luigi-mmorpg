@@ -31,6 +31,7 @@ var player: CharacterSprite
 var followers: Array[CharacterSprite] = []
 var enemies: Array = []   # [{node, home, target, pause, key, type}]
 var npcs: Array = []      # [{node, id}]
+var save_prompt: TextPrompt  # password box for saving online (made when first needed)
 var busy := false         # true while a menu or dialog is open
 var _grace := 1.5         # seconds after arriving before enemies can start a battle
 ## The leader's path, followed by the party: x, y, 1 where a jump started,
@@ -784,9 +785,10 @@ func _pause_menu() -> void:
 				continue
 			3:
 				Game.save()
-				await say("Game saved in this browser.")
+				await _save_online()
 			4:
 				Game.save()
+				Cloud.upload()
 				Net.leave()
 				get_tree().change_scene_to_file(Game.TITLE_SCENE)
 				return
@@ -794,6 +796,54 @@ func _pause_menu() -> void:
 	pause_screen.close()
 	await get_tree().process_frame
 	busy = false
+
+
+## After saving: online too if this save is linked, else offers to link it
+## (a password for your username, so you can log in on any device).
+func _save_online() -> void:
+	if Cloud.linked():
+		var ok: bool = await Cloud.upload()
+		await say("Game saved. It's online too: log in as %s on any device." % Cloud.account_name() if ok
+			else "Game saved in this browser. Couldn't reach the server, so it goes online later.")
+		return
+	dialog.open("Game saved in this browser. Save online too, so you can log in and play on any device?")
+	var c := await pause_screen.menu.choose(["Save online", "Not now"], "", true)
+	dialog.close()
+	if c != 0:
+		return
+	if save_prompt == null:
+		save_prompt = TextPrompt.new()
+		$HUD.add_child(save_prompt)
+	save_prompt.position = ((get_viewport_rect().size - Vector2(160, 40)) / 2.0).round()
+	while true:
+		var password := await save_prompt.ask("Pick a password", "", 64,
+			"For logging in as %s." % Game.username(), true)
+		if password == "":
+			return
+		if password.length() < 4:
+			await say(Cloud.error_text("password"))
+			continue
+		var again := await save_prompt.ask("Type it again", "", 64, "Enter: OK   Esc: cancel", true)
+		if again == "":
+			return
+		if again != password:
+			await say("Those didn't match. Try again.")
+			continue
+		var err: String = await Cloud.register(password)
+		if err == "taken":
+			# Online names are one per player: pick another and try again.
+			var u := Game.clean_username(await save_prompt.ask("Pick another username",
+				Game.username(), 16, "Someone already saved online as %s." % Game.username()))
+			if u == "":
+				return
+			Game.player["username"] = u
+			Game.save()
+			err = await Cloud.register(password)
+		if err != "":
+			await say(Cloud.error_text(err))
+			return
+		await say("Saved online! Log in as %s with your password on any device." % Cloud.account_name())
+		return
 
 
 ## The Items page: pick an item, then who uses it (if it could be more than

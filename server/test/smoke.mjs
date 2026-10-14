@@ -266,5 +266,28 @@ await hero3.next("duel_start");
 g5.send({ t: "duel_hit", dmg: 3, hp: 17, dodged: false, guard: true });
 check((await hero3.next("duel_hit")).guard === true, "a guarded hit says so");
 for (const x of [hero3, vil, pal, fake, g5]) x.ws.close();
+
+// Online saves.
+const http = base.replace(/^ws/, "http");
+async function post(op, body) {
+  const r = await fetch(`${http}/account/${op}`, { method: "POST", body: JSON.stringify(body) });
+  return { status: r.status, body: await r.json(), cors: r.headers.get("access-control-allow-origin") };
+}
+const who = `Smoke ${Date.now() % 1000000}`;
+const reg = await post("register", { name: who, password: "pass1", save: { level: 3, saved_at: 100 } });
+check(reg.status === 200 && /^[a-f0-9]{32}$/.test(reg.body.token) && reg.cors === "*", "register hands out a token");
+check((await post("register", { name: who.toUpperCase(), password: "x1234", save: {} })).status === 409,
+  "the same name in other letter case is taken");
+check((await post("login", { name: who, password: "nope" })).status === 403, "a wrong password is refused");
+const login = await post("login", { name: who.toLowerCase(), password: "pass1" });
+check(login.status === 200 && login.body.save.level === 3 && login.body.saved_at === 100, "login returns the save");
+const saved = await post("save", { name: who, token: login.body.token, save: { level: 4, saved_at: 200 } });
+check(saved.status === 200 && saved.body.saved_at === 200, "a logged-in device can save");
+const loaded = await post("load", { name: who, token: reg.body.token });
+check(loaded.body.save.level === 4, "another device loads the newer save");
+check((await post("save", { name: who, token: "0".repeat(32), save: {} })).status === 401, "a made-up token can't save");
+check((await post("login", { name: "Nobody Here 0", password: "pass1" })).status === 403, "an unknown name can't log in");
+const big = { junk: "x".repeat(70000) };
+check((await post("save", { name: who, token: reg.body.token, save: big })).status >= 400, "a huge save is refused");
 console.log("all good");
 process.exit(0);

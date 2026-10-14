@@ -4,8 +4,14 @@
   "main": "src/index.ts",
   "compatibility_date": "2025-10-01",
   "durable_objects": {
-    "bindings": [{ "name": "ZONES", "class_name": "Zone" }]
+    "bindings": [
+      { "name": "ZONES", "class_name": "Zone" },
+      { "name": "ACCOUNTS", "class_name": "Account" }
+    ]
   },
   // The free plan only allows SQLite-backed Durable Objects.
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Zone"] }]
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Zone"] },
+    { "tag": "v2", "new_sqlite_classes": ["Account"] }
+  ]
 }
