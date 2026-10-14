@@ -652,6 +652,7 @@ func _ask(target: Dictionary) -> void:
 
 func _damage(target: Dictionary, amount: int) -> int:
 	var dmg := maxi(1, amount - int(target["def"]))
+	var was_up := _hp(target) > 0
 	_set_hp(target, _hp(target) - dmg)
 	_flash(target["node"])
 	var node: CharacterSprite = target["node"]
@@ -661,7 +662,7 @@ func _damage(target: Dictionary, amount: int) -> int:
 	rtw.tween_property(node, "position:x", node.position.x, 0.07)
 	_shake(2.5, 0.12)
 	_popup(target["node"].position + Vector2(0, -50), str(dmg))
-	if not target["ally"] and target["hp"] <= 0:
+	if not target["ally"] and target["hp"] <= 0 and was_up:  # rewards once, not per extra hit
 		var e: Dictionary = Game.foe_info(target["type"])
 		var share := 2 if target.get("rematch", false) else 1
 		xp_earned += e["xp"] / share
