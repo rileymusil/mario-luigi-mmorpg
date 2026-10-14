@@ -8,6 +8,11 @@ billed. The game keeps working offline when the server can't be reached.
 The protocol is described at the top of `src/index.ts`. The Godot side is
 `game/scripts/net.gd`.
 
+Online saves live in a second Durable Object, one per username that saved
+online (`src/accounts.ts`, HTTP API described at its top). It keeps a salted
+PBKDF2 password hash, login tokens and the latest save. The Godot side is
+`game/scripts/cloud.gd`.
+
 ## Run it locally
 
 ```sh

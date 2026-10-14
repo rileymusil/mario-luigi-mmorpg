@@ -640,9 +640,10 @@ func _ask(target: Dictionary) -> void:
 		await _wait(1.0)
 		return
 	if randf() < chance:
-		Game.player["party"].append(Game.make_member("boss" if boss else "enemy", target["type"]))
+		var to := Game.add_member(Game.make_member("boss" if boss else "enemy", target["type"]))
 		target["joined"] = true
-		message.text = "%s joined your party!" % target["name"]
+		message.text = "%s joined your party!" % target["name"] if to == "party" \
+			else "%s joined! It waits at %s." % [target["name"], Game.home_name()]
 		_show_rating("Lucky!")
 		xp_earned += e["xp"] / 2
 		target["hp"] = 0
@@ -1610,8 +1611,9 @@ func _boss_join(f: Dictionary) -> void:
 	message.text = "You ask %s to join you..." % f["name"]
 	await _wait(1.0)
 	if randf() < Game.BOSS_JOIN_CHANCE:
-		p["party"].append(Game.make_member("boss", f["type"]))
-		message.text = "%s joined your party!" % f["name"]
+		var to := Game.add_member(Game.make_member("boss", f["type"]))
+		message.text = "%s joined your party!" % f["name"] if to == "party" \
+			else "%s joined! It waits at %s." % [f["name"], Game.home_name()]
 		_show_rating("Lucky!")
 	else:
 		message.text = "%s refuses! (Beat it again and ask again.)" % f["name"]

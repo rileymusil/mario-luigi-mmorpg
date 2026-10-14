@@ -11,6 +11,7 @@ const COOP_GUEST_SCENE := "res://scenes/coop_guest.tscn"   # your partner's batt
 const SAVE_PATH := "user://save.json"
 const MAX_LEVEL := 50
 const MAX_PARTY := 2
+const MAX_BENCH := 12  # partners or recruits waiting at your home base
 
 ## Sprite sheets live in res://assets/characters/<id>.png: 3 rows (down,
 ## right, up) of `frames` cells. Built by tools/slice_sprites.py.
@@ -257,6 +258,41 @@ const ITEMS := {
 const ITEM_ORDER := ["mushroom", "super_mushroom", "ultra_mushroom", "syrup", "super_syrup", "one_up",
 	"refreshing_herb", "red_pepper", "green_pepper"]
 const MAX_ITEM := 99  # most of one item you can carry
+
+## Equipment: one pair of pants and one badge at a time, like Superstar
+## Saga. Wearing them adds their stats (hp, sp, pow, def) to yours; taking
+## them off takes them away again (see equip / unequip). Gear you carry is
+## Game.player["gear"] (id -> count), what you wear player["equip"] (slot ->
+## id). Shops sell it like items (`price`); pictures are
+## res://assets/items/<id>.png (tools/slice_gear.py).
+const GEAR := {
+	"thin_pants": {"name": "Thin Pants", "slot": "pants", "price": 30, "def": 1,
+		"info": "Plain, light pants. DEF +1."},
+	"work_pants": {"name": "Work Pants", "slot": "pants", "price": 80, "def": 2, "hp": 4,
+		"info": "Tough canvas for long trips. DEF +2, HP +4."},
+	"heart_jeans": {"name": "Heart Jeans", "slot": "pants", "price": 160, "def": 3, "hp": 8,
+		"info": "Jeans with a big heart. DEF +3, HP +8."},
+	"koopa_pants": {"name": "Koopa Pants", "slot": "pants", "price": 150, "def": 3, "pow": 1,
+		"info": "Shell-hard pants from Bowser's Castle. DEF +3, POW +1."},
+	"mountain_pants": {"name": "Mountain Pants", "slot": "pants", "price": 320, "def": 5, "hp": 10,
+		"info": "Woven by the Hoohoo folk. DEF +5, HP +10."},
+	"heart_badge": {"name": "Heart Badge", "slot": "badge", "price": 70, "hp": 8,
+		"info": "A badge full of pep. HP +8."},
+	"power_badge": {"name": "Power Badge", "slot": "badge", "price": 60, "pow": 2,
+		"info": "Hit harder. POW +2."},
+	"sp_badge": {"name": "SP Badge", "slot": "badge", "price": 60, "sp": 6,
+		"info": "More SP for special moves. SP +6."},
+	"guard_badge": {"name": "Guard Badge", "slot": "badge", "price": 70, "def": 2,
+		"info": "Shrug off hits. DEF +2."},
+	"spiny_badge": {"name": "Spiny Badge", "slot": "badge", "price": 220, "pow": 3, "def": 1,
+		"info": "Bowser's favourite. POW +3, DEF +1."},
+	"great_badge": {"name": "Great Badge", "slot": "badge", "price": 360, "pow": 4, "sp": 6,
+		"info": "A treasure of the mountain. POW +4, SP +6."},
+}
+const GEAR_ORDER := ["thin_pants", "work_pants", "heart_jeans", "koopa_pants", "mountain_pants",
+	"heart_badge", "power_badge", "sp_badge", "guard_badge", "spiny_badge", "great_badge"]
+const GEAR_SLOTS := ["pants", "badge"]
+const MAX_GEAR := 9  # most of one piece of gear you can carry
 
 ## What enemies sometimes leave behind after a battle: [item, chance].
 const DROPS := {
@@ -1028,13 +1064,36 @@ func new_player(character_id: String, username := "") -> void:
 
 # --- Items ------------------------------------------------------------------
 
+## An item's or a piece of gear's table entry (ITEMS, then GEAR).
+func goods(id: String) -> Dictionary:
+	return ITEMS.get(id, GEAR.get(id, {}))
+
+
+## How many of an item (or piece of gear, not counting what you wear) you carry.
 func item_count(id: String) -> int:
+	if GEAR.has(id):
+		return int(player.get("gear", {}).get(id, 0))
 	return int(player.get("items", {}).get(id, 0))
 
 
-## Adds (or with a negative amount, takes away) items; returns how many were
-## actually added (you can carry up to MAX_ITEM of each).
+## Most of one item or piece of gear you can carry.
+func max_count(id: String) -> int:
+	return MAX_GEAR if GEAR.has(id) else MAX_ITEM
+
+
+## Adds (or with a negative amount, takes away) items or gear; returns how
+## many were actually added (you can carry up to max_count of each).
 func add_item(id: String, amount := 1) -> int:
+	if GEAR.has(id):
+		if typeof(player.get("gear")) != TYPE_DICTIONARY:
+			player["gear"] = {}
+		var had := item_count(id)
+		var now := clampi(had + amount, 0, MAX_GEAR)
+		if now == 0:
+			player["gear"].erase(id)
+		else:
+			player["gear"][id] = now
+		return now - had
 	if not ITEMS.has(id):
 		return 0
 	if not player.has("items"):
@@ -1053,6 +1112,76 @@ func owned_items() -> Array:
 	return ITEM_ORDER.filter(func(id): return item_count(id) > 0)
 
 
+## What you can sell: items, then gear you carry but don't wear.
+func sellable() -> Array:
+	return owned_items() + GEAR_ORDER.filter(func(id): return item_count(id) > 0)
+
+
+# --- Equipment ----------------------------------------------------------------
+
+## The gear id worn in `slot` ("pants" or "badge"), or "".
+func equipped(slot: String) -> String:
+	var e = player.get("equip", {})
+	return str(e.get(slot, "")) if typeof(e) == TYPE_DICTIONARY else ""
+
+
+## Gear you carry or wear, in menu order.
+func owned_gear() -> Array:
+	return GEAR_ORDER.filter(func(id): return item_count(id) > 0 or equipped(GEAR[id]["slot"]) == id)
+
+
+## Puts on a piece of gear you carry (taking off whatever was in its slot).
+func equip(id: String) -> void:
+	if not GEAR.has(id) or item_count(id) <= 0:
+		return
+	var slot: String = GEAR[id]["slot"]
+	unequip(slot)
+	add_item(id, -1)
+	if typeof(player.get("equip")) != TYPE_DICTIONARY:
+		player["equip"] = {}
+	player["equip"][slot] = id
+	_gear_stats(id, 1)
+
+
+## Takes off what you wear in `slot` and puts it back in your bag.
+func unequip(slot: String) -> void:
+	var id := equipped(slot)
+	if id == "":
+		return
+	player["equip"].erase(slot)
+	if GEAR.has(id):
+		_gear_stats(id, -1)
+		player["gear"] = player.get("gear", {})
+		player["gear"][id] = int(player["gear"].get(id, 0)) + 1  # may go past MAX_GEAR; that's fine
+
+
+## Adds (dir 1) or removes (dir -1) a piece of gear's stats. HP and SP
+## bonuses come with that much HP and SP when you put it on.
+func _gear_stats(id: String, dir: int) -> void:
+	var g: Dictionary = GEAR[id]
+	player["pow"] += dir * int(g.get("pow", 0))
+	player["def"] += dir * int(g.get("def", 0))
+	for pair in [["hp", "max_hp"], ["sp", "max_sp"]]:
+		var d := dir * int(g.get(pair[0], 0))
+		player[pair[1]] += d
+		player[pair[0]] = clampi(player[pair[0]] + maxi(d, 0), 1 if pair[0] == "hp" else 0, player[pair[1]])
+
+
+## What your gear adds up to, e.g. "POW+2 DEF+3" ("" for nothing).
+func gear_bonus_text() -> String:
+	var total := {}
+	for slot in GEAR_SLOTS:
+		var id := equipped(slot)
+		for k in ["hp", "sp", "pow", "def"]:
+			if GEAR.has(id):
+				total[k] = int(total.get(k, 0)) + int(GEAR[id].get(k, 0))
+	var parts := []
+	for k in ["hp", "sp", "pow", "def"]:
+		if int(total.get(k, 0)) != 0:
+			parts.append("%s+%d" % [k.to_upper(), total[k]])
+	return " ".join(parts)
+
+
 ## "a Mushroom", "an Ultra Mushroom".
 func with_article(item_name: String) -> String:
 	return ("an " if item_name.left(1).to_lower() in ["a", "e", "i", "o", "u"] else "a ") + item_name
@@ -1060,7 +1189,7 @@ func with_article(item_name: String) -> String:
 
 ## What a shop pays for one of an item.
 func sell_price(id: String) -> int:
-	return maxi(1, int(ITEMS[id]["price"]) / 2)
+	return maxi(1, int(goods(id)["price"]) / 2)
 
 
 ## Rolls the item drops for beaten enemies (types); adds them to the
@@ -1072,6 +1201,24 @@ func roll_drops(types: Array) -> Array:
 		if not d.is_empty() and randf() < float(d[1]) and add_item(d[0]) > 0:
 			got.append(d[0])
 	return got
+
+
+## Keeps only known gear in the save; old saves have none.
+func _clean_gear(data: Dictionary) -> void:
+	var gear := {}
+	var saved = data.get("gear", {})
+	if typeof(saved) == TYPE_DICTIONARY:
+		for id in saved:
+			if GEAR.has(id) and int(saved[id]) > 0:
+				gear[id] = int(saved[id])
+	data["gear"] = gear
+	var equip := {}
+	var worn = data.get("equip", {})
+	if typeof(worn) == TYPE_DICTIONARY:
+		for slot in GEAR_SLOTS:
+			if GEAR.has(str(worn.get(slot, ""))):
+				equip[slot] = str(worn[slot])
+	data["equip"] = equip
 
 
 ## Old saves counted Mushrooms only ("mushrooms": n). Moves that into the
@@ -1158,8 +1305,66 @@ func move_of(kind: String, id: String) -> String:
 	return src.get("move", "rolling_bump")
 
 
+## True if someone new could join: in your party, or waiting at home.
 func can_recruit() -> bool:
-	return player["party"].size() < MAX_PARTY
+	return player["party"].size() < MAX_PARTY or bench().size() < MAX_BENCH
+
+
+## Partners and recruits waiting at your home base (Castle Town for good,
+## Bowser's Castle for evil). Each side only sees its own kind there.
+func bench() -> Array:
+	if typeof(player.get("bench")) != TYPE_ARRAY:
+		player["bench"] = []
+	return player["bench"]
+
+
+## The side a party member fights for: partners are good, enemies and bosses evil.
+static func member_side(m: Dictionary) -> String:
+	return "good" if m.get("kind", "") == "partner" else "evil"
+
+
+## Indexes into bench() of the members your side can take along.
+func bench_for_side() -> Array:
+	var out := []
+	for i in bench().size():
+		if member_side(bench()[i]) == player["side"]:
+			out.append(i)
+	return out
+
+
+## Adds a new member to your party, or to the bench if the party is full.
+## Returns "party" or "bench".
+func add_member(m: Dictionary) -> String:
+	if player["party"].size() < MAX_PARTY:
+		player["party"].append(m)
+		return "party"
+	bench().append(m)
+	return "bench"
+
+
+## Sends party member i home to wait on the bench.
+func send_home(i: int) -> void:
+	bench().append(player["party"][i])
+	player["party"].remove_at(i)
+
+
+## Takes bench member j along (rested: full HP). Returns "" or why not:
+## "full" (party is full), "boss" (one boss per party).
+func take_from_bench(j: int) -> String:
+	var m: Dictionary = bench()[j]
+	if player["party"].size() >= MAX_PARTY:
+		return "full"
+	if m.get("kind", "") == "boss" and has_boss_partner():
+		return "boss"
+	bench().remove_at(j)
+	m["hp"] = m["max_hp"]
+	player["party"].append(m)
+	return ""
+
+
+## The name of your home base.
+func home_name() -> String:
+	return MAPS[HOME_MAP[player["side"]]]["name"]
 
 
 func switch_side() -> void:
@@ -1171,6 +1376,7 @@ func switch_side() -> void:
 			player["character"] = id
 			break
 	player["side"] = other
+	bench().append_array(player["party"])  # they wait at their own side's home
 	player["party"] = []
 	if Net.party_id != "":
 		Net.leave_party()  # good and evil can't be a party (the server ends it too)
@@ -1292,14 +1498,16 @@ func start_boss(id: String, overworld_position: Vector2) -> void:
 	pending_battle["battle_bg"] = BOSSES[id].get("battle_bg", "outskirts")
 
 
-# --- Saving (browser storage on the web build) -------------------------------
+# --- Saving (browser storage on the web build, and online: see Cloud) --------
 
 func save() -> void:
 	if player.is_empty():
 		return
+	player["saved_at"] = Time.get_unix_time_from_system()  # which copy is newer (see Cloud)
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(player))
+	Cloud.mark_dirty()
 
 
 func has_save() -> bool:
@@ -1309,7 +1517,12 @@ func has_save() -> bool:
 func load_save() -> bool:
 	if not has_save():
 		return false
-	var data = JSON.parse_string(FileAccess.get_file_as_string(SAVE_PATH))
+	return use_save(JSON.parse_string(FileAccess.get_file_as_string(SAVE_PATH)))
+
+
+## Makes `data` (a save read from this browser or from the server) the
+## player, fixing up saves from older versions. False if it can't be used.
+func use_save(data: Variant) -> bool:
 	if typeof(data) != TYPE_DICTIONARY:
 		return false
 	if not CHARACTERS.has(data.get("character", "")):
@@ -1329,9 +1542,14 @@ func load_save() -> bool:
 	for key in ["level", "xp", "coins", "max_hp", "hp", "max_sp", "sp", "pow", "def", "wins"]:
 		data[key] = int(data.get(key, 0))
 	_migrate_items(data)
+	_clean_gear(data)
 	if typeof(data.get("bosses")) != TYPE_DICTIONARY:
 		data.erase("bosses")  # boss wins (see boss_wins); old saves have none
-	for member in data["party"]:
+	if typeof(data.get("party")) != TYPE_ARRAY:
+		data["party"] = []
+	if typeof(data.get("bench")) != TYPE_ARRAY:
+		data["bench"] = []
+	for member in data["party"] + data["bench"]:
 		for key in ["max_hp", "hp", "pow", "def"]:
 			member[key] = int(member[key])
 	if not data.has("uid"):

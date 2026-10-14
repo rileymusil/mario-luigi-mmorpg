@@ -61,7 +61,9 @@
          {"item": "mushroom", "count": 3, "price": 33, "thanks": "Pleasure doing business. Now scram!"},
          {"item": "super_mushroom", "thanks": "Pleasure doing business. Now scram!"},
          {"item": "syrup", "thanks": "Pleasure doing business. Now scram!"},
-         {"item": "red_pepper", "thanks": "Pleasure doing business. Now scram!"}
+         {"item": "red_pepper", "thanks": "Pleasure doing business. Now scram!"},
+         {"item": "koopa_pants", "thanks": "Pleasure doing business. Now scram!"},
+         {"item": "spiny_badge", "thanks": "Pleasure doing business. Now scram!"}
        ]},
       {"say": ["Psst. Bowser's supply stash. Cheap. Don't tell the boss."],
        "choices": [{"text": "Shop", "do": "shop"}, {"text": "No thanks"}],
@@ -70,7 +72,11 @@
          {"item": "mushroom", "count": 3, "price": 21, "thanks": "Heh heh. Eat it before the boss sees!"},
          {"item": "super_mushroom", "thanks": "Heh heh. Eat it before the boss sees!"},
          {"item": "syrup", "thanks": "Heh heh. Drink it before the boss sees!"},
-         {"item": "red_pepper", "thanks": "Heh heh. Spicy!"}
+         {"item": "red_pepper", "thanks": "Heh heh. Spicy!"},
+         {"item": "thin_pants", "thanks": "Heh heh. Fell off a supply cart."},
+         {"item": "power_badge", "thanks": "Heh heh. Fell off a supply cart."},
+         {"item": "koopa_pants", "thanks": "Heh heh. Standard Koopa Troop issue."},
+         {"item": "spiny_badge", "thanks": "Heh heh. The boss's favourite."}
        ]}
     ]
   },
@@ -100,7 +106,7 @@
   "lodge_toad": {
     "branches": [
       {"if": {"side": "evil"}, "say": ["A-are you here to cause trouble? This is a Toad lodge!"]},
-      {"if": {"party_full": true}, "say": ["You've already got a full party! Send someone home from the Enter menu if you want new friends."]},
+      {"if": {"party_full": true}, "say": ["You've got a full party! New friends you meet will wait for you here in town, and you can swap them in from Party in the menu."]},
       {"say": ["We Toads came over from the Mushroom Kingdom to help out.", "A Toad and a Pianta are waiting in the town square. Ask them to join you!"]}
     ]
   },
@@ -154,19 +160,31 @@
     "name": "Shopkeeper",
     "branches": [
       {"if": {"side": "evil"},
-       "say": ["Welcome to the Badge Shop! Badges are sold out until the next delivery...", "But I have battle supplies. Bowser's folk pay a little extra, mind."],
+       "say": ["Welcome to the Badge Shop! Pants, badges and battle supplies.", "Bowser's folk pay a little extra, mind."],
        "choices": [{"text": "Shop", "do": "shop"}, {"text": "Just looking"}],
        "markup": 1.5,
        "shop": [
+         {"item": "thin_pants"},
+         {"item": "work_pants"},
+         {"item": "power_badge"},
+         {"item": "guard_badge"},
+         {"item": "heart_badge"},
+         {"item": "sp_badge"},
          {"item": "red_pepper"},
          {"item": "green_pepper"},
          {"item": "refreshing_herb"},
          {"item": "syrup"},
          {"item": "super_syrup"}
        ]},
-      {"say": ["Welcome to the Badge Shop! Badges are sold out until the next delivery...", "But I do have battle supplies! Peppers make you hit harder or take hits better."],
+      {"say": ["Welcome to the Badge Shop! The new delivery is in: pants and badges!", "Wear one pair of pants and one badge at a time. Put them on from Gear in the menu."],
        "choices": [{"text": "Shop", "do": "shop"}, {"text": "Just looking"}],
        "shop": [
+         {"item": "thin_pants", "thanks": "Thank you! Light and comfy."},
+         {"item": "work_pants", "thanks": "Thank you! Those will last."},
+         {"item": "power_badge", "thanks": "Thank you! Hit 'em hard."},
+         {"item": "guard_badge", "thanks": "Thank you! Stay safe out there."},
+         {"item": "heart_badge", "thanks": "Thank you! Full of pep."},
+         {"item": "sp_badge", "thanks": "Thank you! More special moves for you."},
          {"item": "red_pepper", "thanks": "Spicy! Eat it in battle to power up."},
          {"item": "green_pepper", "thanks": "Crunchy! Eat it in battle to toughen up."},
          {"item": "refreshing_herb"},
@@ -269,7 +287,10 @@
          {"item": "one_up"},
          {"item": "refreshing_herb"},
          {"item": "red_pepper"},
-         {"item": "green_pepper"}
+         {"item": "green_pepper"},
+         {"item": "heart_jeans"},
+         {"item": "mountain_pants"},
+         {"item": "great_badge"}
        ]},
       {"say": ["Hoohoo! The monsters out in Stardust Fields are tough. Stock up before you head out!"],
        "choices": [{"text": "Shop", "do": "shop"}, {"text": "No thanks"}],
@@ -280,7 +301,10 @@
          {"item": "one_up", "thanks": "Hoo! For when a friend goes down."},
          {"item": "refreshing_herb", "thanks": "Hoo! Picked fresh on the mountain."},
          {"item": "red_pepper", "thanks": "Hoo! Spicy!"},
-         {"item": "green_pepper", "thanks": "Hoo! Crunchy!"}
+         {"item": "green_pepper", "thanks": "Hoo! Crunchy!"},
+         {"item": "heart_jeans", "thanks": "Hoo! Made with love."},
+         {"item": "mountain_pants", "thanks": "Hoo! Woven on the mountain. Nothing gets through those."},
+         {"item": "great_badge", "thanks": "Hoo! Our finest badge. Wear it with pride."}
        ]}
     ]
   },

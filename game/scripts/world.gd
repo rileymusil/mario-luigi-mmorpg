@@ -32,6 +32,8 @@ var player: CharacterSprite
 var followers: Array[CharacterSprite] = []
 var enemies: Array = []   # [{node, home, target, pause, key, type}]
 var npcs: Array = []      # [{node, id}]
+var score_box: PanelContainer  # this week's good vs evil score, in towns
+var save_prompt: TextPrompt  # password box for saving online (made when first needed)
 var busy := false         # true while a menu or dialog is open
 var _grace := 1.5         # seconds after arriving before enemies can start a battle
 ## The leader's path, followed by the party: x, y, 1 where a jump started,
@@ -121,6 +123,8 @@ func _ready() -> void:
 	if MapEditor.available():
 		add_child(MapEditor.new())
 
+	if map_info["safe"]:
+		_show_weekly_score()
 	dialog.visible = false
 	if arriving:
 		_show_area_name()
@@ -163,7 +167,7 @@ func _spawn_character(id: String) -> CharacterSprite:
 
 
 func _in_party(id: String) -> bool:
-	for m in Game.player["party"]:
+	for m in Game.player["party"] + Game.bench():
 		if m["id"] == id:
 			return true
 	return false
@@ -672,14 +676,18 @@ func _recruit(n: Dictionary, speaker: String) -> bool:
 		return false
 	var info: Dictionary = Game.PARTNERS[n["id"]]
 	if not Game.can_recruit():
-		await say("Your party is full. Send someone home from the menu (Enter) first.")
+		await say("Your party is full, and so is your home base. Send someone home or swap them out first.")
 		return false
 	if randf() < info["recruit"]:
-		Game.player["party"].append(Game.make_member("partner", n["id"]))
+		var to := Game.add_member(Game.make_member("partner", n["id"]))
 		npcs.erase(n)
-		followers.append(node)
+		if to == "party":
+			followers.append(node)
+		else:
+			node.queue_free()
 		Game.save()
-		await say("%s joined your party!" % info["name"])
+		await say("%s joined your party!" % info["name"] if to == "party" else
+			"%s joined! Your party is full, so %s will wait for you at %s." % [info["name"], info["name"], Game.home_name()])
 		return true
 	await say("Hmm... I'm not sure yet. Ask me again?", speaker, node)
 	return false
@@ -690,7 +698,7 @@ func _recruit(n: Dictionary, speaker: String) -> bool:
 ## (default: the item's price times the branch's "markup", default 1),
 ## thanks (said after buying)}. Shops buy anything back at half price.
 func _shop(branch: Dictionary, speaker: String, node: Node2D) -> void:
-	var stock: Array = branch.get("shop", []).filter(func(s): return Game.ITEMS.has(s.get("item", "")))
+	var stock: Array = branch.get("shop", []).filter(func(s): return not Game.goods(s.get("item", "")).is_empty())
 	var markup := float(branch.get("markup", 1.0))
 	menu.max_rows = 5
 	menu.info_width = 190.0
@@ -714,7 +722,7 @@ func _shop(branch: Dictionary, speaker: String, node: Node2D) -> void:
 func _stock_price(s: Dictionary, markup: float) -> int:
 	if s.has("price"):
 		return int(s["price"])
-	return int(ceil(Game.ITEMS[s["item"]]["price"] * int(s.get("count", 1)) * markup))
+	return int(ceil(Game.goods(s["item"])["price"] * int(s.get("count", 1)) * markup))
 
 
 func _shop_buy(stock: Array, markup: float, speaker: String) -> void:
@@ -727,12 +735,15 @@ func _shop_buy(stock: Array, markup: float, speaker: String) -> void:
 		var infos := []
 		var icons := []
 		for s in stock:
-			var item: Dictionary = Game.ITEMS[s["item"]]
+			var item: Dictionary = Game.goods(s["item"])
 			var count := int(s.get("count", 1))
 			var price := _stock_price(s, markup)
 			labels.append("%s%s  %d" % [item["name"], " x%d" % count if count > 1 else "", price])
-			enabled.append(p["coins"] >= price and Game.item_count(s["item"]) + count <= Game.MAX_ITEM)
-			infos.append("%s (You have %d.)" % [item["info"], Game.item_count(s["item"])])
+			enabled.append(p["coins"] >= price and Game.item_count(s["item"]) + count <= Game.max_count(s["item"]))
+			var have := Game.item_count(s["item"])
+			if Game.GEAR.has(s["item"]) and Game.equipped(item["slot"]) == s["item"]:
+				have += 1
+			infos.append("%s (You have %d.)" % [item["info"], have])
 			icons.append(ItemsScreen.icon_of(s["item"]))
 		labels.append("Done")
 		enabled.append(true)
@@ -749,7 +760,8 @@ func _shop_buy(stock: Array, markup: float, speaker: String) -> void:
 		p["coins"] -= _stock_price(s, markup)
 		Game.add_item(s["item"], int(s.get("count", 1)))
 		Game.save()
-		line = DialogueData.fill(s.get("thanks", "Thank you!"))
+		line = DialogueData.fill(s.get("thanks", "Thank you!" if not Game.GEAR.has(s["item"])
+			else "Thank you! Put it on from Gear in the menu."))
 
 
 func _shop_sell(speaker: String, node: Node2D) -> void:
@@ -757,7 +769,7 @@ func _shop_sell(speaker: String, node: Node2D) -> void:
 	var at := 0
 	var line := "What are you selling? I pay half price."
 	while true:
-		var ids := Game.owned_items()
+		var ids := Game.sellable()
 		if ids.is_empty():
 			await say("You don't have anything to sell.", speaker, node)
 			return
@@ -765,7 +777,7 @@ func _shop_sell(speaker: String, node: Node2D) -> void:
 		var infos := []
 		var icons := []
 		for id in ids:
-			labels.append("%s x%d  %d" % [Game.ITEMS[id]["name"], Game.item_count(id), Game.sell_price(id)])
+			labels.append("%s x%d  %d" % [Game.goods(id)["name"], Game.item_count(id), Game.sell_price(id)])
 			infos.append("Sell one for %d coins." % Game.sell_price(id))
 			icons.append(ItemsScreen.icon_of(id))
 		labels.append("Done")
@@ -781,7 +793,7 @@ func _shop_sell(speaker: String, node: Node2D) -> void:
 		Game.add_item(ids[i], -1)
 		p["coins"] += Game.sell_price(ids[i])
 		Game.save()
-		line = "Sold %s for %d coins!" % [Game.with_article(Game.ITEMS[ids[i]]["name"]), Game.sell_price(ids[i])]
+		line = "Sold %s for %d coins!" % [Game.with_article(Game.goods(ids[i])["name"]), Game.sell_price(ids[i])]
 
 
 func _heal_party() -> void:
@@ -799,8 +811,14 @@ func _pause_menu() -> void:
 	var other := "Evil" if p["side"] == "good" else "Good"
 	while true:
 		pause_screen.open(p, Game.character_name(), map_info["name"])
-		var options := ["Items", "Party", "Go %s" % other, "Save", "Quit", "Close"]
+		var options := ["Items", "Gear", "Party", "Go %s" % other, "Save", "Quit", "Close"]
 		var i := await pause_screen.menu.choose(options, "", true)
+		if i == 1:
+			pause_screen.close()
+			await _gear_menu()
+			continue
+		if i > 1:
+			i -= 1  # the options below Gear keep their old numbers
 		match i:
 			0:
 				pause_screen.close()
@@ -821,9 +839,10 @@ func _pause_menu() -> void:
 				continue
 			3:
 				Game.save()
-				await say("Game saved in this browser.")
+				await _save_online()
 			4:
 				Game.save()
+				Cloud.upload()
 				Net.leave()
 				get_tree().change_scene_to_file(Game.TITLE_SCENE)
 				return
@@ -831,6 +850,54 @@ func _pause_menu() -> void:
 	pause_screen.close()
 	await get_tree().process_frame
 	busy = false
+
+
+## After saving: online too if this save is linked, else offers to link it
+## (a password for your username, so you can log in on any device).
+func _save_online() -> void:
+	if Cloud.linked():
+		var ok: bool = await Cloud.upload()
+		await say("Game saved. It's online too: log in as %s on any device." % Cloud.account_name() if ok
+			else "Game saved in this browser. Couldn't reach the server, so it goes online later.")
+		return
+	dialog.open("Game saved in this browser. Save online too, so you can log in and play on any device?")
+	var c := await pause_screen.menu.choose(["Save online", "Not now"], "", true)
+	dialog.close()
+	if c != 0:
+		return
+	if save_prompt == null:
+		save_prompt = TextPrompt.new()
+		$HUD.add_child(save_prompt)
+	save_prompt.position = ((get_viewport_rect().size - Vector2(160, 40)) / 2.0).round()
+	while true:
+		var password := await save_prompt.ask("Pick a password", "", 64,
+			"For logging in as %s." % Game.username(), true)
+		if password == "":
+			return
+		if password.length() < 4:
+			await say(Cloud.error_text("password"))
+			continue
+		var again := await save_prompt.ask("Type it again", "", 64, "Enter: OK   Esc: cancel", true)
+		if again == "":
+			return
+		if again != password:
+			await say("Those didn't match. Try again.")
+			continue
+		var err: String = await Cloud.register(password)
+		if err == "taken":
+			# Online names are one per player: pick another and try again.
+			var u := Game.clean_username(await save_prompt.ask("Pick another username",
+				Game.username(), 16, "Someone already saved online as %s." % Game.username()))
+			if u == "":
+				return
+			Game.player["username"] = u
+			Game.save()
+			err = await Cloud.register(password)
+		if err != "":
+			await say(Cloud.error_text(err))
+			return
+		await say("Saved online! Log in as %s with your password on any device." % Cloud.account_name())
+		return
 
 
 ## The Items page: pick an item, then who uses it (if it could be more than
@@ -851,6 +918,39 @@ func _items_menu() -> void:
 		at = i
 		await _use_item(ids[i])
 	items_screen.close()
+
+
+## The Gear page: everything you carry or wear; picking one puts it on (or
+## takes it off, if you're wearing it).
+func _gear_menu() -> void:
+	var at := 0
+	while true:
+		var ids := Game.owned_gear()
+		if ids.is_empty():
+			await say("You don't have any pants or badges. The Badge Shop in Castle Town sells them.")
+			break
+		var worn := ids.map(func(id): return Game.equipped(Game.GEAR[id]["slot"]) == id)
+		var labels := []
+		for k in ids.size():
+			labels.append("On" if worn[k] else "x%d" % Game.item_count(ids[k]))
+		var bonus := Game.gear_bonus_text()
+		items_screen.set_tab("GEAR")
+		# Your gear's total once you wear some (there's no room for both).
+		items_screen.set_footer("Wearing: " + bonus if bonus != ""
+			else ("A: Wear  B: Back" if TouchControls.active else "Z: Wear  X: Back"))
+		var i := await items_screen.choose_item(ids, [], at, labels)
+		if i < 0:
+			break
+		at = i
+		var g: Dictionary = Game.GEAR[ids[i]]
+		if worn[i]:
+			Game.unequip(g["slot"])
+		else:
+			Game.equip(ids[i])
+		Game.save()
+		_update_hud()
+	items_screen.close()
+	items_screen.set_tab("ITEMS")
 
 
 ## Uses an item outside battle (HP and SP items).
@@ -897,26 +997,81 @@ func _use_item(id: String) -> void:
 	await say("%s ate %s. +%d HP" % [names[t], Game.with_article(item["name"]), m["hp"] - before])
 
 
+## The Party page: send someone home, or (at your home base) take someone
+## who is waiting there along.
 func _party_menu() -> void:
-	var party: Array = Game.player["party"]
-	party_screen.open(Game.player, Game.character_name())
-	if party.is_empty():
-		await say("Nobody is with you yet. Good players can ask partners in town; evil players can ask enemies in battle.")
-		party_screen.close()
-		return
-	var names: Array = []
-	for m in party:
-		names.append(m["name"])
-	var i := await party_screen.menu.choose(names, "Send home?", true)
-	if i >= 0:
+	var at_home: bool = map_id == Game.HOME_MAP[Game.player["side"]]
+	while true:
+		var party: Array = Game.player["party"]
+		var waiting: Array = Game.bench_for_side()
+		party_screen.open(Game.player, Game.character_name())
+		if party.is_empty() and (waiting.is_empty() or not at_home):
+			await say(("Nobody is with you yet. Good players can ask partners in town; evil players can ask enemies in battle."
+				if waiting.is_empty() else "%d waiting for you at %s. Go there to take them along." % [waiting.size(), Game.home_name()]))
+			break
+		var names: Array = []
+		for m in party:
+			names.append(m["name"])
+		if at_home and not waiting.is_empty():
+			names.append("Waiting here (%d)" % waiting.size())
+		var title := "Send home?" if waiting.is_empty() or at_home else "%d wait at home" % waiting.size()
+		var i := await party_screen.menu.choose(names, title, true)
+		if i < 0:
+			break
+		if i >= party.size():
+			await _bench_menu(waiting)
+			continue
 		var c := await party_screen.menu.choose(["Send home", "Keep"], party[i]["name"], true)
 		if c == 0:
-			party.remove_at(i)
+			var who: String = party[i]["name"]
+			Game.send_home(i)
 			var f: CharacterSprite = followers[i]
 			followers.remove_at(i)
 			f.queue_free()
 			Game.save()
+			if not at_home:
+				await say("%s heads back to %s to wait for you." % [who, Game.home_name()])
 	party_screen.close()
+
+
+## At your home base: pick someone waiting there to join you.
+func _bench_menu(waiting: Array) -> void:
+	var bench: Array = Game.bench()
+	var names: Array = waiting.map(func(j): return "%s  HP %d" % [bench[j]["name"], bench[j]["max_hp"]])
+	var k := await party_screen.menu.choose(names, "Take along?", true)
+	if k < 0:
+		return
+	var m: Dictionary = bench[waiting[k]]
+	match Game.take_from_bench(waiting[k]):
+		"full":
+			await say("Your party is full. Send someone home first, then take %s along." % m["name"])
+		"boss":
+			await say("%s won't share a party with another boss!" % m["name"])
+		_:
+			var f := _spawn_character(m["id"])
+			f.position = player.position
+			followers.append(f)
+			Game.save()
+			await say("%s joined your party!" % m["name"])
+
+
+## Towns show this week's good vs evil count of PvP wins (top right).
+func _show_weekly_score() -> void:
+	var score: Dictionary = await Cloud.weekly_score()
+	if score.is_empty() or not is_inside_tree():
+		return
+	score_box = PanelContainer.new()
+	score_box.theme_type_variation = &"NavyPanel"
+	score_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var l := Label.new()
+	l.theme_type_variation = &"LightLabel"
+	var days := ceili((float(score["ends_at"]) / 1000.0 - Time.get_unix_time_from_system()) / 86400.0)
+	l.text = "Good %d : %d Evil" % [int(score["good"]), int(score["evil"])]
+	l.tooltip_text = "This week's PvP wins for each side. A new week starts in %d day%s." % [days, "" if days == 1 else "s"]
+	score_box.add_child(l)
+	$HUD.add_child(score_box)
+	$HUD.move_child(score_box, 0)  # under menus and dialogue
+	_update_hud()
 
 
 func _show_area_name() -> void:
@@ -951,6 +1106,14 @@ func _update_hud() -> void:
 
 	area_name.position.x = roundf(safe.position.x + (safe.size.x - area_name.size.x) / 2.0)
 	area_name.position.y = safe.position.y + 30.0
+
+	if score_box != null:
+		score_box.reset_size()
+		score_box.position = Vector2(safe.end.x - score_box.size.x - 4.0, safe.position.y + 3.0)
+		if score_box.position.x < status.position.x + status.size.x + 2.0:
+			# No room beside the status bar: just under its right end.
+			score_box.position = Vector2(status.position.x + status.size.x - score_box.size.x,
+				status.position.y + status.size.y + 1.0).round()
 
 	# Keep overworld menu anchored to top-right safe edge
 	menu.position = Vector2(safe.end.x - menu.size.x - 4.0, safe.position.y + 24.0)
