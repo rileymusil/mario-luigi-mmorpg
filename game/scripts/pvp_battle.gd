@@ -77,8 +77,8 @@ func _my_turn() -> void:
 		{"id": "jump", "label": "Jump", "icon": "jump", "info": "Stomp! Press {a} as you land for a 2nd hit."},
 		{"id": "special", "label": "%s (%d SP)" % [sp["name"], sp["sp"]], "icon": "burst",
 			"enabled": p["sp"] >= sp["sp"], "info": sp["info"]},
-		{"id": "mushroom", "label": "Mushroom (%d)" % p["mushrooms"], "icon": "mushroom",
-			"enabled": p["mushrooms"] > 0, "info": "Heal 10 HP."},
+		{"id": "mushroom", "label": "Mushroom (%d)" % Game.item_count("mushroom"), "icon": "mushroom",
+			"enabled": Game.item_count("mushroom") > 0, "info": "Heal 10 HP."},
 		{"id": "run", "label": "Run", "icon": "run", "info": "Try to escape."},
 	]
 	_set_turn(me)
@@ -101,7 +101,7 @@ func _my_turn() -> void:
 		await _wait(0.8)
 		return
 	if choice == "mushroom":
-		p["mushrooms"] -= 1
+		Game.add_item("mushroom", -1)
 		_heal(me, 10)
 		Net.duel_send({"t": "duel_act", "move": "heal", "hp": _hp(me), "name": "Mushroom"})
 		await _wait(0.8)

@@ -26,6 +26,7 @@ Sprites and maps come from *Mario & Luigi: Superstar Saga* (Nintendo / AlphaDrea
   - "!" and "..." emotion bubbles: A.J. Nitro (Emotion Bubbles).
   - Title sky and logo: A.J. Nitro (Introduction & File Select).
   - Digits and a few punctuation marks missing from the alphabet sheet were drawn to match it.
+- Items (game/assets/items, cut by tools/slice_items.py): A.J. Nitro (Superstar Saga Items sheet); Super Syrup is the Syrup jar recoloured.
 - Battles (game/assets/battle, cut by tools/slice_battle.py):
   - Battle backgrounds: Ryan914 (Battle Backgrounds).
   - Wart's throne room background: Frario, veggie machine by Starpower (custom, Wart Throne).

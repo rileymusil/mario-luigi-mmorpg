@@ -54,16 +54,23 @@
     "branches": [
       {"if": {"side": "good"},
        "say": ["Heh. A hero wants to shop at Bowser's place? Fine, but heroes pay extra."],
-       "choices": [{"text": "Buy", "do": "shop"}, {"text": "No thanks"}],
+       "choices": [{"text": "Shop", "do": "shop"}, {"text": "No thanks"}],
+       "markup": 1.5,
        "shop": [
-         {"item": "mushroom", "count": 1, "price": 12, "thanks": "Pleasure doing business. Now scram!"},
-         {"item": "mushroom", "count": 3, "price": 33, "thanks": "Pleasure doing business. Now scram!"}
+         {"item": "mushroom", "thanks": "Pleasure doing business. Now scram!"},
+         {"item": "mushroom", "count": 3, "price": 33, "thanks": "Pleasure doing business. Now scram!"},
+         {"item": "super_mushroom", "thanks": "Pleasure doing business. Now scram!"},
+         {"item": "syrup", "thanks": "Pleasure doing business. Now scram!"},
+         {"item": "red_pepper", "thanks": "Pleasure doing business. Now scram!"}
        ]},
-      {"say": ["Psst. Bowser's Mushroom stash. Cheap. Don't tell the boss."],
-       "choices": [{"text": "Buy", "do": "shop"}, {"text": "No thanks"}],
+      {"say": ["Psst. Bowser's supply stash. Cheap. Don't tell the boss."],
+       "choices": [{"text": "Shop", "do": "shop"}, {"text": "No thanks"}],
        "shop": [
-         {"item": "mushroom", "count": 1, "price": 8, "thanks": "Heh heh. Eat it before the boss sees!"},
-         {"item": "mushroom", "count": 3, "price": 21, "thanks": "Heh heh. Eat it before the boss sees!"}
+         {"item": "mushroom", "thanks": "Heh heh. Eat it before the boss sees!"},
+         {"item": "mushroom", "count": 3, "price": 21, "thanks": "Heh heh. Eat it before the boss sees!"},
+         {"item": "super_mushroom", "thanks": "Heh heh. Eat it before the boss sees!"},
+         {"item": "syrup", "thanks": "Heh heh. Drink it before the boss sees!"},
+         {"item": "red_pepper", "thanks": "Heh heh. Spicy!"}
        ]}
     ]
   },
@@ -121,27 +128,50 @@
     "branches": [
       {"if": {"side": "evil"},
        "say": ["Oh! One of Bowser's... Well, your coins are still coins. But it costs more for you!"],
-       "choices": [{"text": "Buy", "do": "shop"}, {"text": "Just looking"}],
+       "choices": [{"text": "Shop", "do": "shop"}, {"text": "Just looking"}],
+       "markup": 1.5,
        "shop": [
-         {"item": "mushroom", "count": 1, "price": 12},
-         {"item": "mushroom", "count": 3, "price": 33}
+         {"item": "mushroom"},
+         {"item": "mushroom", "count": 3, "price": 33},
+         {"item": "super_mushroom"},
+         {"item": "syrup"},
+         {"item": "refreshing_herb"},
+         {"item": "one_up"}
        ]},
       {"say": ["Welcome to the Mushroom Shop! What can I get you?"],
-       "choices": [{"text": "Buy", "do": "shop"}, {"text": "Just looking"}],
+       "choices": [{"text": "Shop", "do": "shop"}, {"text": "Just looking"}],
        "shop": [
-         {"item": "mushroom", "count": 1, "price": 8, "thanks": "Thank you! Eat it from the Enter menu when your HP is low."},
-         {"item": "mushroom", "count": 3, "price": 21, "thanks": "Thank you! Eat them from the Enter menu when your HP is low."}
+         {"item": "mushroom", "thanks": "Thank you! Use it from the Items menu when your HP is low."},
+         {"item": "mushroom", "count": 3, "price": 21, "thanks": "Thank you! Use them from the Items menu when your HP is low."},
+         {"item": "super_mushroom", "thanks": "Thank you! That one heals a lot."},
+         {"item": "syrup", "thanks": "Thank you! Syrup brings back SP for your special moves."},
+         {"item": "refreshing_herb", "thanks": "Thank you! It cures burns and dizziness in battle."},
+         {"item": "one_up", "thanks": "Thank you! Use it in battle when a partner is down."}
        ]}
     ]
   },
   "badge_shop": {
     "name": "Shopkeeper",
     "branches": [
-      {"say": ["Welcome to the Badge Shop! Badges are sold out until the next delivery...", "But I do have Mushrooms! Want some?"],
-       "choices": [{"text": "Buy", "do": "shop"}, {"text": "Just looking"}],
+      {"if": {"side": "evil"},
+       "say": ["Welcome to the Badge Shop! Badges are sold out until the next delivery...", "But I have battle supplies. Bowser's folk pay a little extra, mind."],
+       "choices": [{"text": "Shop", "do": "shop"}, {"text": "Just looking"}],
+       "markup": 1.5,
        "shop": [
-         {"item": "mushroom", "count": 1, "price": 8},
-         {"item": "mushroom", "count": 3, "price": 21}
+         {"item": "red_pepper"},
+         {"item": "green_pepper"},
+         {"item": "refreshing_herb"},
+         {"item": "syrup"},
+         {"item": "super_syrup"}
+       ]},
+      {"say": ["Welcome to the Badge Shop! Badges are sold out until the next delivery...", "But I do have battle supplies! Peppers make you hit harder or take hits better."],
+       "choices": [{"text": "Shop", "do": "shop"}, {"text": "Just looking"}],
+       "shop": [
+         {"item": "red_pepper", "thanks": "Spicy! Eat it in battle to power up."},
+         {"item": "green_pepper", "thanks": "Crunchy! Eat it in battle to toughen up."},
+         {"item": "refreshing_herb"},
+         {"item": "syrup"},
+         {"item": "super_syrup"}
        ]}
     ]
   },
@@ -223,6 +253,35 @@
     "branches": [
       {"say": ["Hoohoo! Tired from your trip? Have a rest."],
        "choices": [{"text": "Rest", "do": "heal", "done": "You had a good rest. HP and SP are full!"}, {"text": "No thanks"}]}
+    ]
+  },
+  "hoohoo_shop": {
+    "name": "Hoohoo Trader",
+    "branches": [
+      {"if": {"side": "evil"},
+       "say": ["Hoo... a Koopa customer. Fine, fine. Mountain prices for mountain goods, plus a little extra for you!"],
+       "choices": [{"text": "Shop", "do": "shop"}, {"text": "No thanks"}],
+       "markup": 1.5,
+       "shop": [
+         {"item": "super_mushroom"},
+         {"item": "ultra_mushroom"},
+         {"item": "super_syrup"},
+         {"item": "one_up"},
+         {"item": "refreshing_herb"},
+         {"item": "red_pepper"},
+         {"item": "green_pepper"}
+       ]},
+      {"say": ["Hoohoo! The monsters out in Stardust Fields are tough. Stock up before you head out!"],
+       "choices": [{"text": "Shop", "do": "shop"}, {"text": "No thanks"}],
+       "shop": [
+         {"item": "super_mushroom", "thanks": "Hoo! Good choice."},
+         {"item": "ultra_mushroom", "thanks": "Hoo! The best Mushroom in the kingdom."},
+         {"item": "super_syrup", "thanks": "Hoo! Sweet stuff."},
+         {"item": "one_up", "thanks": "Hoo! For when a friend goes down."},
+         {"item": "refreshing_herb", "thanks": "Hoo! Picked fresh on the mountain."},
+         {"item": "red_pepper", "thanks": "Hoo! Spicy!"},
+         {"item": "green_pepper", "thanks": "Hoo! Crunchy!"}
+       ]}
     ]
   },
   "hut_lore": {
