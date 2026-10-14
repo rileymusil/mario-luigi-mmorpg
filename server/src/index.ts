@@ -6,20 +6,25 @@
 //
 // Protocol (JSON text frames):
 //   client -> server
-//     {t:"hello", name, character, x, y, uid?, side?, party?, safe?}
+//     {t:"hello", name, character, x, y, uid?, key?, side?, party?, safe?}
 //                                          first message after connecting. uid keeps your
-//                                          id the same across maps; party is your partner's uid;
+//                                          id the same across maps; key is a secret kept with
+//                                          the save: a hello with the same uid and key replaces
+//                                          a stale connection (e.g. after a dropped network);
+//                                          party is your partner's uid;
 //                                          safe: this map is a town (no PvP against you).
 //     {t:"mv", x, y, vx, vy}               position + velocity, ~5 times a second while moving
 //     {t:"jump"}
 //     {t:"chat", text, party?}             at most one per CHAT_COOLDOWN_MS; party: partner only
 //     {t:"invite", to} / {t:"accept", from} / {t:"decline", from} / {t:"leave_party"}
+//                                          good and evil players can't team up: an invite
+//                                          across sides is answered {t:"declined", reason:"side"}
 //     {t:"warp", map, spawn}               tell your partner you took an exit
 //     {t:"pmsg", d:{...}}                  anything for your partner on this map (co-op battles)
 //     {t:"duel", to, stats}                evil player attacks a good player (not in a safe zone)
 //     {t:"duel_ready", stats} / {t:"duel_busy"}   the attacked player's game answers
 //     {t:"duel_act", move, hits?, rating?, hp?}   your move in a duel, relayed to your foe
-//     {t:"duel_hit", dmg, hp, dodged}      how much your foe's move did to you
+//     {t:"duel_hit", dmg, hp, dodged, guard?}  how much your foe's move did to you
 //     {t:"duel_over", result}              lost | fled | timeout | cancel: ends the duel
 //   server -> client
 //     {t:"welcome", id, players:[Player]}  everyone already in the zone
@@ -28,7 +33,7 @@
 //     {t:"jump", id}
 //     {t:"chat", id, name, text, party?}   sent to everyone (or the party), sender included
 //     {t:"invite", from, name}             someone wants to team up with you
-//     {t:"declined", name}
+//     {t:"declined", name, reason?}        reason "side": they're on the other side
 //     {t:"party", id, name}                you and `id` are a party (also on rejoining a map)
 //     {t:"party_end"}                       your partner left the party
 //     {t:"warp", map, spawn}               your partner took an exit
@@ -39,6 +44,7 @@
 //     {t:"duel_over", result}              your foe ended the duel (or "left", "busy", "refused")
 //     {t:"leave", id}
 //     {t:"full"}                            zone is full; the socket is closed
+//     {t:"replaced"}                        the same save connected again; this socket is closed
 //   Player = {id, name, character, side, x, y}
 // The text "ping" is answered with "pong" without waking the zone.
 
@@ -54,13 +60,14 @@ const ZONE_NAME = /^[a-z0-9_]{1,32}$/;
 // don't need a server deploy.
 const CHARACTER_ID = /^[a-z0-9_]{1,32}$/;
 const MAX_PLAYERS_PER_ZONE = 50;
-const MAX_MESSAGES_PER_SECOND = 15;
-const MAX_MESSAGE_BYTES = 1024;
+const MAX_MESSAGES_PER_SECOND = 30; // a co-op host streams its battle at ~10 a second
+const MAX_MESSAGE_BYTES = 2048;
 const MAX_COORD = 10000;
 const MAX_SPEED = 400;
 const MAX_CHAT_LENGTH = 80;
 const CHAT_COOLDOWN_MS = 1000;
 const UID = /^[a-f0-9]{12}$/;
+const KEY = /^[a-f0-9]{16,64}$/;
 const MAP_ID = /^[a-z0-9_]{1,32}$/;
 const DUEL_MOVES = new Set(["jump", "special", "heal", "wait"]);
 const DUEL_COOLDOWN_MS = 30000; // after a duel, neither player can be attacked for a while
@@ -106,6 +113,7 @@ interface Attachment {
   dueling?: boolean; // false while the challenge waits for an answer
   stats?: Record<string, number>;
   safeUntil?: number; // can't be attacked again before this time
+  key?: string; // the save's secret, lets the same save replace a stale connection
 }
 
 export class Zone extends DurableObject<Env> {
@@ -158,7 +166,22 @@ export class Zone extends DurableObject<Env> {
         return;
       }
       const uid = String(msg.uid ?? "");
-      const id = UID.test(uid) && !this.socketFor(uid) ? uid : crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+      const key = KEY.test(String(msg.key ?? "")) ? String(msg.key) : undefined;
+      let taken = UID.test(uid) ? this.socketFor(uid) : null;
+      if (taken && key && (taken.deserializeAttachment() as Attachment).key === key) {
+        // The same save again (a reconnect, or coming back to this map before
+        // the old socket was noticed closing): drop the old one, keep the id.
+        this.leave(taken);
+        try {
+          taken.send(JSON.stringify({ t: "replaced" }));
+          taken.close(1000, "replaced");
+        } catch {
+          // already closed
+        }
+        taken = null;
+      }
+      const id = UID.test(uid) && !taken ? uid : crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+      a.key = key;
       a.player = {
         id,
         name: cleanName(msg.name),
@@ -210,7 +233,10 @@ export class Zone extends DurableObject<Env> {
     } else if (msg.t === "invite") {
       const target = this.socketFor(String(msg.to));
       const t = target?.deserializeAttachment() as Attachment | undefined;
-      if (target && t?.player && target !== ws && !a.party && !t.party) {
+      if (target && t?.player && target !== ws && t.player.side !== a.player.side) {
+        ws.serializeAttachment(a);
+        ws.send(JSON.stringify({ t: "declined", name: t.player.name, reason: "side" }));
+      } else if (target && t?.player && target !== ws && !a.party && !t.party) {
         a.invited = t.player.id;
         ws.serializeAttachment(a);
         target.send(JSON.stringify({ t: "invite", from: a.player.id, name: a.player.name }));
@@ -223,9 +249,10 @@ export class Zone extends DurableObject<Env> {
       ws.serializeAttachment(a);
       if (!inviter || !i?.player || i.invited !== a.player.id) return;
       i.invited = undefined;
-      if (msg.t === "decline" || a.party || i.party) {
+      const otherSide = i.player.side !== a.player.side;
+      if (msg.t === "decline" || a.party || i.party || otherSide) {
         inviter.serializeAttachment(i);
-        inviter.send(JSON.stringify({ t: "declined", name: a.player.name }));
+        inviter.send(JSON.stringify({ t: "declined", name: a.player.name, ...(otherSide ? { reason: "side" } : {}) }));
         return;
       }
       this.link(ws, a, inviter, i);
@@ -311,7 +338,10 @@ export class Zone extends DurableObject<Env> {
               hp: num(msg.hp, 9999),
               name: String(msg.name ?? "").slice(0, 24),
             }
-          : { t: "duel_hit", dmg: num(msg.dmg, 9999), hp: num(msg.hp, 9999), dodged: msg.dodged === true };
+          : {
+              t: "duel_hit", dmg: num(msg.dmg, 9999), hp: num(msg.hp, 9999), dodged: msg.dodged === true,
+              guard: msg.guard === true,
+            };
       foe.send(JSON.stringify(out));
     } else if (msg.t === "duel_over") {
       const result = ["lost", "fled", "timeout", "cancel"].includes(String(msg.result)) ? String(msg.result) : "cancel";
@@ -388,9 +418,16 @@ export class Zone extends DurableObject<Env> {
     const other = this.socketFor(a.wantParty);
     if (!other) return; // partner is elsewhere; they'll find us when they arrive
     const o = other.deserializeAttachment() as Attachment;
-    if (o.wantParty === a.player!.id || o.party === a.player!.id) {
+    const together = o.wantParty === a.player!.id || o.party === a.player!.id;
+    if (together && o.player?.side === a.player!.side) {
       this.link(ws, a, other, o);
     } else {
+      if (together) {
+        // One of them switched sides since: good and evil can't be a party.
+        o.party = o.wantParty = undefined;
+        other.serializeAttachment(o);
+        other.send(JSON.stringify({ t: "party_end" }));
+      }
       a.wantParty = undefined;
       ws.serializeAttachment(a);
       ws.send(JSON.stringify({ t: "party_end" }));

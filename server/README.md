@@ -18,7 +18,9 @@ npm test           # in a second terminal: two fake players walk around
 ```
 
 To point the game at it, set `SERVER_URL` in `game/scripts/net.gd`, or on the
-web build add `?server=ws://127.0.0.1:8787` to the page address.
+web build add `?server=ws://127.0.0.1:8787` to the page address. A desktop run
+takes `MLMMO_SERVER=ws://127.0.0.1:8787` in the environment, or
+`-- --server=ws://127.0.0.1:8787` after the Godot arguments.
 
 ## Deploy (one-time setup)
 
