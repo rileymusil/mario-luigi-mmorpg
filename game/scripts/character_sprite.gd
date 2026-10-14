@@ -38,7 +38,7 @@ func _ready() -> void:
 
 func _load_sheet() -> void:
 	var info: Dictionary = Game.CHARACTERS.get(character_id, Game.PARTNERS.get(character_id,
-		Game.ENEMIES.get(character_id, Game.NPCS.get(character_id, {}))))
+		Game.ENEMIES.get(character_id, Game.NPCS.get(character_id, Game.BOSSES.get(character_id, {})))))
 	_frames = info.get("frames", 8)
 	_sprite.texture = load("res://assets/characters/%s.png" % character_id)
 	_sprite.hframes = _frames

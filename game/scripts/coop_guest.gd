@@ -83,16 +83,17 @@ func _build(d: Dictionary) -> void:
 		foes.append({"name": str(f[0]), "type": str(f[1]), "node": node, "ally": false, "home": node.position,
 			"hp": 1, "max_hp": 1, "burn": 0, "stun": false, "pow": 0, "def": 0})
 	for f in foes:
-		if Game.ENEMIES.has(f["type"]):
-			f["max_hp"] = Game.ENEMIES[f["type"]]["hp"]
+		var info := Game.foe_info(f["type"])
+		if not info.is_empty():
+			f["max_hp"] = info["hp"]
 			f["hp"] = f["max_hp"]
-			f["def"] = Game.ENEMIES[f["type"]]["def"]
+			f["def"] = info["def"]
 	_refresh()
 
 
 func _sprite(id: String, pos: Vector2, facing: Vector2) -> CharacterSprite:
 	var node := CharacterSprite.new()
-	node.character_id = id if (Game.CHARACTERS.has(id) or Game.ENEMIES.has(id) or Game.PARTNERS.has(id)) else "mario"
+	node.character_id = id if (Game.CHARACTERS.has(id) or Game.ENEMIES.has(id) or Game.PARTNERS.has(id) or Game.BOSSES.has(id)) else "mario"
 	node.facing = facing
 	node.scale = Vector2(SCALE, SCALE)
 	node.position = pos

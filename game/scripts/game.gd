@@ -107,6 +107,15 @@ const MOVES := {
 		"info": "Hard shell spin. Excellent lowers the enemy's DEF."},
 	"bone_toss": {"name": "Bone Toss", "kind": "throw", "color": Color(0.95, 0.93, 0.85), "bonus": 1,
 		"info": "Throws a bone."},
+	# Bosses that joined an evil party (BOSSES "partner").
+	"sack_swipe": {"name": "Sack Swipe", "kind": "multi", "hits": 2, "bonus": 1,
+		"info": "Up to 2 sack swipes, {a} in the gold zone for each."},
+	"spike_toss": {"name": "Spike Toss", "kind": "throw", "color": Color(0.55, 0.55, 0.6), "bonus": 1, "pierce": true,
+		"info": "Throws a spike ball. Excellent hits the next enemy too."},
+	"dragon_fire": {"name": "Dragon Fire", "kind": "blast", "bonus": 1, "burn": 2,
+		"info": "Fire on every enemy. Excellent sets them burning."},
+	"bubble_blast": {"name": "Bubble Blast", "kind": "blast", "bonus": 2, "stun": true,
+		"info": "Bubbles hit every enemy. Excellent stuns them."},
 }
 
 ## Partners (good side) and recruitable enemies (evil side). `recruit` is the
@@ -213,6 +222,85 @@ const DROPS := {
 	"buzzy_beetle": ["green_pepper", 0.12],
 	"dry_bones": ["super_mushroom", 0.15],
 }
+
+## Bosses (phase 7). Each stands on its map (`map`, `pos`, `face`) and you
+## talk to it to fight; world.gd shows them, battle.gd runs their attacks
+## (BOSS_ATTACKS). A boss stays beaten in the save (player["bosses"]: id ->
+## wins) and can be fought again for smaller rewards. `level`: the level we
+## suggest. `reward` / `rematch_reward`: [item, count] on top of xp and coins
+## (halved for a rematch). `attacks` are used from the start, `phase2` joins
+## them once the boss is down to half HP (it also gets stronger and faster).
+## Evil players can ask a beaten boss to join (one boss per party);
+## `partner` is what it brings to the party then.
+const BOSSES := {
+	"popple": {"name": "Popple", "frames": 5, "hp": 64, "pow": 6, "def": 1, "xp": 40, "coins": 40, "level": 3,
+		"map": "outskirts", "pos": Vector2(1300, 222), "face": "left", "battle_bg": "outskirts",
+		"reward": ["super_mushroom", 2], "rematch_reward": ["mushroom", 1], "recruit": 0.05,
+		"attacks": ["sack_snatch", "bobomb_toss"], "phase2": "hammer_leap",
+		"intro": ["Hold it! I'm Popple, the Shadow Thief, see?",
+			"Everything in these Outskirts is mine to swipe, including your coins! Hand 'em over!"],
+		"rematch": ["You again?! Popple never forgets a mark, see? Ready for another round?"],
+		"battle_line": "Popple: Your coins are as good as mine!",
+		"phase_line": "Popple is fired up! His hammer comes out!",
+		"won_line": "Popple: Nyeh! This ain't over, see?",
+		"partner": {"hp": 22, "pow": 6, "def": 2, "move": "sack_swipe"}},
+	"tolstar": {"name": "Tolstar", "frames": 10, "hp": 96, "pow": 8, "def": 2, "xp": 70, "coins": 60, "level": 7,
+		"map": "stardust_fields", "pos": Vector2(440, 352), "face": "left", "battle_bg": "sand_bird",
+		"reward": ["super_syrup", 2], "rematch_reward": ["syrup", 1], "recruit": 0.04,
+		"attacks": ["spike_ball", "belly_flop"], "phase2": "star_fall",
+		"intro": ["HOLD IT! I am Tolstar, keeper of every star in these fields!",
+			"Nobody walks on MY stardust without paying a toll. You'll pay in bruises!"],
+		"rematch": ["Back to pay the toll again? Tolstar always collects!"],
+		"battle_line": "Tolstar: Pay the toll, small fry!",
+		"phase_line": "Tolstar is furious! The stars begin to fall!",
+		"won_line": "Tolstar: My stars... my precious stardust...",
+		"partner": {"hp": 30, "pow": 7, "def": 3, "move": "spike_toss"}},
+	"dragohoho": {"name": "Dragohoho", "frames": 9, "hp": 128, "pow": 10, "def": 3, "xp": 110, "coins": 80, "level": 11,
+		"map": "hoohoo_village", "pos": Vector2(586, 140), "face": "left", "battle_bg": "hoohoo_mountain",
+		"reward": ["ultra_mushroom", 1], "rematch_reward": ["red_pepper", 1], "recruit": 0.03,
+		"attacks": ["fire_breath_boss", "horn_charge"], "phase2": "hoho_rockfall",
+		"intro": ["HOOHOO! I am Dragohoho, the flame of Hoohoo Mountain!",
+			"The path to the summit is mine. Turn back, or be roasted!"],
+		"rematch": ["HOOHOO! You climbed all the way back up? Then burn again!"],
+		"battle_line": "Dragohoho: HOOHOO! Feel my fire!",
+		"phase_line": "Dragohoho roars! The mountain shakes and Hoho stones start to fall!",
+		"won_line": "Dragohoho: Hoo... hoo... the flame... goes out...",
+		"partner": {"hp": 34, "pow": 8, "def": 3, "move": "dragon_fire"}},
+	"wart": {"name": "Wart", "frames": 7, "hp": 170, "pow": 12, "def": 4, "xp": 160, "coins": 120, "level": 15,
+		"map": "bowser_castle", "pos": Vector2(205, 160), "face": "down", "battle_bg": "wart_throne",
+		"reward": ["one_up", 1], "rematch_reward": ["super_mushroom", 1], "recruit": 0.03,
+		"attacks": ["bubble_spray", "royal_stomp"], "phase2": "bubble_storm",
+		"intro": ["GWAH HA HA! King Wart has taken over this castle!",
+			"Bowser? He's out. This throne is MINE now, and so is the Beanbean Kingdom!"],
+		"rematch": ["GWAH! You want another taste of my royal bubbles?"],
+		"battle_line": "Wart: Bow before the king of Subcon!",
+		"phase_line": "Wart is livid! Bubbles everywhere!",
+		"won_line": "Wart: I... hate... vegetables... GWAAAH!",
+		"partner": {"hp": 38, "pow": 9, "def": 4, "move": "bubble_blast"}},
+}
+## Boss attacks (battle.gd _boss_turn). kind: "dash" (runs at you: {a} to
+## jump over it), "slam" (leaps onto you: {a} to jump out of the way),
+## "volley" (`count` things thrown at you: {a} just before each hits to
+## hammer it back at the boss) or "rain" (something falls on every ally:
+## {a} to jump each). power: added to the boss's POW. steal: coins it grabs
+## when it hits (you get them back if you win). burn: chance a hit burns.
+const BOSS_ATTACKS := {
+	"sack_snatch": {"name": "Sack Snatch", "kind": "dash", "power": 0, "steal": 4},
+	"bobomb_toss": {"name": "Bob-omb Toss", "kind": "volley", "count": 2, "power": 1, "color": Color(0.95, 0.3, 0.45)},
+	"hammer_leap": {"name": "Hammer Leap", "kind": "slam", "power": 3},
+	"spike_ball": {"name": "Spike Ball", "kind": "volley", "count": 2, "power": 1, "color": Color(0.55, 0.55, 0.6)},
+	"belly_flop": {"name": "Belly Flop", "kind": "slam", "power": 2},
+	"star_fall": {"name": "Star Fall", "kind": "rain", "power": 1, "color": Color(1.0, 0.9, 0.3)},
+	"fire_breath_boss": {"name": "Fire Breath", "kind": "volley", "count": 3, "power": 0, "burn": 0.3,
+		"color": Color(1.0, 0.5, 0.1)},
+	"horn_charge": {"name": "Horn Charge", "kind": "dash", "power": 2},
+	"hoho_rockfall": {"name": "Hoho Rockfall", "kind": "rain", "power": 2, "color": Color(0.75, 0.5, 0.85)},
+	"bubble_spray": {"name": "Bubble Spray", "kind": "volley", "count": 3, "power": 0, "color": Color(1.0, 0.6, 0.85)},
+	"royal_stomp": {"name": "Royal Stomp", "kind": "slam", "power": 3},
+	"bubble_storm": {"name": "Bubble Storm", "kind": "rain", "power": 2, "color": Color(1.0, 0.55, 0.8)},
+}
+## The chance a boss you just beat says yes when an evil player asks it to join.
+const BOSS_JOIN_CHANCE := 0.35
 
 ## Maps: art and walk mask in res://assets/maps/ (built by tools/make_maps.py).
 ## battle_bg: res://assets/battle/backgrounds/<id>.png, behind battles started here.
@@ -601,7 +689,9 @@ func gain_xp(amount: int) -> int:
 
 ## Builds a party member from a partner or enemy id.
 func make_member(kind: String, id: String) -> Dictionary:
-	var src: Dictionary = PARTNERS[id] if kind == "partner" else ENEMIES[id]
+	var src: Dictionary = PARTNERS[id] if kind == "partner" else ENEMIES.get(id, {})
+	if kind == "boss":
+		src = BOSSES[id]["partner"].merged({"name": BOSSES[id]["name"]})
 	return {"kind": kind, "id": id, "name": src["name"], "max_hp": src["hp"], "hp": src["hp"],
 		"pow": src["pow"], "def": src["def"]}
 
@@ -609,6 +699,8 @@ func make_member(kind: String, id: String) -> Dictionary:
 ## The move (MOVES id) a party member uses on its turn, or an enemy is known for.
 func move_of(kind: String, id: String) -> String:
 	var src: Dictionary = PARTNERS.get(id, {}) if kind == "partner" else ENEMIES.get(id, {})
+	if kind == "boss":
+		src = BOSSES.get(id, {}).get("partner", {})
 	return src.get("move", "rolling_bump")
 
 
@@ -709,6 +801,37 @@ func is_defeated(key: String) -> bool:
 	return true
 
 
+# --- Bosses -------------------------------------------------------------------
+
+## An enemy's or a boss's table entry (ENEMIES, then BOSSES).
+func foe_info(type: String) -> Dictionary:
+	return ENEMIES.get(type, BOSSES.get(type, {}))
+
+
+## How many times you have beaten boss `id` (0: never). Old saves have none.
+func boss_wins(id: String) -> int:
+	var b = player.get("bosses", {})
+	return int(b.get(id, 0)) if typeof(b) == TYPE_DICTIONARY else 0
+
+
+func mark_boss_beaten(id: String) -> void:
+	if typeof(player.get("bosses")) != TYPE_DICTIONARY:
+		player["bosses"] = {}
+	player["bosses"][id] = boss_wins(id) + 1
+
+
+## True if a boss is already in your party (each party can have one).
+func has_boss_partner() -> bool:
+	return player.get("party", []).any(func(m): return m.get("kind", "") == "boss")
+
+
+## Starts a fight with boss `id` (from talking to it on the map).
+func start_boss(id: String, overworld_position: Vector2) -> void:
+	start_battle([id], "boss:" + id, overworld_position)
+	pending_battle["boss"] = id
+	pending_battle["battle_bg"] = BOSSES[id].get("battle_bg", "outskirts")
+
+
 # --- Saving (browser storage on the web build) -------------------------------
 
 func save() -> void:
@@ -746,6 +869,8 @@ func load_save() -> bool:
 	for key in ["level", "xp", "coins", "max_hp", "hp", "max_sp", "sp", "pow", "def", "wins"]:
 		data[key] = int(data.get(key, 0))
 	_migrate_items(data)
+	if typeof(data.get("bosses")) != TYPE_DICTIONARY:
+		data.erase("bosses")  # boss wins (see boss_wins); old saves have none
 	for member in data["party"]:
 		for key in ["max_hp", "hp", "pow", "def"]:
 			member[key] = int(member[key])

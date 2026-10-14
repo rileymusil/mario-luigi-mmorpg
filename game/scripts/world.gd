@@ -9,6 +9,7 @@ const PLAYER_SPEED := 80.0
 const FOLLOW_GAP := 18.0
 const TOUCH_DISTANCE := 14.0
 const TALK_DISTANCE := 26.0
+const BOSS_REACH := 40.0     # bosses are big: you can talk to them from further off
 const FOOT_HALF_WIDTH := 5.0  # everyone's feet are 10px wide
 const FOOT_DEPTH := 3.0
 const LEVEL_PX := 16.0      # how high one level of the height layer is
@@ -109,6 +110,7 @@ func _ready() -> void:
 		node.facing = FACINGS.get(n.get("face", "down"), Vector2.DOWN)
 		npcs.append({"node": node, "id": n["id"], "talk": n.get("talk", n["id"]),
 			"reach": n.get("reach", TALK_DISTANCE), "face": node.facing})
+	_spawn_bosses()
 
 	online = OnlinePlayers.new()
 	add_child(online)
@@ -520,10 +522,54 @@ func say(text: String, speaker := "", anchor: Node2D = null) -> void:
 	busy = was_busy
 
 
+## Bosses standing on this map (Game.BOSSES), unless one is in your party.
+## Talking to one starts its fight (see _boss_talk).
+func _spawn_bosses() -> void:
+	for id in Game.BOSSES:
+		var b: Dictionary = Game.BOSSES[id]
+		if b["map"] != map_id or _in_party(id):
+			continue
+		var node := _spawn_character(id)
+		node.position = nearest_walkable(b["pos"])
+		node.facing = FACINGS.get(b.get("face", "down"), Vector2.DOWN)
+		npcs.append({"node": node, "id": id, "talk": "", "boss": id, "reach": BOSS_REACH, "face": node.facing})
+
+
+## A boss: its lines, then "Fight!" or "Not now". Beaten bosses offer a
+## rematch.
+func _boss_talk(n: Dictionary) -> void:
+	var id: String = n["boss"]
+	var b: Dictionary = Game.BOSSES[id]
+	var node: CharacterSprite = n["node"]
+	busy = true
+	node.facing = (player.position - node.position).normalized()
+	var lines: Array = b["rematch"] if Game.boss_wins(id) > 0 else b["intro"]
+	for i in lines.size() - 1:
+		await say(DialogueData.fill(lines[i]), b["name"], node)
+	var question: String = DialogueData.fill(lines.back())
+	if Game.player["level"] < int(b.get("level", 1)):
+		question += " (Suggested level: %d)" % int(b["level"])
+	dialog.open(question, b["name"], node)
+	_place_menu.call_deferred()
+	var options := ["Rematch!" if Game.boss_wins(id) > 0 else "Fight!", "Not now"]
+	var i := await menu.choose(options, "", true)
+	dialog.close()
+	if i == 0:
+		Game.start_boss(id, player.position + Vector2(0, 16))
+		return  # stays busy until the battle takes over
+	node.facing = n["face"]
+	await get_tree().process_frame
+	await get_tree().process_frame
+	busy = false
+
+
 ## Talks to an NPC using its lines in res://data/dialogue.json (see
 ## dialogue_data.gd): pages, then an optional choice that can recruit, open a
 ## shop or heal.
 func _talk_to(n: Dictionary) -> void:
+	if n.has("boss"):
+		await _boss_talk(n)
+		return
 	var node: CharacterSprite = n["node"]
 	var branch := DialogueData.pick(n["talk"], Game.player)
 	var speaker := DialogueData.speaker(n["talk"], n["id"])
