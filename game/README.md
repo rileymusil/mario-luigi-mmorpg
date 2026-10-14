@@ -116,8 +116,11 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
 | `starbeans_cafe` | Starbeans Cafe | inside | door to Castle Town |
 | `castle_hall` | Beanbean Castle | inside | palace door to Castle Town, arch to the throne room |
 | `throne_room` | Throne Room | inside | back to the castle hall |
-| `outskirts` | Beanbean Outskirts | wild | south path to Castle Town, east bridge to Bowser's Castle, east path to Stardust Fields |
-| `stardust_fields` | Stardust Fields | wild | west paths to the Outskirts, north path and east edge to Hoohoo Village |
+| `outskirts` | Beanbean Outskirts | wild | south path to Castle Town, east bridge to Bowser's Castle, east path to the Outskirts Meadow, stone path south to the pier |
+| `outskirts_east` | Outskirts Meadow | wild | west path to the Outskirts, north bridge to Stardust Fields, flower beds south to the woods |
+| `outskirts_woods` | Outskirts Woods | wild | north to the Outskirts Meadow |
+| `outskirts_pier` | Outskirts Pier | safe | stairs up to the Outskirts; rest stop shop |
+| `stardust_fields` | Stardust Fields | wild | west paths to the Outskirts Meadow, north path and east edge to Hoohoo Village |
 | `hoohoo_village` | Hoohoo Village | town | west and south to Stardust Fields, doors into two huts |
 | `hoohoo_hut_w`, `hoohoo_hut_e` | Hoohoo Hut | inside | door to Hoohoo Village |
 | `bowser_castle` | Bowser's Castle | evil home | rail bridge to the Outskirts |
