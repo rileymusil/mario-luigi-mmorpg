@@ -16,8 +16,10 @@ extends RefCounted
 ##
 ## "say" pages are shown one after another ("random": true shows just one of
 ## them). With "choices", the last page stays up as the question. A choice can
-## "say" more pages and/or "do": "recruit" (partners), "shop" (sells the
-## branch's "shop" list: [{"item": "mushroom", "count": 1, "price": 8}]) or
+## "say" more pages and/or "do": "recruit" (partners), "shop" (a Buy / Sell
+## counter selling the branch's "shop" list: [{"item": "mushroom"},
+## {"item": "mushroom", "count": 3, "price": 21, "thanks": "..."}]; price
+## defaults to the item's own (Game.ITEMS) times the branch's "markup") or
 ## "heal" (full HP and SP for you and your party).
 ## Conditions: side ("good"/"evil"), min_level, max_level, party_full (bool).
 ## In any text, {name} becomes the player's name and {character} their character.
