@@ -7,6 +7,8 @@ extends PanelContainer
 ## pick it (slide off it before lifting to change your mind), tap outside the
 ## menu to back out.
 ##     var index: int = await menu.choose(["Jump", "Run"])   # -1 = cancelled
+## Optional pictures beside the options (icons), and a scrolling window of
+## max_rows options with arrows when there are more (mouse wheel scrolls too).
 ## Set theme_type_variation to "FlatPanel" to drop the balloon (e.g. inside
 ## the pause notebook). Clicks on controls that stop the mouse (the notebook,
 ## a speech balloon) don't count as "outside".
@@ -16,6 +18,7 @@ signal chosen(index: int)
 signal highlighted(index: int)
 
 const CURSOR := preload("res://assets/ui/cursor.png")
+const MORE_ARROW := preload("res://assets/ui/next_arrow.png")
 
 var _options: Array = []
 var _enabled: Array = []
@@ -33,6 +36,12 @@ var _time := 0.0
 var _touch_row := -1  # the option a finger went down on
 ## Width the help text under the options wraps at.
 var info_width := 150.0
+## Show at most this many options at once (0 = all); the list scrolls.
+var max_rows := 0
+var _first := 0       # the first option shown, when scrolling
+var _arrows: Control  # "more above / below" marks, drawn over the list
+var _up: TextureRect
+var _down: TextureRect
 
 
 func _init() -> void:
@@ -43,6 +52,20 @@ func _init() -> void:
 	_title = _make_label("TitleLabel")
 	_info = _make_label("InfoLabel")
 	_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_arrows = Control.new()
+	_arrows.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_arrows)
+	_up = TextureRect.new()
+	_up.texture = MORE_ARROW
+	_up.flip_v = true
+	_down = TextureRect.new()
+	_down.texture = MORE_ARROW
+	for a in [_up, _down]:
+		# Clicking or tapping an arrow scrolls that way.
+		a.mouse_filter = Control.MOUSE_FILTER_STOP
+		a.visible = false
+		a.gui_input.connect(_on_arrow_input.bind(-1 if a == _up else 1))
+		_arrows.add_child(a)
 	visible = false
 
 
@@ -55,12 +78,16 @@ func _make_label(variation := "") -> Label:
 
 ## options: Array of strings. enabled: optional Array of bools (greyed out if
 ## false). infos: optional Array of help lines shown under the list.
-func choose(options: Array, title := "", cancellable := false, enabled: Array = [], infos: Array = []) -> int:
+## icons: optional Array of Texture2D (or null) shown before each option.
+## start: the option the pointer starts on.
+func choose(options: Array, title := "", cancellable := false, enabled: Array = [], infos: Array = [],
+		icons: Array = [], start := 0) -> int:
 	_options = options
 	_enabled = enabled if enabled.size() == options.size() else []
 	_infos = infos
 	_cancellable = cancellable
-	_index = 0
+	_index = clampi(start, 0, maxi(options.size() - 1, 0))
+	_first = 0
 	_touch_row = -1
 	for child in _box.get_children():
 		_box.remove_child(child)
@@ -84,9 +111,21 @@ func choose(options: Array, title := "", cancellable := false, enabled: Array = 
 		cursor.custom_minimum_size = Vector2(17, 12)
 		cursor.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(cursor)
+		if i < icons.size() and icons[i] != null:
+			var pic := TextureRect.new()
+			pic.texture = icons[i]
+			pic.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+			pic.custom_minimum_size = Vector2(16, 16)
+			pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			row.add_child(pic)
 		var l := _make_label()
 		l.text = str(options[i])
 		row.add_child(l)
+		if max_rows > 0 and options.size() > max_rows:
+			var room := Control.new()  # keeps the text clear of the scroll arrows
+			room.custom_minimum_size.x = MORE_ARROW.get_width() + 1
+			room.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			row.add_child(room)
 		_box.add_child(row)
 		_rows.append(row)
 		_labels.append(l)
@@ -149,10 +188,43 @@ func _is_enabled(i: int) -> bool:
 
 func _refresh() -> void:
 	for i in _labels.size():
-		_labels[i].modulate = Color.WHITE if _is_enabled(i) else Color(1, 1, 1, 0.4)
+		# The label and its picture (everything after the pointer) grey out.
+		for part in _rows[i].get_children():
+			if part != _cursors[i]:
+				part.modulate = Color.WHITE if _is_enabled(i) else Color(1, 1, 1, 0.4)
 		_cursors[i].self_modulate.a = 1.0 if i == _index else 0.0
-	if not _infos.is_empty():
+	if not _infos.is_empty() and _index < _infos.size():
 		_info.text = str(_infos[_index])
+	_scroll()
+
+
+## Shows the max_rows options around the pointer, with arrows if more are
+## hidden above or below.
+func _scroll() -> void:
+	var count := _rows.size()
+	var window := max_rows if max_rows > 0 else count
+	if count <= window:
+		_first = 0
+	else:
+		_first = clampi(_first, _index - window + 1, _index)
+		_first = clampi(_first, 0, count - window)
+	for i in count:
+		_rows[i].visible = i >= _first and i < _first + window
+	_up.visible = _first > 0
+	_down.visible = _first + window < count
+	_place_arrows.call_deferred()
+
+
+func _place_arrows() -> void:
+	if _rows.is_empty() or not is_instance_valid(_rows[0]):
+		return
+	var first := _rows[clampi(_first, 0, _rows.size() - 1)]
+	var last_i := mini(_rows.size(), _first + (max_rows if max_rows > 0 else _rows.size())) - 1
+	var last := _rows[maxi(last_i, 0)]
+	var x := roundf(_arrows.size.x - MORE_ARROW.get_width() - 1.0)
+	var bob := roundf(sin(_time * 6.0))
+	_up.position = Vector2(x, first.position.y - 1.0 - bob)
+	_down.position = Vector2(x, last.position.y + last.size.y - MORE_ARROW.get_height() + 1.0 + bob)
 
 
 func _process(delta: float) -> void:
@@ -162,6 +234,8 @@ func _process(delta: float) -> void:
 	_time += delta
 	var c := _cursors[clampi(_index, 0, _cursors.size() - 1)]
 	c.position.x = lerpf(c.position.x, -1.0 + sin(_time * 7.0) * 1.5, clampf(18.0 * delta, 0.0, 1.0))
+	if _up.visible or _down.visible:
+		_place_arrows()
 
 
 func _input(event: InputEvent) -> void:
@@ -178,6 +252,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		highlight((_index + 1) % _options.size())
 	elif event.is_action_pressed("move_up"):
 		highlight((_index - 1 + _options.size()) % _options.size())
+	elif _wheel(event) != 0:
+		highlight(clampi(_index + _wheel(event), 0, _options.size() - 1))
 	elif event.is_action_pressed("action"):
 		_pick(_index)
 	elif event.is_action_pressed("talk") and _cancellable:
@@ -190,10 +266,31 @@ func _unhandled_input(event: InputEvent) -> void:
 	get_viewport().set_input_as_handled()
 
 
+## +1 / -1 for the mouse wheel turning down / up over a scrolling list.
+func _wheel(event: InputEvent) -> int:
+	if max_rows <= 0 or _options.size() <= max_rows or not event is InputEventMouseButton or not event.pressed:
+		return 0
+	if event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+		return 1
+	if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+		return -1
+	return 0
+
+
+func _on_arrow_input(event: InputEvent, step: int) -> void:
+	if _active and Pointer.is_press(event):
+		var window := max_rows if max_rows > 0 else _rows.size()
+		highlight(clampi((_first if step < 0 else _first + window - 1) + step, 0, _options.size() - 1))
+		accept_event()
+
+
 func _on_row_input(event: InputEvent, i: int) -> void:
 	if not _active:
 		return
-	if Pointer.is_hover(event):
+	if _wheel(event) != 0:
+		highlight(clampi(_index + _wheel(event), 0, _options.size() - 1))
+		accept_event()
+	elif Pointer.is_hover(event):
 		highlight(i)
 	elif event is InputEventScreenTouch:
 		# Picks on lifting the finger, if it is still on the option it went down on.
