@@ -53,8 +53,9 @@ func choose(commands: Array, anchor: CharacterSprite, partner := false) -> int:
 	var size := block_tex.get_size()
 	var width := commands.size() * size.x + (commands.size() - 1) * GAP
 	var view := get_viewport_rect().size
-	var x := clampf(anchor.position.x - width / 2.0, MARGIN, view.x - MARGIN - width)
-	var head := anchor.position.y - anchor.height() * anchor.scale.y
+	var origin := anchor.get_global_transform_with_canvas().origin
+	var x := clampf(origin.x - width / 2.0, MARGIN, view.x - MARGIN - width)
+	var head := origin.y - anchor.height() * anchor.scale.y
 	_row_y = maxf(head - 6.0 - size.y, 28.0 + RAISE)
 	for i in commands.size():
 		var block := TextureRect.new()

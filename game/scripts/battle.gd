@@ -40,7 +40,12 @@ const ICON_BEAN := preload("res://assets/ui/icon_bean.png")
 const STATUS_BURN := preload("res://assets/battle/status_burn.png")
 const STATUS_STUN := preload("res://assets/battle/status_stun.png")
 
+## Some enemies' hits can leave you burning or dizzy: type -> [status, chance].
+## A Refreshing Herb cures both.
+const FOE_STATUS := {"dry_bones": ["burn", 0.3], "beanie": ["dizzy", 0.25], "shy_guy": ["dizzy", 0.2]}
+
 ## Battle actors: {name, node, hp, max_hp, pow, def, ally, member, type, burn, stun}
+## (allies can also have burn and dizzy, see FOE_STATUS)
 var allies: Array = []
 var foes: Array = []
 var xp_earned := 0
@@ -105,7 +110,47 @@ func _setup_presentation(map_id: String) -> void:
 	rating.modulate.a = 0.0
 	blocks.highlighted.connect(func(info: String): _say(info))
 	TouchControls.active_changed.connect(_on_touch_mode_changed)
+	get_tree().root.size_changed.connect(_layout_battle)
+	_layout_battle()
 	_refresh()
+
+
+func _layout_battle() -> void:
+	var vp := get_viewport_rect().size
+	var safe := Game.get_safe_rect()
+
+	var backdrop: ColorRect = $Backdrop
+	backdrop.position = Vector2.ZERO
+	backdrop.size = vp
+	background.position = Vector2.ZERO
+	background.size = vp
+	background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+
+	var center_offset := ((vp - Vector2(384, 216)) / 2.0).round()
+	stage.position = center_offset
+
+	var msg_box: Control = message.get_parent()
+	msg_box.size.x = minf(safe.size.x - 16.0, 368.0)
+	msg_box.position = Vector2(roundf(safe.position.x + (safe.size.x - msg_box.size.x) / 2.0), safe.position.y + 4.0)
+
+	_place_party_bar()
+
+	foe_box.reset_size()
+	foe_box.position = Vector2(safe.end.x - foe_box.size.x - 8.0, safe.position.y + 30.0)
+
+	var frame_x := roundf((vp.x - bar_frame.size.x) / 2.0)
+	var frame_y := roundf((vp.y - bar_frame.size.y) / 2.0)
+	bar_frame.position = Vector2(frame_x, frame_y)
+	bar.position = Vector2(frame_x + 8.0, frame_y + 6.0)
+	bar_badge.position = Vector2(frame_x - 24.0, frame_y - 4.0)
+
+	rating.position.x = roundf((vp.x - rating.size.x) / 2.0)
+	rating.position.y = roundf(vp.y * 0.28)
+
+	blocks.size = vp
+	targets.size = vp
+	menu.position = Vector2(safe.position.x + 8.0, safe.position.y + 30.0)
 
 
 ## Shows a hint in the message box. {a} and {b} in it name the buttons: the
@@ -227,6 +272,7 @@ func _commands_for(a: Dictionary) -> Array:
 		var move: Dictionary = Game.MOVES[_move_id(a)]
 		return [
 			{"id": "attack", "label": move["name"], "icon": "hammer", "info": move["info"]},
+			_items_command(),
 			{"id": "run", "label": "Run", "icon": "run", "info": "Try to escape."},
 		]
 	var sp: Dictionary = Game.SPECIALS[Game.CHARACTERS[p["character"]]["special"]]
@@ -234,8 +280,7 @@ func _commands_for(a: Dictionary) -> Array:
 		{"id": "jump", "label": "Jump", "icon": "jump", "info": "Stomp! Press {a} as you land for a 2nd hit."},
 		{"id": "special", "label": "%s (%d SP)" % [sp["name"], sp["sp"]], "icon": "burst",
 			"enabled": p["sp"] >= sp["sp"], "info": sp["info"]},
-		{"id": "mushroom", "label": "Mushroom (%d)" % p["mushrooms"], "icon": "mushroom",
-			"enabled": p["mushrooms"] > 0, "info": "Heal 10 HP."},
+		_items_command(),
 		{"id": "ask", "label": "Ask to join", "icon": "hand", "enabled": p["side"] == "evil" and Game.can_recruit(),
 			"info": "Evil only: ask an enemy to join your party." if p["side"] == "good" else "Weaker enemies say yes more often."},
 		{"id": "run", "label": "Run", "icon": "run", "info": "Try to escape."},
@@ -247,7 +292,8 @@ func _ally_turn(a: Dictionary) -> String:
 		await _end_veil(a)  # nobody attacked the shadows: the fire comes out anyway
 		if _alive(foes).is_empty():
 			return ""
-	var p: Dictionary = Game.player
+	if await _ally_status(a):
+		return ""
 	var commands := _commands_for(a)
 	_set_turn(a)
 	while true:
@@ -259,15 +305,9 @@ func _ally_turn(a: Dictionary) -> String:
 			message.text = "Couldn't get away!"
 			await _wait(0.8)
 			return ""
-		if choice == "mushroom":
-			var who = await _pick_ally()
-			if who == null:
+		if choice == "items":
+			if not await _item_turn(a):
 				continue  # X backs out to the blocks
-			p["mushrooms"] -= 1
-			_set_hp(who, _hp(who) + 10)
-			_refresh()
-			_show_rating("+10 HP")
-			await _wait(0.8)
 			return ""
 		var target = await _pick_foe()
 		if target == null:
@@ -293,14 +333,6 @@ func _pick_foe():
 	return await _pick(alive, "Pick a target.", func(f): return f["name"])
 
 
-func _pick_ally():
-	var alive := _alive(allies)
-	if alive.size() == 1:
-		return alive[0]
-	return await _pick(alive, "Who gets the Mushroom?",
-		func(a): return "%s %d/%d" % [a["name"], _hp(a), a["member"]["max_hp"]])
-
-
 ## Points at one of `list` with the target pointer; label(t) names each.
 func _pick(list: Array, prompt: String, label: Callable):
 	list.sort_custom(func(x, y): return x["node"].position.x < y["node"].position.x)
@@ -308,6 +340,150 @@ func _pick(list: Array, prompt: String, label: Callable):
 	var i := await targets.choose(list.map(func(t): return {"node": t["node"], "label": label.call(t)}))
 	message.text = ""
 	return list[i] if i >= 0 else null
+
+
+# --- Items ---------------------------------------------------------------------
+
+## The Items block: greyed out when nothing you carry can be used right now.
+func _items_command() -> Dictionary:
+	var any := Game.owned_items().any(func(id): return not _item_targets(id).is_empty())
+	return {"id": "items", "label": "Items", "icon": "mushroom", "enabled": any,
+		"info": "Use an item. It takes this turn."}
+
+
+## Who item `id` could be used on right now (see Game.ITEMS).
+func _item_targets(id: String) -> Array:
+	var item: Dictionary = Game.ITEMS[id]
+	if item.has("sp"):
+		var p: Dictionary = Game.player
+		return allies.filter(func(a): return _is_player(a) and _hp(a) > 0 and p["sp"] < p["max_sp"])
+	if item.has("revive"):
+		# Someone who left a co-op battle is hidden, and can't come back.
+		return allies.filter(func(a): return _hp(a) <= 0 and a["node"].visible)
+	if item.get("cure", false):
+		return _alive(allies).filter(func(a): return a.get("burn", 0) > 0 or a.get("dizzy", false))
+	if item.has("hp"):
+		return _alive(allies).filter(func(a): return _hp(a) < a["member"]["max_hp"])
+	return _alive(allies)  # peppers
+
+
+## Picks an item from the list and who it's for, and uses it. False if the
+## player backed out (the turn isn't used up).
+func _item_turn(a: Dictionary) -> bool:
+	while true:
+		var ids := Game.owned_items()
+		var labels := []
+		var enabled := []
+		var infos := []
+		var icons := []
+		for id in ids:
+			var item: Dictionary = Game.ITEMS[id]
+			labels.append("%s x%d" % [item["name"], Game.item_count(id)])
+			enabled.append(not _item_targets(id).is_empty())
+			infos.append(item["info"])
+			icons.append(load("res://assets/items/%s.png" % id))
+		menu.max_rows = 5
+		menu.info_width = 150.0
+		_say("Which item? {b} to go back.")
+		var i := await menu.choose(labels, "Items", true, enabled, infos, icons)
+		message.text = ""
+		if i < 0:
+			return false
+		var id: String = ids[i]
+		var list := _item_targets(id)
+		var who = list[0]
+		if list.size() > 1:
+			who = await _pick(list, "Use the %s on who?" % Game.ITEMS[id]["name"],
+				func(t): return "%s %d/%d" % [t["name"], _hp(t), t["member"]["max_hp"]])
+			if who == null:
+				continue  # back to the item list
+		await _use_item(a, id, who)
+		return true
+	return false
+
+
+## Uses one of item `id` from your bag on ally `who` (`a` is whose turn it is).
+func _use_item(a: Dictionary, id: String, who: Dictionary) -> void:
+	var item: Dictionary = Game.ITEMS[id]
+	var p: Dictionary = Game.player
+	Game.add_item(id, -1)
+	message.text = "%s used the %s!" % [a["name"], item["name"]]
+	await _item_pop(who, id)
+	var text := ""
+	if item.has("hp"):
+		var before := _hp(who)
+		_set_hp(who, before + int(item["hp"]))
+		text = "+%d HP" % (_hp(who) - before)
+	elif item.has("sp"):
+		var before: int = p["sp"]
+		p["sp"] = mini(p["max_sp"], p["sp"] + int(item["sp"]))
+		text = "+%d SP" % (p["sp"] - before)
+	elif item.has("revive"):
+		var max_hp: int = who["member"]["max_hp"]
+		_set_hp(who, maxi(1, int(max_hp * float(item["revive"]))))
+		message.text = "%s is back on their feet!" % who["name"]
+		text = "+%d HP" % _hp(who)
+	elif item.get("cure", false):
+		who["burn"] = 0
+		who["dizzy"] = false
+		message.text = "%s feels refreshed!" % who["name"]
+		text = "Cured!"
+	elif item.has("pow"):
+		who["pow"] += int(item["pow"])
+		text = "POW +%d" % int(item["pow"])
+	elif item.has("def"):
+		who["def"] += int(item["def"])
+		text = "DEF +%d" % int(item["def"])
+	_refresh()
+	_show_rating(text)
+	await _wait(0.9)
+
+
+## The item's picture pops up over whoever gets it and fades out.
+func _item_pop(who: Dictionary, id: String) -> void:
+	var node: CharacterSprite = who["node"]
+	var pic := Sprite2D.new()
+	pic.texture = load("res://assets/items/%s.png" % id)
+	pic.position = node.position + Vector2(0, -node.height() * SCALE - 6)
+	pic.scale = Vector2(SCALE, SCALE)
+	stage.add_child(pic)
+	var tw := create_tween()
+	tw.tween_property(pic, "position:y", pic.position.y - 10, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(0.15)
+	tw.tween_property(pic, "modulate:a", 0.0, 0.2)
+	await tw.finished
+	pic.queue_free()
+
+
+## At the start of an ally's turn: a dizzy ally loses the turn, a burning one
+## gets hurt. True if the turn is over.
+func _ally_status(a: Dictionary) -> bool:
+	if a.get("dizzy", false):
+		a["dizzy"] = false
+		message.text = "%s is dizzy and can't move!" % a["name"]
+		await _wait(0.8)
+		return true
+	if a.get("burn", 0) > 0:
+		a["burn"] -= 1
+		message.text = "%s is hurt by the burn!" % a["name"]
+		_damage(a, 2 + int(a["def"]))
+		await _wait(0.7)
+		message.text = ""
+		return _hp(a) <= 0
+	return false
+
+
+## After an enemy's hit lands on an ally: maybe a burn or dizziness.
+func _foe_status(f: Dictionary, target: Dictionary) -> void:
+	var st: Array = FOE_STATUS.get(f.get("type", ""), [])
+	if st.is_empty() or _hp(target) <= 0 or randf() >= float(st[1]):
+		return
+	if st[0] == "burn":
+		target["burn"] = 2
+		message.text = "%s is burning!" % target["name"]
+	else:
+		target["dizzy"] = true
+		message.text = "%s is dizzy!" % target["name"]
 
 
 # --- Attacks -------------------------------------------------------------------
@@ -419,8 +595,6 @@ func _special(a: Dictionary, target: Dictionary) -> void:
 			await _rookie_rush(a, target)
 		"grodus_bolt":
 			await _grodus_bolt(a)
-		"mimic":
-			await _mimic(a, target)
 		"bros_tower":
 			await _bros_tower(a, target)
 	_refresh()
@@ -477,7 +651,7 @@ func _move_id(a: Dictionary) -> String:
 	return Game.move_of(a["member"].get("kind", "partner"), a["member"]["id"])
 
 
-## Runs a Game.MOVES move for `a` (a partner, a recruit, or Mimi copying one)
+## Runs a Game.MOVES move for `a` (a partner or a recruit)
 ## and returns the rating.
 func _partner_move(a: Dictionary, target: Dictionary, id: String) -> String:
 	var move: Dictionary = Game.MOVES[id]
@@ -558,7 +732,7 @@ func _lower_def(f: Dictionary, amount: int) -> int:
 	return drop
 
 
-## The enemy has picked who to attack: remember its move for Mimic, and a
+## The enemy has picked who to attack, and a
 ## veiled Vivian dodges and hits back. True when the veil took the attack.
 func _foe_attack_taken(f: Dictionary, target: Dictionary) -> bool:
 	f["last_move"] = Game.move_of("enemy", f["type"])
@@ -597,7 +771,7 @@ func _steal(target: Dictionary) -> String:
 	var p: Dictionary = Game.player
 	if not target.get("robbed", false):
 		target["robbed"] = true
-		p["mushrooms"] += 1
+		Game.add_item("mushroom")
 		return "Stole a Mushroom from %s!" % target["name"]
 	var coins: int = Game.ENEMIES[target["type"]]["coins"]
 	p["coins"] += coins
@@ -695,20 +869,6 @@ func _grodus_bolt(a: Dictionary) -> void:
 	_show_rating(result)
 	if not lowered.is_empty():
 		message.text = "DEF down: %s" % ", ".join(lowered)
-
-
-## Mimic (Mimi): copies the last move the target used (what it is known for
-## if it hasn't acted yet) and uses it with Mimi's own power and timing.
-func _mimic(a: Dictionary, target: Dictionary) -> void:
-	var id: String = target.get("last_move", "")
-	if id == "" or not Game.MOVES.has(id):
-		id = Game.move_of("enemy", target["type"])
-	var t := create_tween()
-	t.tween_property(a["node"], "modulate", Color(0.75, 0.5, 1.0), 0.15)
-	t.tween_property(a["node"], "modulate", Color.WHITE, 0.3)
-	message.text = "%s copies %s's %s!" % [a["name"], target["name"], Game.MOVES[id]["name"]]
-	await _wait(0.8)
-	await _partner_move(a, target, id)
 
 
 ## Bros. Tower (Koopa Bros.): the other three brothers jump onto the stack,
@@ -899,6 +1059,7 @@ func _foe_turn(f: Dictionary) -> void:
 		await _slide(fnode, contact + Vector2(-60, 0), 0.25)
 	else:
 		_damage(target, f["pow"])
+		_foe_status(f, target)
 		await _slide(fnode, contact + Vector2(20, 0), 0.15)
 	await _wait(0.2)
 	fnode.move_velocity = Vector2.RIGHT * 100
@@ -921,12 +1082,22 @@ func _win() -> void:
 	message.text = "You won! +%d XP  +%d coins" % [xp_earned, coins_earned]
 	_refresh()
 	await _wait(1.6)
+	await _show_drops(Game.roll_drops(foes.map(func(f): return f["type"])))
 	if levels > 0:
 		message.text = "Level up! %s is now level %d!" % [Game.character_name(), p["level"]]
 		_show_rating("LEVEL UP!")
 		_refresh()
 		await _wait(1.8)
 	_leave("won")
+
+
+## "Got a Mushroom!" for each item the enemies left behind.
+func _show_drops(drops: Array) -> void:
+	for id in drops:
+		message.text = "Found %s!" % Game.with_article(Game.ITEMS[id]["name"])
+		var who: Dictionary = allies[0]
+		await _item_pop(who, id)
+		await _wait(0.8)
 
 
 func _lose() -> void:
@@ -1031,11 +1202,12 @@ func _flash(node: CanvasItem) -> void:
 
 func _shake(strength := 3.0, duration := 0.14) -> void:
 	var tw := create_tween()
+	var base := ((get_viewport_rect().size - Vector2(384, 216)) / 2.0).round()
 	var steps := 4
 	for i in steps:
 		var off := Vector2(randf_range(-strength, strength), randf_range(-strength, strength))
-		tw.tween_property(stage, "position", off, duration / float(steps))
-	tw.tween_property(stage, "position", Vector2.ZERO, 0.03)
+		tw.tween_property(stage, "position", base + off, duration / float(steps))
+	tw.tween_property(stage, "position", base, 0.03)
 
 
 func _popup(pos: Vector2, text: String) -> void:
@@ -1105,7 +1277,8 @@ func _place_badges() -> void:
 	_badges = _badges.filter(func(b): return is_instance_valid(b[0]) and not b[0].is_queued_for_deletion())
 	for b in _badges:
 		var node: CharacterSprite = b[1]
-		b[0].position = (node.position + Vector2(-20, -node.height() * node.scale.y * 0.75)).round()
+		var origin := node.get_global_transform_with_canvas().origin
+		b[0].position = (origin + Vector2(-20, -node.height() * node.scale.y * 0.75)).round()
 
 
 ## A star that circles stunned foes and a flame by burning ones.
@@ -1142,6 +1315,19 @@ func _process(delta: float) -> void:
 		flame.visible = f["burn"] > 0 and f["hp"] > 0
 		star.position = Vector2(cos(_time * 5.0) * 12.0, -6.0 + sin(_time * 5.0) * 3.0).round()
 		flame.position = Vector2(-14, 10 + roundf(sin(_time * 9.0)))
+	for a in allies:
+		var dizzy: bool = a.get("dizzy", false) and _hp(a) > 0
+		var burning: bool = a.get("burn", 0) > 0 and _hp(a) > 0
+		if not a.has("marks"):
+			if not dizzy and not burning:
+				continue
+			a["marks"] = _status_marks(a["node"])
+		var star: Sprite2D = a["marks"].get_child(0)
+		var flame: Sprite2D = a["marks"].get_child(1)
+		star.visible = dizzy
+		flame.visible = burning
+		star.position = Vector2(cos(_time * 5.0) * 12.0, -6.0 + sin(_time * 5.0) * 3.0).round()
+		flame.position = Vector2(14, 10 + roundf(sin(_time * 9.0)))
 
 
 func _wait(seconds: float) -> void:
@@ -1149,6 +1335,15 @@ func _wait(seconds: float) -> void:
 
 
 # --- Status display --------------------------------------------------------------
+
+## The HP boxes along the bottom of the safe area. Called again whenever they
+## change (they are empty when the layout first runs, so their height was 0).
+func _place_party_bar() -> void:
+	var safe := Game.get_safe_rect()
+	party_bar.reset_size()
+	party_bar.position.x = roundf(safe.position.x + (safe.size.x - party_bar.size.x) / 2.0)
+	party_bar.position.y = safe.end.y - party_bar.size.y - 2.0
+
 
 ## One navy box per ally on the bottom bar: face, heart and HP (SP for you).
 ## Adds an HP box for every ally that doesn't have one yet (allies can join
@@ -1197,6 +1392,7 @@ func _refresh() -> void:
 		a["hp_label"].modulate = Color(1, 0.55, 0.5) if hp * 4 <= max_hp else Color.WHITE
 		if a.has("sp_label"):
 			a["sp_label"].text = "%d/%d" % [p["sp"], p["max_sp"]]
+	_place_party_bar.call_deferred()
 	for row in foe_list.get_children():
 		foe_list.remove_child(row)
 		row.queue_free()

@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/world.gd" id="1_world"]
 [ext_resource type="Script" path="res://scripts/choice_menu.gd" id="2_menu"]
@@ -8,6 +8,7 @@
 [ext_resource type="PackedScene" path="res://ui/party_screen.tscn" id="6_party"]
 [ext_resource type="Script" path="res://ui/area_banner.gd" id="7_banner"]
 [ext_resource type="Texture2D" path="res://assets/ui/emote_exclaim.png" id="8_exclaim"]
+[ext_resource type="PackedScene" path="res://ui/items_screen.tscn" id="9_items"]
 
 [node name="World" type="Node2D"]
 script = ExtResource("1_world")
@@ -71,6 +72,8 @@ script = ExtResource("2_menu")
 [node name="PauseScreen" parent="HUD" instance=ExtResource("5_pause")]
 
 [node name="PartyScreen" parent="HUD" instance=ExtResource("6_party")]
+
+[node name="ItemsScreen" parent="HUD" instance=ExtResource("9_items")]
 
 [node name="TalkBubble" type="TextureRect" parent="HUD"]
 visible = false

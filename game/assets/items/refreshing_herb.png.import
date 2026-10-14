@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://s7oarai2oojl"
-path="res://.godot/imported/mimi.png-74d471b797887f299d9be2013c01c347.ctex"
+uid="uid://dm6h6knj4kess"
+path="res://.godot/imported/refreshing_herb.png-27b4ece65c23496aae5f067095002354.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/characters/mimi.png"
-dest_files=["res://.godot/imported/mimi.png-74d471b797887f299d9be2013c01c347.ctex"]
+source_file="res://assets/items/refreshing_herb.png"
+dest_files=["res://.godot/imported/refreshing_herb.png-27b4ece65c23496aae5f067095002354.ctex"]
 
 [params]
 

@@ -137,11 +137,18 @@ func _process(delta: float) -> void:
 func _update_frame() -> void:
 	if _sprite == null or _sprite.texture == null:
 		return
+	var is_side_only: bool = character_id in ["buzzy_beetle", "shy_guy"]
 	var row := 1
-	if absf(facing.y) > absf(facing.x) * 1.2:
+	if not is_side_only and absf(facing.y) > absf(facing.x) * 1.2:
 		row = 0 if facing.y > 0.0 else 2
 	var col := int(_anim_time * WALK_FPS) % _frames if _anim_time > 0.0 else 0
 	if is_airborne():
 		col = mini(2, _frames - 1)
 	_sprite.frame = row * _frames + col
-	_sprite.flip_h = row == 1 and facing.x < 0.0
+	if is_side_only:
+		if facing.x < -0.05:
+			_sprite.flip_h = true
+		elif facing.x > 0.05:
+			_sprite.flip_h = false
+	else:
+		_sprite.flip_h = row == 1 and facing.x < 0.0

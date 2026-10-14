@@ -10,7 +10,6 @@ Sprites and maps come from *Mario & Luigi: Superstar Saga* (Nintendo / AlphaDrea
   - Vivian: Tonberry2k.
   - Rookie Bowser: Superstar Saga's Rookie Bowser NPC sheet (USA); no ripper is named on the sheet.
   - Grodus: Sniper the Yoshi/Boo/Person (scepter rings by Bean).
-  - Mimi: ShyGuy Grey.
   - Koopa Bros.: Parakoopa's Koopa Troopa, edited by A.J. Nitro; the green, yellow and black brothers are palette swaps from the sheet's colour swatches.
   - Bombette: A.J. Nitro's M&L battle Bob-omb, from Bonzai's original.
   - Bow: captainkakarot64.
@@ -26,6 +25,7 @@ Sprites and maps come from *Mario & Luigi: Superstar Saga* (Nintendo / AlphaDrea
   - "!" and "..." emotion bubbles: A.J. Nitro (Emotion Bubbles).
   - Title sky and logo: A.J. Nitro (Introduction & File Select).
   - Digits and a few punctuation marks missing from the alphabet sheet were drawn to match it.
+- Items (game/assets/items, cut by tools/slice_items.py): A.J. Nitro (Superstar Saga Items sheet); Super Syrup is the Syrup jar recoloured.
 - Battles (game/assets/battle, cut by tools/slice_battle.py):
   - Battle backgrounds: Ryan914 (Battle Backgrounds).
   - Wart's throne room background: Frario, veggie machine by Starpower (custom, Wart Throne).

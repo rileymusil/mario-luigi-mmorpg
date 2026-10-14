@@ -42,7 +42,28 @@ func _ready() -> void:
 	add_to_group(&"touch_blockers")
 	box.mouse_filter = Control.MOUSE_FILTER_STOP
 	box.gui_input.connect(_on_box_input)
+	get_tree().root.size_changed.connect(_layout_box)
 	visible = false
+
+
+func _layout_box() -> void:
+	if not visible:
+		return
+	var safe := Game.get_safe_rect()
+	var vp := get_viewport_rect().size
+	var line_h := text_label.get_line_height()
+	var max_w := minf(safe.size.x - MARGIN * 2.0, 360.0)
+	box.size = Vector2(max_w, 0)
+	text_label.custom_minimum_size = Vector2(box.size.x - 16, line_h * LINES)
+	box.reset_size()
+	box.size.x = max_w
+	# Sit at the bottom unless the speaker stands in the lower part of the screen.
+	_at_top = _anchor != null and is_instance_valid(_anchor) and _screen_pos(_anchor).y > vp.y * 0.62
+	var box_x := roundf(safe.position.x + (safe.size.x - box.size.x) / 2.0)
+	box.position = Vector2(box_x, safe.position.y + 14.0 if _at_top else safe.end.y - box.size.y - 6.0)
+	name_tag.reset_size()
+	name_tag.position = Vector2(box.position.x + 10, box.position.y - name_tag.size.y + 5)
+	_place_tail()
 
 
 ## Shows the balloon and starts typing; returns right away.
@@ -56,22 +77,11 @@ func open(text: String, speaker := "", anchor: Node2D = null) -> void:
 	name_label.text = speaker
 	name_tag.visible = speaker != ""
 	next_arrow.visible = false
-	var vp := get_viewport_rect().size
-	var line_h := text_label.get_line_height()
-	box.size = Vector2(vp.x - MARGIN * 2, 0)
-	text_label.custom_minimum_size = Vector2(box.size.x - 16, line_h * LINES)
-	box.reset_size()
-	box.size.x = vp.x - MARGIN * 2
-	# Sit at the bottom unless the speaker stands in the lower part of the screen.
-	_at_top = anchor != null and _screen_pos(anchor).y > vp.y * 0.62
-	box.position = Vector2(MARGIN, 14.0 if _at_top else vp.y - box.size.y - 6.0)
-	name_tag.reset_size()
-	name_tag.position = Vector2(box.position.x + 10, box.position.y - name_tag.size.y + 5)
-	_place_tail()
+	visible = true
+	_layout_box()
 	box.pivot_offset = box.size / 2.0
 	box.scale = Vector2(0.94, 0.94)
 	box.modulate.a = 0.4
-	visible = true
 	var tw := create_tween()
 	tw.tween_property(box, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.parallel().tween_property(box, "modulate:a", 1.0, 0.08)

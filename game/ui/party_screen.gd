@@ -27,6 +27,15 @@ var _time := 0.0
 
 func _ready() -> void:
 	visible = false
+	get_tree().root.size_changed.connect(_layout_party)
+
+
+func _layout_party() -> void:
+	if not visible:
+		return
+	var safe := Game.get_safe_rect()
+	cards.position = Vector2(safe.position.x, safe.position.y)
+	menu.position = Vector2(safe.end.x - menu.size.x - 6.0, safe.position.y + 8.0)
 
 
 func open(p: Dictionary, character_name: String) -> void:
@@ -46,6 +55,7 @@ func open(p: Dictionary, character_name: String) -> void:
 		_member_cards.append(card)
 		_names.append(m["name"])
 	visible = true
+	_layout_party()
 
 
 func close() -> void:

@@ -31,7 +31,7 @@ const CHARACTERS := {
 		"special": "wicked_whirl"},
 	"rosalina": {"name": "Rosalina", "side": "good", "frames": 7, "hp": 18, "sp": 14, "pow": 4, "def": 2,
 		"special": "star_spin"},
-	"toadette": {"name": "Toadette", "side": "good", "frames": 10, "hp": 17, "sp": 12, "pow": 4, "def": 2,
+	"toadette": {"name": "Toadette", "side": "good", "frames": 8, "hp": 17, "sp": 12, "pow": 4, "def": 2,
 		"special": "pickaxe_pound"},
 	"bowser": {"name": "Bowser", "side": "evil", "frames": 5, "hp": 26, "sp": 10, "pow": 6, "def": 3,
 		"special": "fire_breath"},
@@ -39,8 +39,6 @@ const CHARACTERS := {
 		"special": "rookie_rush"},
 	"grodus": {"name": "Grodus", "side": "evil", "frames": 5, "hp": 21, "sp": 14, "pow": 5, "def": 2,
 		"special": "grodus_bolt"},
-	"mimi": {"name": "Mimi", "side": "evil", "frames": 4, "hp": 20, "sp": 12, "pow": 5, "def": 2,
-		"special": "mimic"},
 	"koopa_bros": {"name": "Koopa Bros.", "side": "evil", "frames": 5, "hp": 22, "sp": 12, "pow": 5, "def": 3,
 		"special": "bros_tower"},
 	"bowser_jr": {"name": "Bowser Jr.", "side": "evil", "frames": 1, "hp": 22, "sp": 12, "pow": 5, "def": 2,
@@ -51,7 +49,7 @@ const CHARACTERS := {
 
 ## Characters that were taken out of the game, and who old saves with them
 ## play as now (see load_save).
-const REMOVED_CHARACTERS := {"dimentio": "bowser"}
+const REMOVED_CHARACTERS := {"dimentio": "bowser", "mimi": "bowser"}
 
 ## Signature moves (battle.gd _special), each a timed press. {a} in an info
 ## line names the A button: Z on keys, A on touch (battle.gd _keys).
@@ -67,7 +65,6 @@ const SPECIALS := {
 	"rookie_rush": {"name": "Rookie Rush", "sp": 5,
 		"info": "Up to 3 shell bashes; {a} as each hits. Excellents in a row hit harder."},
 	"grodus_bolt": {"name": "Grodus Bolt", "sp": 6, "info": "Lightning hits every enemy and lowers their DEF."},
-	"mimic": {"name": "Mimic", "sp": 4, "info": "Copies the last move the target used."},
 	"bros_tower": {"name": "Bros. Tower", "sp": 6,
 		"info": "{a} as each brother lands on the stack, then the tower spins into the enemy."},
 	"wicked_whirl": {"name": "Wicked Whirl", "sp": 5, "info": "Hits every enemy. Excellent stuns all."},
@@ -78,7 +75,7 @@ const SPECIALS := {
 }
 
 ## What partners and recruited enemies do on their own turn (battle.gd
-## _partner_move). Enemies are known for theirs, which is what Mimi copies.
+## _partner_move). Enemies are known for theirs.
 ## kind: "tackle" (Z in the gold zone, then run in), "stomp" (jump, Z as you
 ## land), "throw" (Z in the gold zone, something flies at the enemy), "blast"
 ## (hits every enemy) or "multi" (up to `hits` hits, a press each; a miss
@@ -177,9 +174,44 @@ const NPCS := {
 	"hoohoo_villager_b": {"name": "Hoohoo Villager", "frames": 5},
 }
 
-## What shops sell: `key` is the counter in the save that goes up.
+## Items: the save keeps how many of each you carry (Game.player["items"],
+## id -> count; see item_count / add_item). Pictures are
+## res://assets/items/<id>.png (tools/slice_items.py). `price` is what shops
+## charge (they buy back at half). What an item does:
+##   hp: heals one ally that much;  sp: refills your SP that much
+##   revive: brings a partner who is down back with that share of their HP
+##   cure: clears burns and dizziness;  pow / def: raise one ally's stat for
+##   the rest of the battle.
+## `battle`: only works in battle (greyed out in the pause menu).
 const ITEMS := {
-	"mushroom": {"name": "Mushroom", "key": "mushrooms", "info": "Restores 10 HP."},
+	"mushroom": {"name": "Mushroom", "price": 8, "hp": 10, "info": "Restores 10 HP."},
+	"super_mushroom": {"name": "Super Mushroom", "price": 20, "hp": 25, "info": "Restores 25 HP."},
+	"ultra_mushroom": {"name": "Ultra Mushroom", "price": 40, "hp": 50, "info": "Restores 50 HP."},
+	"syrup": {"name": "Syrup", "price": 10, "sp": 10, "info": "Restores 10 SP."},
+	"super_syrup": {"name": "Super Syrup", "price": 25, "sp": 25, "info": "Restores 25 SP."},
+	"one_up": {"name": "1-Up Mushroom", "price": 30, "revive": 0.5, "battle": true,
+		"info": "Revives a fallen ally with half HP."},
+	"refreshing_herb": {"name": "Refreshing Herb", "price": 12, "cure": true, "battle": true,
+		"info": "Cures burns and dizziness."},
+	"red_pepper": {"name": "Red Pepper", "price": 18, "pow": 3, "battle": true,
+		"info": "POW +3 until the battle ends."},
+	"green_pepper": {"name": "Green Pepper", "price": 18, "def": 3, "battle": true,
+		"info": "DEF +3 until the battle ends."},
+}
+## Menus list items in this order.
+const ITEM_ORDER := ["mushroom", "super_mushroom", "ultra_mushroom", "syrup", "super_syrup", "one_up",
+	"refreshing_herb", "red_pepper", "green_pepper"]
+const MAX_ITEM := 99  # most of one item you can carry
+
+## What enemies sometimes leave behind after a battle: [item, chance].
+const DROPS := {
+	"goomba": ["mushroom", 0.15],
+	"galoomba": ["mushroom", 0.15],
+	"beanie": ["syrup", 0.15],
+	"koopa": ["mushroom", 0.2],
+	"shy_guy": ["refreshing_herb", 0.15],
+	"buzzy_beetle": ["green_pepper", 0.12],
+	"dry_bones": ["super_mushroom", 0.15],
 }
 
 ## Maps: art and walk mask in res://assets/maps/ (built by tools/make_maps.py).
@@ -403,7 +435,7 @@ const MAPS := {
 		"spawns": {"door": Vector2(42, 212)},
 		"exits": [{"rect": Rect2(26, 228, 32, 14), "to": "hoohoo_village", "spawn": "hut_e"}],
 		"enemies": [],
-		"npcs": [{"id": "hoohoo_villager_b", "pos": Vector2(100, 180), "talk": "hut_lore"}],
+		"npcs": [{"id": "hoohoo_villager_b", "pos": Vector2(100, 180), "talk": "hoohoo_shop"}],
 	},
 }
 
@@ -446,10 +478,75 @@ func new_player(character_id: String, username := "") -> void:
 	player = {
 		"username": clean_username(username), "uid": new_uid(), "character": character_id, "side": c["side"], "level": 1, "xp": 0, "coins": 20,
 		"max_hp": c["hp"], "hp": c["hp"], "max_sp": c["sp"], "sp": c["sp"], "pow": c["pow"], "def": c["def"],
-		"mushrooms": 3, "party": [], "map": HOME_MAP[c["side"]], "spawn": "start", "position": null,
+		"items": {"mushroom": 3}, "party": [], "map": HOME_MAP[c["side"]], "spawn": "start", "position": null,
 		"wins": 0,
 	}
 	save()
+
+
+# --- Items ------------------------------------------------------------------
+
+func item_count(id: String) -> int:
+	return int(player.get("items", {}).get(id, 0))
+
+
+## Adds (or with a negative amount, takes away) items; returns how many were
+## actually added (you can carry up to MAX_ITEM of each).
+func add_item(id: String, amount := 1) -> int:
+	if not ITEMS.has(id):
+		return 0
+	if not player.has("items"):
+		player["items"] = {}
+	var before := item_count(id)
+	var after := clampi(before + amount, 0, MAX_ITEM)
+	if after == 0:
+		player["items"].erase(id)
+	else:
+		player["items"][id] = after
+	return after - before
+
+
+## The ids of the items you carry, in menu order.
+func owned_items() -> Array:
+	return ITEM_ORDER.filter(func(id): return item_count(id) > 0)
+
+
+## "a Mushroom", "an Ultra Mushroom".
+func with_article(item_name: String) -> String:
+	return ("an " if item_name.left(1).to_lower() in ["a", "e", "i", "o", "u"] else "a ") + item_name
+
+
+## What a shop pays for one of an item.
+func sell_price(id: String) -> int:
+	return maxi(1, int(ITEMS[id]["price"]) / 2)
+
+
+## Rolls the item drops for beaten enemies (types); adds them to the
+## inventory and returns their ids (one per drop).
+func roll_drops(types: Array) -> Array:
+	var got := []
+	for t in types:
+		var d: Array = DROPS.get(t, [])
+		if not d.is_empty() and randf() < float(d[1]) and add_item(d[0]) > 0:
+			got.append(d[0])
+	return got
+
+
+## Old saves counted Mushrooms only ("mushrooms": n). Moves that into the
+## inventory and drops anything that isn't a known item.
+func _migrate_items(data: Dictionary) -> void:
+	var items := {}
+	var saved = data.get("items", {})
+	if typeof(saved) == TYPE_DICTIONARY:
+		for id in saved:
+			if ITEMS.has(id) and int(saved[id]) > 0:
+				items[id] = mini(int(saved[id]), MAX_ITEM)
+	if data.has("mushrooms"):
+		var old := int(data["mushrooms"])
+		if old > 0:
+			items["mushroom"] = mini(int(items.get("mushroom", 0)) + old, MAX_ITEM)
+		data.erase("mushrooms")
+	data["items"] = items
 
 
 func character_name() -> String:
@@ -529,6 +626,8 @@ func switch_side() -> void:
 			break
 	player["side"] = other
 	player["party"] = []
+	if Net.party_id != "":
+		Net.leave_party()  # good and evil can't be a party (the server ends it too)
 	go_to_map(HOME_MAP[other], "start")
 
 
@@ -573,7 +672,7 @@ func start_pvp(foe: Dictionary, first: bool, overworld_position: Vector2) -> voi
 	pending_battle = {"pvp": foe, "first": first, "key": ""}
 	player["in_duel"] = true  # cleared when the duel ends; quitting mid-duel counts as a loss
 	save()
-	get_tree().call_deferred("change_scene_to_file", PVP_SCENE)
+	BattleTransition.into_battle(get_tree(), PVP_SCENE)
 
 
 ## Coins a player drops when they lose a duel (the winner picks them up).
@@ -644,8 +743,9 @@ func load_save() -> bool:
 		data["character"] = id
 		data["side"] = CHARACTERS[id]["side"]
 	# JSON numbers come back as floats; keep whole-number stats as ints.
-	for key in ["level", "xp", "coins", "max_hp", "hp", "max_sp", "sp", "pow", "def", "mushrooms", "wins"]:
+	for key in ["level", "xp", "coins", "max_hp", "hp", "max_sp", "sp", "pow", "def", "wins"]:
 		data[key] = int(data.get(key, 0))
+	_migrate_items(data)
 	for member in data["party"]:
 		for key in ["max_hp", "hp", "pow", "def"]:
 			member[key] = int(member[key])
@@ -665,3 +765,36 @@ func load_save() -> bool:
 
 func continue_game() -> void:
 	get_tree().call_deferred("change_scene_to_file", WORLD_SCENE)
+
+
+## Returns the visible safe area rect in viewport canvas coordinates,
+## accounting for phone screen notches, pills, rounded corners, and navigation bars.
+func get_safe_rect() -> Rect2:
+	var vp := get_viewport()
+	if vp == null:
+		return Rect2(0, 0, 384, 216)
+	var vp_size := vp.get_visible_rect().size
+	var safe := DisplayServer.get_display_safe_area()
+	var win_size := DisplayServer.window_get_size()
+	if win_size.x <= 0 or win_size.y <= 0 or safe.size.x <= 0:
+		return Rect2(Vector2.ZERO, vp_size)
+	var left_m := clampf(float(safe.position.x) / float(win_size.x), 0.0, 0.35)
+	var top_m := clampf(float(safe.position.y) / float(win_size.y), 0.0, 0.35)
+	var right_m := clampf(float(win_size.x - (safe.position.x + safe.size.x)) / float(win_size.x), 0.0, 0.35)
+	var bottom_m := clampf(float(win_size.y - (safe.position.y + safe.size.y)) / float(win_size.y), 0.0, 0.35)
+	return Rect2(
+		vp_size.x * left_m,
+		vp_size.y * top_m,
+		vp_size.x * (1.0 - left_m - right_m),
+		vp_size.y * (1.0 - top_m - bottom_m)
+	)
+
+
+## True if the screen is currently in portrait orientation (height > width).
+func is_portrait() -> bool:
+	var vp := get_viewport()
+	if vp == null:
+		return false
+	var s := vp.get_visible_rect().size
+	return s.y > s.x
+

@@ -21,13 +21,13 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
 **Phones and tablets.** Hold the phone sideways. The on-screen controls show on touch screens (or after your first touch) and hide when you press a key; several fingers work at once, so you can walk and jump together. Only the buttons that make sense show: none on the title screen (tap the menus), A and B in battle, all of them while walking around, and none while someone is talking. On Android, the corners button next to MENU goes full screen and keeps the game sideways; on iPhone, use Share > Add to Home Screen to play full screen. Typing (your username, or chat with the Chat button) opens the browser's own text box, so the phone's keyboard comes up.
 
 ## What you can do
-- **Pick a side and a character** (eight good, seven evil; the card on the right shows stats and the signature move).
+- **Pick a side and a character** (eight good, six evil; the card on the right shows stats and the signature move).
   Good: Mario, Luigi, Princess Peach, Professor E. Gadd, Vivian, Waluigi, Rosalina, Toadette.
-  Evil: Bowser, Rookie Bowser, Grodus, Mimi, the Koopa Bros., Bowser Jr., Shadow Mario.
+  Evil: Bowser, Rookie Bowser, Grodus, the Koopa Bros., Bowser Jr., Shadow Mario.
   Good players start in Beanbean Castle Town, evil players at Bowser's Castle.
 - **Explore** maps built from the Superstar Saga map art (see *Maps* below): Castle Town with ten buildings you can walk into, Beanbean Outskirts, Stardust Fields, Hoohoo Village and Bowser's Castle. Walk up into a door to go in; walk down onto the door mat to go back out.
 - **Jump up ledges.** Hedges, flat tree tops, plateaus and low walls are raised ground: walking into them stops you, so jump (Z) while walking into them to get up. Low steps take an ordinary jump; tall cliffs can't be climbed, only dropped down (walk off any ledge to drop). Your party jumps up and drops down behind you. In the Outskirts, the hedge west of the start and the flat tree tops beyond it are the way to the west islands; in Stardust Fields, the pink plateaus are a jump up from the violet ground; Castle Town's low terrace walls and the step by Hoohoo Village's mountain door can be hopped up.
-- **Talk** to the townsfolk (X): they give hints, and some do more. The Mushroom Shop (and the Badge Shop, which is out of badges) sells Mushrooms for coins, so does a Koopa at Bowser's Castle (heroes pay extra, and so do villains in town). The Elder, Dr. Toad, the Starbeans Cafe and the west Hoohoo hut heal your party for free.
+- **Talk** to the townsfolk (X): they give hints, and some do more. Shops buy and sell items for coins (they buy back at half price): the Mushroom Shop (Mushrooms, Super Mushrooms, Syrup, Refreshing Herbs, 1-Up Mushrooms) and the Badge Shop (out of badges, so Peppers and Syrups) in Castle Town, the trader in the east Hoohoo hut (stronger stock: Ultra Mushrooms, Super Syrup, Peppers) and a Koopa at Bowser's Castle. Heroes pay extra at Bowser's, and villains pay extra everywhere else. The Elder, Dr. Toad, the Starbeans Cafe and the west Hoohoo hut heal your party for free.
 - **Battle** enemies in the Outskirts and Stardust Fields (Goombas, Galoombas, Beanies, Koopa Troopas, Shy Guys, Buzzy Beetles and Dry Bones). Touch one to fight; jump on it first for a first strike.
   - *Jump*: press Z as you land for a second stomp (Good / Excellent).
   - *Special* (costs SP), each a timed press (Z in the gold zone unless it says otherwise):
@@ -42,7 +42,6 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
     | Bowser | Fire Breath | Hits every enemy. |
     | Rookie Bowser | Rookie Rush | Up to 3 shell bashes, Z as each one hits. Every Excellent in a row adds 2 damage; a miss ends the rush. |
     | Grodus | Grodus Bolt | Lightning on every enemy; lowers their DEF for the battle (1 on Good, 2 on Excellent). |
-    | Mimi | Mimic | Copies the last move the target used (what it is known for if it hasn't acted yet), with Mimi's power. |
     | Koopa Bros. | Bros. Tower | The other three brothers jump onto the stack, Z as each lands (a miss knocks him off); then the tower spins into the enemy. More brothers, more damage. |
     | Waluigi / Rosalina / Toadette | Wicked Whirl / Star Spin / Pickaxe Pound | Hits all and can stun all / hits and heals the party / ignores DEF. |
     | Bowser Jr. / Shadow Mario | Goop Paint / Shadow Drain | Can stun / steals HP. |
@@ -69,7 +68,18 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
   | Buzzy Beetle | Shell Spin | Tackle; Excellent lowers DEF by 1. |
   | Dry Bones | Bone Toss | Throw. |
   - Pick a command block over whoever's turn it is (arrows and Z, point and click, or tap it), then a target (X, B, a right click or a tap on nobody goes back). Timed-press hints name the A button when you play by touch. Each map has its own battle background.
-- **Grow.** XP and levels (cap 50), coins, Mushrooms. Losing sends you home with a few coins lost.
+- **Items.** Use them from *Items* in the pause menu (Enter) or the *Items* block in battle (it takes that turn; partners have one too):
+
+  | Item | Does | Price |
+  |---|---|---|
+  | Mushroom / Super Mushroom / Ultra Mushroom | Heals one ally 10 / 25 / 50 HP. | 8 / 20 / 40 |
+  | Syrup / Super Syrup | Refills 10 / 25 of your SP. | 10 / 25 |
+  | 1-Up Mushroom | Battle: revives a fallen ally with half their HP. | 30 |
+  | Refreshing Herb | Battle: cures a burn or dizziness (Dry Bones can burn you; Beanies and Shy Guys can make you dizzy, losing a turn). | 12 |
+  | Red Pepper / Green Pepper | Battle: one ally's POW / DEF +3 until the battle ends. | 18 |
+
+  Beaten enemies drop coins, and sometimes an item. In a partner's co-op battle you can use HP and SP items and Red Peppers on yourself; the rest are greyed out there.
+- **Grow.** XP and levels (cap 50), coins, items. Losing sends you home with a few coins lost.
 - **Switch sides** any time from the menu. **Saves** go to the browser automatically.
 
 ## Project layout
@@ -128,13 +138,13 @@ NPC keys: `id` (sprite sheet: an entry in `NPCS`, `PARTNERS`, `CHARACTERS` or `E
 "mushroom_shop": {"name": "Shopkeeper", "branches": [
   {"if": {"side": "evil"}, "say": ["It costs more for you!"], "choices": [...], "shop": [...]},
   {"say": ["Welcome to the Mushroom Shop! What can I get you?"],
-   "choices": [{"text": "Buy", "do": "shop"}, {"text": "Just looking"}],
-   "shop": [{"item": "mushroom", "count": 1, "price": 8, "thanks": "Thank you!"}]}
+   "choices": [{"text": "Shop", "do": "shop"}, {"text": "Just looking"}],
+   "shop": [{"item": "mushroom", "thanks": "Thank you!"}, {"item": "mushroom", "count": 3, "price": 21}]}
 ]}
 ```
 - `say`: pages shown in turn (`"random": true` picks one). With `choices`, the last page stays up as the question.
 - Conditions in `if`: `side` (`good`/`evil`), `min_level`, `max_level`, `party_full` (true/false).
-- A choice can `say` more pages and `do` one of `recruit` (partners only), `shop` (sells the branch's `shop` list; items are in `ITEMS` in game.gd) or `heal` (full HP and SP for the party; `done` is the line shown after).
+- A choice can `say` more pages and `do` one of `recruit` (partners only), `shop` (a Buy / Sell counter for the branch's `shop` list: `item` is an id from `ITEMS` in game.gd, `count` a bundle size, `price` defaults to the item's own price times the branch's `markup`, `thanks` is said after buying; anything you carry can be sold for half its price) or `heal` (full HP and SP for the party; `done` is the line shown after).
 - `{name}` and `{character}` in any line become the player's name and character.
 - Partners need no entry: they say their `line` from `PARTNERS` and offer to join (and back away from evil players). An entry with their id overrides that.
 
@@ -158,6 +168,7 @@ Run the game from the Godot editor (F5), walk to a map and press **F2**. Players
 The tools read the original sheets from the `Mario&LuigiMMO` art folder (not in this repo):
 - `python3 tools/slice_sprites.py "<Mario&LuigiMMO folder>" [ids]` cuts walk cycles. Add a character with the pixel boxes of its down, side and up rows (options for white backgrounds and drawn-on shadows are described at the top of the script), then add it to `CHARACTERS`, `PARTNERS` or `ENEMIES` in `game.gd`.
 - `python3 tools/slice_ui.py "<Mario&LuigiMMO folder>"` cuts the menu art (speech balloons, notebook, stat cards, gold digits, icons, title art, the touch A / B buttons and joystick) into `assets/ui/` and builds the two bitmap fonts from the MLSS alphabet. Re-run `godot --headless --import` afterwards.
+- `python3 tools/slice_items.py "<Mario&LuigiMMO folder>"` cuts the item pictures into `assets/items/<id>.png` (one per id in `ITEMS`; add an item with its box on the Items sheet).
 - `python3 tools/slice_battle.py "<Mario&LuigiMMO folder>"` cuts the battle art into `assets/battle/`: backgrounds (add one by giving its id and spot on the sheet in `BACKGROUNDS`), command blocks and their pictures, A-button badges, rating word art, status icons and the battle start swipe.
 - `python3 tools/make_maps.py "<Mario&LuigiMMO folder>" [ids]` crops a map and guesses its walk mask from colours, opening up the ground behind the props in `<map>_props.json` (`python3 tools/make_maps.py --mask-only [ids]` rebuilds just the masks from the art in the repo). Touch up masks and props in the map editor (or `_mask.png` in any paint program: white = walk, black = blocked); re-running the tool overwrites hand-painted masks.
 

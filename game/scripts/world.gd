@@ -55,6 +55,7 @@ var online: OnlinePlayers # other players on this map, see online_players.gd
 @onready var menu: ChoiceMenu = $HUD/Menu
 @onready var pause_screen: PauseScreen = $HUD/PauseScreen
 @onready var party_screen: PartyScreen = $HUD/PartyScreen
+@onready var items_screen: ItemsScreen = $HUD/ItemsScreen
 @onready var talk_bubble: TextureRect = $HUD/TalkBubble
 
 
@@ -73,6 +74,7 @@ func _ready() -> void:
 	props.build(actors, art)
 	rebuild_collision()
 	_fit_camera()
+	get_tree().root.size_changed.connect(_on_viewport_resized)
 
 	player = _spawn_character(Game.player["character"])
 	var pos: Vector2
@@ -124,22 +126,30 @@ func _ready() -> void:
 	Game.save()
 
 
+var _backdrop: ColorRect
+
+
 ## Keeps the camera inside the map. A room smaller than the screen is shown
-## centred on black.
+## centred on dark backdrop.
 func _fit_camera() -> void:
-	var pad := ((get_viewport_rect().size - map_size) / 2.0).max(Vector2.ZERO).ceil()
+	var vp := get_viewport_rect().size
+	var pad := ((vp - map_size) / 2.0).max(Vector2.ZERO).ceil()
 	camera.limit_left = -int(pad.x)
 	camera.limit_top = -int(pad.y)
 	camera.limit_right = int(map_size.x + pad.x)
 	camera.limit_bottom = int(map_size.y + pad.y)
 	if pad != Vector2.ZERO:
-		var backdrop := ColorRect.new()
-		backdrop.color = Color.BLACK
-		backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		backdrop.position = -pad - Vector2(8, 8)
-		backdrop.size = map_size + pad * 2.0 + Vector2(16, 16)
-		backdrop.z_index = -2
-		add_child(backdrop)
+		if _backdrop == null:
+			_backdrop = ColorRect.new()
+			_backdrop.color = Color(0.02, 0.02, 0.04)
+			_backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_backdrop.z_index = -2
+			add_child(_backdrop)
+		_backdrop.position = -pad - Vector2(100, 100)
+		_backdrop.size = map_size + pad * 2.0 + Vector2(200, 200)
+		_backdrop.visible = true
+	elif _backdrop:
+		_backdrop.visible = false
 
 
 func _spawn_character(id: String) -> CharacterSprite:
@@ -343,7 +353,13 @@ func _process(delta: float) -> void:
 
 	# Dynamic camera lead: smoothly tilts focus slightly ahead in movement direction
 	var lead := player.facing * 12.0 if player.move_velocity.length() > 15.0 else Vector2.ZERO
-	camera.position = player.position + lead
+	var vp := get_viewport_rect().size
+	var target_cam := player.position + lead
+	if map_size.x < vp.x:
+		target_cam.x = map_size.x / 2.0
+	if map_size.y < vp.y:
+		target_cam.y = map_size.y / 2.0
+	camera.position = target_cam
 
 	_update_followers(delta)
 	_update_enemies(delta)
@@ -559,7 +575,7 @@ func _ask(n: Dictionary, branch: Dictionary, question: String, speaker: String) 
 		"recruit":
 			return await _recruit(n, speaker)
 		"shop":
-			await _shop(branch.get("shop", []), speaker, node)
+			await _shop(branch, speaker, node)
 		"heal":
 			_heal_party()
 			await say(DialogueData.fill(choice.get("done", "Your HP and SP are full again!")))
@@ -586,34 +602,103 @@ func _recruit(n: Dictionary, speaker: String) -> bool:
 	return false
 
 
-## A shop counter: buy from `stock` ([{item, count, price}]) until Done.
-func _shop(stock: Array, speaker: String, node: Node2D) -> void:
+## A shop counter: Buy from the branch's "shop" list and Sell what you carry,
+## until Done. Each stock entry: {item, count (a bundle, default 1), price
+## (default: the item's price times the branch's "markup", default 1),
+## thanks (said after buying)}. Shops buy anything back at half price.
+func _shop(branch: Dictionary, speaker: String, node: Node2D) -> void:
+	var stock: Array = branch.get("shop", []).filter(func(s): return Game.ITEMS.has(s.get("item", "")))
+	var markup := float(branch.get("markup", 1.0))
+	menu.max_rows = 5
+	menu.info_width = 190.0
+	var question := "What can I do for you?"
+	while true:
+		dialog.open("%s You have %d coins." % [question, Game.player["coins"]], speaker)
+		_place_menu.call_deferred()
+		var c := await menu.choose(["Buy", "Sell", "Done"], "", true)
+		dialog.close()
+		if c == 0:
+			await _shop_buy(stock, markup, speaker)
+		elif c == 1:
+			await _shop_sell(speaker, node)
+		else:
+			break
+		question = "Anything else?"
+	menu.max_rows = 0
+	menu.info_width = 150.0
+
+
+func _stock_price(s: Dictionary, markup: float) -> int:
+	if s.has("price"):
+		return int(s["price"])
+	return int(ceil(Game.ITEMS[s["item"]]["price"] * int(s.get("count", 1)) * markup))
+
+
+func _shop_buy(stock: Array, markup: float, speaker: String) -> void:
 	var p: Dictionary = Game.player
+	var at := 0
+	var line := "What would you like?"
 	while true:
 		var labels := []
 		var enabled := []
 		var infos := []
+		var icons := []
 		for s in stock:
 			var item: Dictionary = Game.ITEMS[s["item"]]
 			var count := int(s.get("count", 1))
-			labels.append("%s%s  %d coins" % [item["name"], " x%d" % count if count > 1 else "", int(s["price"])])
-			enabled.append(p["coins"] >= int(s["price"]))
-			infos.append("%s You have %d." % [item["info"], p.get(item["key"], 0)])
+			var price := _stock_price(s, markup)
+			labels.append("%s%s  %d" % [item["name"], " x%d" % count if count > 1 else "", price])
+			enabled.append(p["coins"] >= price and Game.item_count(s["item"]) + count <= Game.MAX_ITEM)
+			infos.append("%s (You have %d.)" % [item["info"], Game.item_count(s["item"])])
+			icons.append(ItemsScreen.icon_of(s["item"]))
 		labels.append("Done")
 		enabled.append(true)
-		infos.append("You have %d coins." % p["coins"])
-		dialog.open("You have %d coins. What would you like?" % p["coins"], speaker, node)
+		infos.append("")
+		icons.append(null)
+		dialog.open("%s You have %d coins." % [line, p["coins"]], speaker)  # no tail through the list
 		_place_menu.call_deferred()
-		var i := await menu.choose(labels, "", true, enabled, infos)
+		var i := await menu.choose(labels, "", true, enabled, infos, icons, at)
 		dialog.close()
 		if i < 0 or i >= stock.size():
-			break
+			return
+		at = i
 		var s: Dictionary = stock[i]
-		var item: Dictionary = Game.ITEMS[s["item"]]
-		p["coins"] -= int(s["price"])
-		p[item["key"]] = int(p.get(item["key"], 0)) + int(s.get("count", 1))
+		p["coins"] -= _stock_price(s, markup)
+		Game.add_item(s["item"], int(s.get("count", 1)))
 		Game.save()
-		await say(DialogueData.fill(s.get("thanks", "Thank you! Come again!")), speaker, node)
+		line = DialogueData.fill(s.get("thanks", "Thank you!"))
+
+
+func _shop_sell(speaker: String, node: Node2D) -> void:
+	var p: Dictionary = Game.player
+	var at := 0
+	var line := "What are you selling? I pay half price."
+	while true:
+		var ids := Game.owned_items()
+		if ids.is_empty():
+			await say("You don't have anything to sell.", speaker, node)
+			return
+		var labels := []
+		var infos := []
+		var icons := []
+		for id in ids:
+			labels.append("%s x%d  %d" % [Game.ITEMS[id]["name"], Game.item_count(id), Game.sell_price(id)])
+			infos.append("Sell one for %d coins." % Game.sell_price(id))
+			icons.append(ItemsScreen.icon_of(id))
+		labels.append("Done")
+		infos.append("")
+		icons.append(null)
+		dialog.open("%s You have %d coins." % [line, p["coins"]], speaker)  # no tail through the list
+		_place_menu.call_deferred()
+		var i := await menu.choose(labels, "", true, [], infos, icons, mini(at, ids.size() - 1))
+		dialog.close()
+		if i < 0 or i >= ids.size():
+			return
+		at = i
+		Game.add_item(ids[i], -1)
+		p["coins"] += Game.sell_price(ids[i])
+		Game.save()
+		line = "Sold %s for %d coins!" % [Game.with_article(Game.ITEMS[ids[i]]["name"]), Game.sell_price(ids[i])]
 
 
 func _heal_party() -> void:
@@ -631,18 +716,12 @@ func _pause_menu() -> void:
 	var other := "Evil" if p["side"] == "good" else "Good"
 	while true:
 		pause_screen.open(p, Game.character_name(), map_info["name"])
-		var options := ["Mushroom x%d" % p["mushrooms"], "Party", "Go %s" % other, "Save", "Quit", "Close"]
+		var options := ["Items", "Party", "Go %s" % other, "Save", "Quit", "Close"]
 		var i := await pause_screen.menu.choose(options, "", true)
 		match i:
 			0:
-				if p["mushrooms"] <= 0:
-					await say("You don't have any Mushrooms.")
-				elif p["hp"] >= p["max_hp"]:
-					await say("Your HP is already full.")
-				else:
-					p["mushrooms"] -= 1
-					p["hp"] = mini(p["max_hp"], p["hp"] + 10)
-					await say("You ate a Mushroom. +10 HP")
+				pause_screen.close()
+				await _items_menu()
 				continue
 			1:
 				pause_screen.close()
@@ -671,6 +750,70 @@ func _pause_menu() -> void:
 	busy = false
 
 
+## The Items page: pick an item, then who uses it (if it could be more than
+## one of you). Battle-only items are listed but greyed out.
+func _items_menu() -> void:
+	var at := 0
+	while true:
+		var ids := Game.owned_items()
+		if ids.is_empty():
+			await say("You aren't carrying any items. The shops in town sell them.")
+			break
+		var usable := ids.map(func(id): return not Game.ITEMS[id].get("battle", false))
+		items_screen.set_footer(("A: Use   B: Back" if TouchControls.active else "Z: Use   X: Back")
+			+ "     Coins: %d" % Game.player["coins"])
+		var i := await items_screen.choose_item(ids, usable, at)
+		if i < 0:
+			break
+		at = i
+		await _use_item(ids[i])
+	items_screen.close()
+
+
+## Uses an item outside battle (HP and SP items).
+func _use_item(id: String) -> void:
+	var item: Dictionary = Game.ITEMS[id]
+	var p: Dictionary = Game.player
+	var you := Game.character_name()
+	if item.has("sp"):
+		if p["sp"] >= p["max_sp"]:
+			await say("Your SP is already full.")
+			return
+		var before: int = p["sp"]
+		p["sp"] = mini(p["max_sp"], p["sp"] + int(item["sp"]))
+		Game.add_item(id, -1)
+		Game.save()
+		await say("%s had %s. +%d SP" % [you, Game.with_article(item["name"]), p["sp"] - before])
+		return
+	if not item.has("hp"):
+		return
+	# You and your partners: whoever isn't at full HP can have it.
+	var who: Array = [p]
+	who.append_array(p["party"])
+	var names: Array = [you]
+	for m in p["party"]:
+		names.append(m["name"])
+	var t := 0
+	if who.size() > 1:
+		var labels := []
+		var enabled := []
+		for k in who.size():
+			labels.append("%s %d/%d" % [names[k], who[k]["hp"], who[k]["max_hp"]])
+			enabled.append(who[k]["hp"] < who[k]["max_hp"])
+		t = await items_screen.choose_target(labels, enabled)
+		if t < 0:
+			return
+	var m: Dictionary = who[t]
+	if m["hp"] >= m["max_hp"]:
+		await say("Your HP is already full." if t == 0 else "%s's HP is already full." % names[t])
+		return
+	var before: int = m["hp"]
+	m["hp"] = mini(m["max_hp"], m["hp"] + int(item["hp"]))
+	Game.add_item(id, -1)
+	Game.save()
+	await say("%s ate %s. +%d HP" % [names[t], Game.with_article(item["name"]), m["hp"] - before])
+
+
 func _party_menu() -> void:
 	var party: Array = Game.player["party"]
 	party_screen.open(Game.player, Game.character_name())
@@ -697,9 +840,18 @@ func _show_area_name() -> void:
 	area_name.show_name(map_info["name"])
 
 
+func _on_viewport_resized() -> void:
+	_fit_camera()
+	_update_hud()
+
+
 func _update_hud() -> void:
+	var safe := Game.get_safe_rect()
+	var vp := get_viewport_rect().size
 	var p: Dictionary = Game.player
 	status.refresh(p, Game.character_name())
+	status.position = Vector2(safe.position.x + 4.0, safe.position.y + 3.0)
+
 	var npc: Variant = null if busy else _nearest_npc()
 	if busy:
 		hint.text = ""
@@ -711,7 +863,15 @@ func _update_hud() -> void:
 	var hint_box: Control = hint.get_parent()
 	hint_box.visible = hint.text != ""
 	hint_box.reset_size()
-	hint_box.position.x = roundf((get_viewport_rect().size.x - hint_box.size.x) / 2.0)
+	hint_box.position.x = roundf(safe.position.x + (safe.size.x - hint_box.size.x) / 2.0)
+	hint_box.position.y = safe.end.y - hint_box.size.y - 2.0
+
+	area_name.position.x = roundf(safe.position.x + (safe.size.x - area_name.size.x) / 2.0)
+	area_name.position.y = safe.position.y + 30.0
+
+	# Keep overworld menu anchored to top-right safe edge
+	menu.position = Vector2(safe.end.x - menu.size.x - 4.0, safe.position.y + 24.0)
+
 	# A "!" bubble pops up over whoever you can talk to.
 	talk_bubble.visible = npc != null
 	if npc != null:
@@ -719,3 +879,4 @@ func _update_hud() -> void:
 		var head := node.get_global_transform_with_canvas().origin - Vector2(0, node.height() + 6)
 		var bob := roundf(absf(sin(Time.get_ticks_msec() / 160.0)) * 2.0)
 		talk_bubble.position = (head - Vector2(talk_bubble.size.x / 2.0, talk_bubble.size.y + bob)).round()
+
