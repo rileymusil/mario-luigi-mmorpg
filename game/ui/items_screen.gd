@@ -34,11 +34,13 @@ static func icon_of(id: String) -> Texture2D:
 	return load("res://assets/items/%s.png" % id)
 
 
-## Lists `ids` (Game.ITEMS ids) with their counts; greyed out where `usable`
-## is false. Returns the picked index, or -1 when backed out.
-func choose_item(ids: Array, usable: Array, start := 0) -> int:
+## Lists `ids` (Game.ITEMS or Game.GEAR ids) with their counts (or `labels`);
+## greyed out where `usable` is false. Returns the picked index, or -1 when
+## backed out.
+func choose_item(ids: Array, usable: Array, start := 0, labels: Array = []) -> int:
 	_ids = ids
-	var labels := ids.map(func(id): return "x%d" % Game.item_count(id))
+	if labels.size() != ids.size():
+		labels = ids.map(func(id): return "x%d" % Game.item_count(id))
 	var icons := ids.map(func(id): return icon_of(id))
 	_center_book()
 	visible = true
@@ -58,6 +60,11 @@ func set_footer(text: String) -> void:
 	footer.text = text
 
 
+## The page's tab: "ITEMS" or "GEAR".
+func set_tab(text: String) -> void:
+	$Book/Tab.text = text
+
+
 func close() -> void:
 	visible = false
 	menu.visible = false
@@ -66,7 +73,7 @@ func close() -> void:
 func _show(i: int) -> void:
 	if i < 0 or i >= _ids.size():
 		return
-	var item: Dictionary = Game.ITEMS[_ids[i]]
+	var item: Dictionary = Game.goods(_ids[i])
 	name_label.text = item["name"]
 	icon.texture = icon_of(_ids[i])
 	info.text = item["info"] + ("" if not item.get("battle", false) else " (In battle.)")
