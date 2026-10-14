@@ -93,11 +93,13 @@ func _build(d: Dictionary) -> void:
 
 func _sprite(id: String, pos: Vector2, facing: Vector2) -> CharacterSprite:
 	var node := CharacterSprite.new()
-	node.character_id = id if (Game.CHARACTERS.has(id) or Game.ENEMIES.has(id) or Game.PARTNERS.has(id) or Game.BOSSES.has(id)) else "mario"
+	node.character_id = id if (Game.CHARACTERS.has(id) or Game.PARTNERS.has(id) or not Game.foe_info(id).is_empty()) else "mario"
 	node.facing = facing
 	node.scale = Vector2(SCALE, SCALE)
 	node.position = pos
 	stage.add_child(node)
+	if Game.BOSSES.has(id) or Game.BOSS_MINIONS.has(id):
+		node.scale = Vector2.ONE * node.battle_scale(SCALE)  # as the host draws them
 	return node
 
 
@@ -181,6 +183,9 @@ func _process(delta: float) -> void:
 		var node: CharacterSprite = actors[i]["node"]
 		node.visible = int(p[5]) == 1
 		node.modulate = Color.html(str(p[4]))
+		if p.size() > 7 and Game.BOSS_FORMS.has(str(p[7])) and node.character_id != str(p[7]):
+			node.character_id = str(p[7])  # the boss changed shape (BOSSES "phase2_form")
+			node.scale = Vector2.ONE * node.battle_scale(SCALE)
 		if i == me_index or (_local and i == allies.size() + _local_foe):
 			continue
 		var target := Vector2(p[0], p[1])

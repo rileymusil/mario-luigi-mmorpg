@@ -215,6 +215,11 @@ func _charge(f: Dictionary, target: Dictionary, local: bool) -> void:
 	await _wait(0.3)
 
 
+## The partner's screen only has the foes the battle started with.
+func _can_summon() -> bool:
+	return false
+
+
 ## A boss attacking the partner: an ordinary charge they dodge on their screen.
 func _boss_remote(f: Dictionary, target: Dictionary) -> void:
 	await _charge(f, target, false)
@@ -273,7 +278,8 @@ func _send_sync(force := false) -> void:
 		var face := 1 if absf(n.facing.x) >= absf(n.facing.y) * 1.2 and n.facing.x > 0.0 else \
 			(3 if absf(n.facing.x) >= absf(n.facing.y) * 1.2 else (0 if n.facing.y > 0.0 else 2))
 		pose.append([roundi(n.position.x), roundi(n.position.y), roundi(n.jump_height), face,
-			n.modulate.to_html(true), 1 if n.visible else 0, 1 if n.move_velocity.length() > 1.0 else 0])
+			n.modulate.to_html(true), 1 if n.visible else 0, 1 if n.move_velocity.length() > 1.0 else 0,
+			n.character_id])  # a boss can change shape at phase 2
 	var d := {"kind": "sync", "msg": message.text.left(90), "allies": a_hp, "foes": f_hp, "pose": pose,
 		"turn": _turn_index()}
 	var key := JSON.stringify(d)

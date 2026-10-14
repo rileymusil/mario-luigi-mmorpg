@@ -68,16 +68,41 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
   | Buzzy Beetle | Shell Spin | Tackle; Excellent lowers DEF by 1. |
   | Dry Bones | Bone Toss | Throw. |
   - Pick a command block over whoever's turn it is (arrows and Z, point and click, or tap it), then a target (X, B, a right click or a tap on nobody goes back). Timed-press hints name the A button when you play by touch. Each map has its own battle background.
-- **Bosses.** Four bosses stand in the world; talk to one (X) and pick *Fight!* (the line says the suggested level). They have lots of HP, no running away, and three attacks, each with its own timed press: **jump** (Z, A on touch) over a dash or out from under a slam or something falling, and **hammer back** (Z just before it hits) anything thrown at you, which sends it into the boss. At half HP a boss changes phase: it gets stronger and faster and its third attack joins in. A beaten boss stays beaten in your save; talk to it again for a rematch (half the XP and coins, a smaller item).
+- **Bosses.** 27 bosses stand in the world and in the Boss Tower; talk to one (X) and pick *Fight!* (the line says the suggested level). They have lots of HP, no running away, and three attacks, each with its own timed press: **jump** (Z, A on touch) over a dash, out from under a slam, a dive or something falling, over each thing rolling along the ground (they come at an uneven rhythm), or as a burrowing boss bursts out under you (watch for the fake rumble); and **hammer back** (Z just before it hits) anything thrown at you, which sends it into the boss. Some bring a helper or call one in. At half HP a boss changes phase: it gets stronger and faster and its third attack joins in (Fawful even changes form). A beaten boss stays beaten in your save; talk to it again for a rematch (half the XP and coins, a smaller item). Bosses are solid: walk round them.
 
-  | Boss | Where | Attacks (phase 2 last) | First win |
-  |---|---|---|---|
-  | Popple | Beanbean Outskirts, between the statues in the north-east | Sack Snatch (dash, swipes coins you get back if you win), Bob-omb Toss (hammer back), Hammer Leap (slam) | 40 XP, 40 coins, 2 Super Mushrooms |
-  | Tolstar | Stardust Fields, on the big star | Spike Ball (hammer back), Belly Flop (slam), Star Fall (jump each) | 70 XP, 60 coins, 2 Super Syrups |
-  | Dragohoho | Hoohoo Village, up by the mountain path | Fire Breath (hammer back, can burn), Horn Charge (dash), Hoho Rockfall (jump each) | 110 XP, 80 coins, an Ultra Mushroom |
-  | Wart | Bowser's Castle, at the castle door | Bubble Spray (hammer back), Royal Stomp (slam), Bubble Storm (jump each) | 160 XP, 120 coins, a 1-Up Mushroom |
+  **The Boss Tower** is through the castle door in Bowser's Castle. Each floor has four bosses round the walls, and its stairs stay sealed until you've beaten all of them; Cackletta's Soul waits on the throne at the summit. A Toad on 1F and 3F lets you rest.
 
-  Evil players can ask a boss they just beat to join (and *Ask to join* works on bosses in battle, rarely). Each party can have one boss. In a co-op battle the boss attacks your partner with ordinary charges they dodge on their own screen; the beaten flag and item go to whoever started the fight.
+  | Boss | Where | Lv | Attacks (phase 2 last) | First win |
+  |---|---|---|---|---|
+  | Popple | Beanbean Outskirts, between the statues in the north-east | 3 | Sack Snatch (dash, swipes coins you get back if you win), Bob-omb Toss (hammer back), Hammer Leap (slam) | 40 XP, 40 coins, 2 Super Mushrooms |
+  | Tolstar | Stardust Fields, on the big star | 7 | Spike Ball (hammer back), Belly Flop (slam), Star Fall (jump each) | 70 XP, 60 coins, 2 Super Syrups |
+  | Dragohoho | Hoohoo Village, up by the mountain path | 11 | Fire Breath (hammer back, can burn), Horn Charge (dash), Hoho Rockfall (jump each) | 110 XP, 80 coins, an Ultra Mushroom |
+  | Wart | Bowser's Castle, beside the castle door | 15 | Bubble Spray (hammer back), Royal Stomp (slam), Bubble Storm (jump each) | 160 XP, 120 coins, a 1-Up Mushroom |
+  | Piranha Bean | Outskirts Meadow, in the big field | 2 | Seed Spit (hammer back), Bean Lunge (dash), Root Burrow (digs under you, may fake) | 22 XP, 32 coins, 2 Super Mushroom, 1 Syrup |
+  | Hermie III | Outskirts Pier, on the pavilion | 4 | Claw Pinch (dash x2), Shell Bash (slam), Bubble Roll (jump each, uneven rhythm) | 44 XP, 48 coins, 2 Super Mushroom, 1 Syrup |
+  | Mom Piranha | Outskirts Woods, by the stream (east) | 6 | Vine Whip (dash), Fire Spit (hammer back, can burn), Seed Storm (jump each) | 66 XP, 64 coins, 2 Super Mushroom, 1 Super Syrup |
+  | Yo Bro | Stardust Fields, in the wide pink clearing | 8 | Chain Ball (hammer back), Bro Rush (dash x2), Chain Storm (jump each, uneven rhythm) | 88 XP, 80 coins, 2 Super Mushroom, 1 Super Syrup |
+  | Chuckolator | Outskirts Woods, in the clearing | 9 | Blade Swipe (dash), Juice Blob (hammer back), Chuckola Rain (jump each) | 99 XP, 88 coins, 2 Super Mushroom, 1 Super Syrup |
+  | Hoohooros | Hoohoo Village, west nook | 10 | Hoo Burrow (digs under you, may fake), Hoo Beam (hammer back), Pillar Fall (jump each) | 110 XP, 96 coins, 2 Super Mushroom, 1 Super Syrup |
+  | Trunkle | Outskirts Meadow, on the beach | 11 | Trunk Punch (dash), Rock Toss (hammer back), Rolling Rocks (jump each, uneven rhythm) | 121 XP, 104 coins, 2 Super Mushroom, 1 Super Syrup |
+  | Birdo | Beanbean Castle hall, west side | 12 | Egg Shot (hammer back), Birdo Dash (dash), Egg Roll (jump each, uneven rhythm) | 132 XP, 112 coins, 1 Ultra Mushroom, 1 Super Syrup, 1 Red Pepper |
+  | Bowletta | Bowser's Castle, west wing | 26 | Flaret Spit (hammer back, can burn), Chomp Charge (dash x2), Fire Breath (jump each, uneven rhythm, can burn) | 286 XP, 224 coins, 2 Ultra Mushroom, 1 1-Up Mushroom, 1 Green Pepper |
+  | Psycho Kamek | Boss Tower 1F | 5 | Hypno Wave (hammer back), Goomba Call (calls a helper), Star Shower (jump each) | 55 XP, 56 coins, 2 Super Mushroom, 1 Syrup |
+  | Magikoopa | Boss Tower 1F | 7 | Magic Blast (hammer back), Koopa Call (calls a helper), Broom Swoop (dives, may fake) | 77 XP, 72 coins, 2 Super Mushroom, 1 Super Syrup |
+  | Jojora + Jojora's Friend | Boss Tower 1F | 12 | Ice Wand (hammer back), Jojora Swoop (dives, may fake), Ice Shards (jump each) | 132 XP, 112 coins, 1 Ultra Mushroom, 1 Super Syrup, 1 Red Pepper |
+  | Queen Bean | Boss Tower 1F | 14 | Queen Punch (dash x2), Royal Slam (slam), Fist Barrage (jump each, uneven rhythm) | 154 XP, 128 coins, 1 Ultra Mushroom, 1 Super Syrup, 1 Red Pepper |
+  | Larry | Boss Tower 2F | 15 | Fire Spit (hammer back, can burn), Wand Rush (dash), Wand Flames (jump each) | 165 XP, 136 coins, 1 Ultra Mushroom, 1 Super Syrup, 1 Red Pepper |
+  | Lemmy | Boss Tower 2F | 16 | Ball Bounce (slam), Fire Spit (hammer back, can burn), Circus Balls (jump each, uneven rhythm) | 176 XP, 144 coins, 1 Ultra Mushroom, 1 Super Syrup, 1 Red Pepper |
+  | Morton | Boss Tower 2F | 17 | Morton Leap (slam), Fire Spit (hammer back, can burn), Morton Quake (jump each) | 187 XP, 152 coins, 1 Ultra Mushroom, 1 Super Syrup, 1 Red Pepper |
+  | Ludwig | Boss Tower 2F | 18 | Shell Spin (dash x2), Fire Spit (hammer back, can burn), Ludwig's Overture (jump each) | 198 XP, 160 coins, 1 Ultra Mushroom, 1 Super Syrup, 1 Red Pepper |
+  | Wendy | Boss Tower 3F | 19 | Ring Toss (jump each, uneven rhythm), Fire Spit (hammer back, can burn), Ring Rain (jump each) | 209 XP, 168 coins, 1 Ultra Mushroom, 1 Super Syrup, 1 Red Pepper |
+  | Iggy | Boss Tower 3F | 20 | Iggy Spin (dash x3), Fire Spit (hammer back, can burn), Rainbow Flames (jump each) | 220 XP, 176 coins, 2 Ultra Mushroom, 1 1-Up Mushroom, 1 Green Pepper |
+  | Roy | Boss Tower 3F | 21 | Shell Dash (dash x2), Fire Spit (hammer back, can burn), Roy Pound (slam) | 231 XP, 184 coins, 2 Ultra Mushroom, 1 1-Up Mushroom, 1 Green Pepper |
+  | Cackletta | Boss Tower 3F | 22 | Bat Swarm (jump each, uneven rhythm), Shadow Sink (digs under you, may fake), Cackle Bolt (jump each) | 242 XP, 192 coins, 2 Ultra Mushroom, 1 1-Up Mushroom, 1 Green Pepper |
+  | Fawful (changes form at phase 2) | Boss Tower summit | 24 | Headgear Chomp (dash), Fawful Beam (hammer back), Fury Bombs (jump each) | 264 XP, 208 coins, 2 Ultra Mushroom, 1 1-Up Mushroom, 1 Green Pepper |
+  | Cackletta's Soul | Boss Tower summit, on the throne | 30 | Soul Swipe (slam), Soul Beam (hammer back), Soul Storm (jump each) | 330 XP, 256 coins, 3 Ultra Mushroom, 2 1-Up Mushroom, 2 Super Syrup |
+
+  Evil players can ask a boss they just beat to join (and *Ask to join* works on bosses in battle, rarely). Each party can have one boss; a boss's helpers never join. In a co-op battle the boss attacks your partner with ordinary charges they dodge on their own screen, and doesn't call helpers in; the beaten flag and item go to whoever started the fight.
 - **Items.** Use them from *Items* in the pause menu (Enter) or the *Items* block in battle (it takes that turn; partners have one too):
 
   | Item | Does | Price |
@@ -94,7 +119,7 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
 
 ## Project layout
 - `scenes/title.tscn` (main scene), `scenes/world.tscn` (any map), `scenes/battle.tscn`.
-- `scripts/game.gd` (autoload `Game`): all data tables (characters, specials, battle moves of partners and recruits, partners, enemies, bosses and their attacks (`BOSSES`, `BOSS_ATTACKS`), maps with exits, spawns, enemies and NPCs), the save, and scene changes. Most tuning happens here.
+- `scripts/game.gd` (autoload `Game`): all data tables (characters, specials, battle moves of partners and recruits, partners, enemies, bosses, their attacks, helpers and phase-2 forms (`BOSSES`, `BOSS_ATTACKS`, `BOSS_MINIONS`, `BOSS_FORMS`), maps with exits, spawns, enemies and NPCs), the save, and scene changes. Most tuning happens here.
 - `scripts/world.gd`: map loading, walking on the walk mask, doors and exits, followers, enemies, talking (choices, shops, heals), pause menu.
 - `data/dialogue.json` and `scripts/dialogue_data.gd`: what NPCs say (see *Dialogue* below).
 - `scripts/map_props.gd`: trees, buildings and other tall things you can walk behind (props), the walk mask loader. `scripts/map_editor.gd`: the debug-only map editor (F2).
@@ -180,6 +205,8 @@ Run the game from the Godot editor (F5), walk to a map and press **F2**. Players
 ## Adding art
 The tools read the original sheets from the `Mario&LuigiMMO` art folder (not in this repo):
 - `python3 tools/slice_sprites.py "<Mario&LuigiMMO folder>" [ids]` cuts walk cycles. Add a character with the pixel boxes of its down, side and up rows (options for white backgrounds and drawn-on shadows are described at the top of the script), then add it to `CHARACTERS`, `PARTNERS` or `ENEMIES` in `game.gd`.
+- Bosses are cut the same way (the `BOSSES` table in the script: one idle row, plus an `attack` box for the 4th row, `skip` / `attack_skip` to drop frames and `scale` to shrink big customs); put the printed counts in `BOSSES` as `frames` (columns), `idle` and `attack`.
+- `python3 tools/make_tower.py` builds the Boss Tower floors (`boss_tower_*`) by recolouring the Beanbean Castle rooms.
 - `python3 tools/slice_ui.py "<Mario&LuigiMMO folder>"` cuts the menu art (speech balloons, notebook, stat cards, gold digits, icons, title art, the touch A / B buttons and joystick) into `assets/ui/` and builds the two bitmap fonts from the MLSS alphabet. Re-run `godot --headless --import` afterwards.
 - `python3 tools/slice_items.py "<Mario&LuigiMMO folder>"` cuts the item pictures into `assets/items/<id>.png` (one per id in `ITEMS`; add an item with its box on the Items sheet).
 - `python3 tools/slice_battle.py "<Mario&LuigiMMO folder>"` cuts the battle art into `assets/battle/`: backgrounds (add one by giving its id and spot on the sheet in `BACKGROUNDS`), command blocks and their pictures, A-button badges, rating word art, status icons and the battle start swipe.

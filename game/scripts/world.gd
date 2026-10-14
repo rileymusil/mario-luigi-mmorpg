@@ -10,6 +10,7 @@ const FOLLOW_GAP := 18.0
 const TOUCH_DISTANCE := 14.0
 const TALK_DISTANCE := 26.0
 const BOSS_REACH := 40.0     # bosses are big: you can talk to them from further off
+const BOSS_FOOT := Vector2(16, 10)  # the smallest solid block under a boss (see _paint_boss_feet)
 const FOOT_HALF_WIDTH := 5.0  # everyone's feet are 10px wide
 const FOOT_DEPTH := 3.0
 const LEVEL_PX := 16.0      # how high one level of the height layer is
@@ -74,6 +75,7 @@ func _ready() -> void:
 	props.load_props(map_id)
 	props.build(actors, art)
 	rebuild_collision()
+	_spawn_bosses()  # before anyone else: they stand on solid feet (see rebuild_collision)
 	_fit_camera()
 	get_tree().root.size_changed.connect(_on_viewport_resized)
 
@@ -110,7 +112,6 @@ func _ready() -> void:
 		node.facing = FACINGS.get(n.get("face", "down"), Vector2.DOWN)
 		npcs.append({"node": node, "id": n["id"], "talk": n.get("talk", n["id"]),
 			"reach": n.get("reach", TALK_DISTANCE), "face": node.facing})
-	_spawn_bosses()
 
 	online = OnlinePlayers.new()
 	add_child(online)
@@ -176,6 +177,20 @@ func rebuild_collision() -> void:
 	if solid.get_format() != Image.FORMAT_L8:
 		solid.convert(Image.FORMAT_L8)
 	props.paint_feet(solid)
+	_paint_boss_feet()
+
+
+## Bosses don't step aside: a small block of ground under each one is solid
+## (BOSS_FOOT, wider for wide bosses), so you bump into them instead of
+## walking through. Talking reaches further than that (BOSS_REACH).
+func _paint_boss_feet() -> void:
+	for n in npcs:
+		if not n.has("boss"):
+			continue
+		var node: CharacterSprite = n["node"]
+		var w := clampf(node.width() * 0.4, BOSS_FOOT.x, 34.0)
+		var r := Rect2i(Vector2i(node.position - Vector2(w, BOSS_FOOT.y) / 2.0), Vector2i(int(w), int(BOSS_FOOT.y)))
+		solid.fill_rect(r.intersection(Rect2i(Vector2i.ZERO, solid.get_size())), Color.BLACK)
 
 
 ## Ground you can stand on: walkable in the mask, no prop footprint, and not
@@ -382,9 +397,30 @@ func _process(delta: float) -> void:
 	for exit in map_info["exits"]:
 		# Doors open when you walk up into them, not when you pass in front.
 		if exit["rect"].has_point(player.position) and (not exit.get("door", false) or input.y < -0.3):
+			if not _exit_open(exit):
+				_sealed(exit, input)
+				return
 			busy = true
 			Game.go_to_map(exit["to"], exit["spawn"])
 			return
+
+
+## Boss Tower stairs (an exit with "needs": boss ids) open once you have
+## beaten every one of them.
+func _exit_open(exit: Dictionary) -> bool:
+	return exit.get("needs", []).all(func(id): return Game.boss_wins(id) > 0)
+
+
+## Walked into stairs that are still sealed: step back and say who's left.
+func _sealed(exit: Dictionary, input: Vector2) -> void:
+	var left: Array = exit["needs"].filter(func(id): return Game.boss_wins(id) == 0)
+	var names := ", ".join(left.map(func(id): return Game.BOSSES[id]["name"]))
+	var away := -input.normalized() if input.length() > 0.1 else Vector2.DOWN
+	for i in 6:
+		player.position = nearest_walkable(player.position + away * 6.0)
+		if not exit["rect"].grow(4.0).has_point(player.position):
+			break
+	await say("The stairs are sealed by a strange power. Beat everyone on this floor first! (Still here: %s)" % names)
 
 
 ## False while a key that closed a menu or a talk is still held down (and on
@@ -533,6 +569,7 @@ func _spawn_bosses() -> void:
 		node.position = nearest_walkable(b["pos"])
 		node.facing = FACINGS.get(b.get("face", "down"), Vector2.DOWN)
 		npcs.append({"node": node, "id": id, "talk": "", "boss": id, "reach": BOSS_REACH, "face": node.facing})
+	rebuild_collision()
 
 
 ## A boss: its lines, then "Fight!" or "Not now". Beaten bosses offer a

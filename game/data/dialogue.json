@@ -338,5 +338,11 @@
     "branches": [
       {"say": ["The sea breeze does wonders. Sit a while?"], "choices": [{"text": "Rest", "do": "heal", "done": "You rested on the pier. HP and SP are full!"}, {"text": "No thanks"}]}
     ]
+  },
+  "tower_rest": {
+    "name": "Tower Toad",
+    "branches": [
+      {"say": ["Phew, you made it this far! This tower is full of the toughest bosses around.", "Want to catch your breath before the next fight?"], "choices": [{"text": "Rest", "do": "heal", "done": "You had a good rest. HP and SP are full!"}, {"text": "No thanks"}]}
+    ]
   }
 }

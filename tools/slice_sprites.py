@@ -143,6 +143,59 @@ BOSSES = {
     "dragohoho": {"sheet": _BOSS + "Dragohoho.png", "rows": [(0, 41, 530, 105)] * 3, "side_faces_left": True},
     "wart": {"sheet": "Boss Enemies/Custom _ Edited - Mario Customs - Wart - Wart (Mario & Luigi_ Superstar Saga-Style).png",
              "rows": [(205, 91, 715, 159)] * 3, "side_faces_left": True, "bg": (255, 255, 255), "flood": True},
+    # Phase 8: every other Superstar Saga boss sheet. "attack" is the box of
+    # the attack animation (the 4th row, see build); "skip" drops frames.
+    "piranha_bean": {"sheet": _BOSS + "Piranha Bean.png", "rows": [(0, 41, 336, 88)] * 3, "side_faces_left": True,
+                     "attack": (0, 162, 520, 211)},
+    "hermie": {"sheet": _BOSS + "Hermie III.png", "rows": [(0, 22, 730, 118)] * 3, "side_faces_left": True,
+               "attack": (0, 520, 830, 615)},
+    "mom_piranha": {"sheet": _BOSS + "Mom Piranha.png", "rows": [(0, 38, 807, 118)] * 3, "side_faces_left": True,
+                    "attack": (0, 144, 750, 223)},
+    "chuckolator": {"sheet": _BOSS + "Chuckolator.png", "rows": [(0, 38, 592, 122)] * 3, "side_faces_left": True,
+                    "attack": (0, 348, 615, 433)},
+    "hoohooros": {"sheet": _BOSS + "Hoohooros.png", "rows": [(0, 35, 455, 75)] * 3, "side_faces_left": True,
+                  "attack": (0, 93, 590, 133)},
+    "trunkle": {"sheet": _BOSS + "Trunkle.png", "rows": [(0, 35, 565, 110)] * 3, "side_faces_left": True,
+                "attack": (0, 250, 512, 328)},
+    "birdo": {"sheet": _BOSS + "Birdo.png", "rows": [(0, 34, 285, 73)] * 3, "side_faces_left": True,
+              "attack": (0, 199, 282, 238)},
+    "jojora": {"sheet": _BOSS + "Jojora.png", "rows": [(0, 36, 190, 77)] * 3, "side_faces_left": True,
+               "attack": (0, 92, 406, 137)},
+    "jojora_friend": {"sheet": _BOSS + "Jojora's Friend.png", "rows": [(0, 23, 595, 90)] * 3, "side_faces_left": True,
+                      "attack": (0, 536, 882, 595)},
+    "queen_bean_boss": {"sheet": _BOSS + "Queen Bean.png", "rows": [(0, 10, 1150, 91)] * 3, "side_faces_left": True,
+                        "attack": (0, 482, 1226, 586)},
+    "larry": {"sheet": _BOSS + "Larry.png", "rows": [(0, 38, 228, 87)] * 3, "side_faces_left": True,
+              "attack": (0, 159, 372, 209)},
+    "lemmy": {"sheet": _BOSS + "Lemmy.png", "rows": [(0, 36, 235, 79)] * 3, "side_faces_left": True,
+              "attack": (0, 141, 240, 184)},
+    "ludwig": {"sheet": _BOSS + "Ludwig.png", "rows": [(0, 40, 362, 88)] * 3, "side_faces_left": True,
+               "attack": (0, 259, 365, 307)},
+    "morton": {"sheet": _BOSS + "Morton.png", "rows": [(0, 36, 366, 82)] * 3, "side_faces_left": True,
+               "attack": (0, 142, 370, 188)},
+    "roy": {"sheet": _BOSS + "Roy.png", "rows": [(0, 35, 340, 72)] * 3, "side_faces_left": True,
+            "attack": (0, 135, 374, 170)},
+    "wendy": {"sheet": _BOSS + "Wendy.png", "rows": [(0, 41, 324, 89)] * 3, "side_faces_left": True,
+              "attack": (0, 160, 406, 208)},
+    "iggy": {"sheet": _BOSS + "Iggy.png", "rows": [(0, 34, 325, 89)] * 3, "side_faces_left": True,
+             "attack": (0, 321, 262, 377)},
+    "cackletta": {"sheet": _BOSS + "Cackletta.png", "rows": [(0, 26, 603, 94)] * 3, "side_faces_left": True,
+                  "attack": (0, 322, 702, 391)},
+    "fawful": {"sheet": _BOSS + "Fawful.png", "rows": [(0, 38, 300, 115)] * 3, "side_faces_left": True,
+               "attack": (0, 146, 345, 224)},
+    "fawful_2": {"sheet": _BOSS + "Fawful (2nd Form).png", "rows": [(0, 344, 268, 391)] * 3, "side_faces_left": True,
+                 "attack": (0, 403, 374, 453)},
+    "bowletta": {"sheet": _BOSS + "Bowletta.png", "rows": [(0, 34, 490, 113)] * 3, "side_faces_left": True,
+                 "attack": (0, 798, 703, 874)},
+    "cackletta_soul": {"sheet": _BOSS + "Cackletta's Soul.png", "rows": [(0, 33, 758, 109)] * 3, "side_faces_left": True,
+                       "attack": (0, 122, 758, 209)},
+    "magikoopa": {"sheet": "Boss Enemies/Game Boy Advance - Mario & Luigi_ Superstar Saga - Enemies - Magikoopa.png",
+                  "rows": [(0, 50, 258, 93)] * 3, "side_faces_left": True, "attack": (0, 112, 618, 158)},
+    "yo_bro": {"sheet": "Boss Enemies/Game Boy Advance - Mario & Luigi_ Superstar Saga - Enemies - Yo Bro.png",
+               "rows": [(0, 32, 740, 80)] * 3, "side_faces_left": True, "attack": (0, 412, 762, 452),
+               "attack_skip": [8, 9, 10, 11]},
+    "psycho_kamek": {"sheet": "Boss Enemies/Game Boy Advance - Mario & Luigi_ Superstar Saga - Non-Playable Characters - Psycho Kamek.png",
+                     "rows": [(0, 15, 146, 47)] * 3, "side_faces_left": True, "attack": (165, 63, 325, 97)},
 }
 
 
@@ -199,14 +252,29 @@ def build(name, cfg, root):
     im = Image.open(os.path.join(root, cfg["sheet"])).convert("RGBA")
     bg = tuple(cfg.get("bg") or max(im.getcolors(1 << 24))[1][:3])  # most common colour = background
     boxes = cfg["rows"] or auto_rows(im, bg)
-    rows = [frames_in(im, bg, b, [tuple(c) for c in cfg.get("strip", ())], cfg.get("flood", False)) for b in boxes]
+    strip = [tuple(c) for c in cfg.get("strip", ())]
+    rows = [frames_in(im, bg, b, strip, cfg.get("flood", False)) for b in boxes]
     if "order" in cfg:
         rows = [rows[i] for i in cfg["order"]]
+    if "skip" in cfg:  # frames to leave out of the idle row (a blink, a hurt pose)
+        rows = [[f for i, f in enumerate(r) if i not in cfg["skip"]] for r in rows]
     if cfg["side_faces_left"]:
         if len(set(boxes)) == 1:
             rows = [[f.transpose(Image.FLIP_LEFT_RIGHT) for f in r] for r in rows]
         else:
             rows[1] = [f.transpose(Image.FLIP_LEFT_RIGHT) for f in rows[1]]
+    if "attack" in cfg:
+        # Bosses: a 4th row with the attack animation, drawn like the side row.
+        attack = frames_in(im, bg, cfg["attack"], strip, cfg.get("flood", False))
+        if "attack_skip" in cfg:
+            attack = [f for i, f in enumerate(attack) if i not in cfg["attack_skip"]]
+        if cfg.get("attack_faces_left", cfg["side_faces_left"]):
+            attack = [f.transpose(Image.FLIP_LEFT_RIGHT) for f in attack]
+        rows.append(attack)
+    if "scale" in cfg:  # oversized sheets: shrink every frame (nearest neighbour keeps the pixels crisp)
+        k = cfg["scale"]
+        rows = [[f.resize((max(1, round(f.size[0] * k)), max(1, round(f.size[1] * k))), Image.NEAREST) for f in r]
+                for r in rows]
     n = max(len(r) for r in rows)
     cw = max(f.size[0] for r in rows for f in r) + 2
     ch = max(f.size[1] for r in rows for f in r) + 2
@@ -214,7 +282,7 @@ def build(name, cfg, root):
     # scale, so the feet of the row above can't bleed into the top of a frame.
     cw += cw % 2
     ch += ch % 2
-    sheet = Image.new("RGBA", (cw * n, ch * 3), (0, 0, 0, 0))
+    sheet = Image.new("RGBA", (cw * n, ch * len(rows)), (0, 0, 0, 0))
     for ri, r in enumerate(rows):
         for ci in range(n):
             f = r[ci % len(r)]

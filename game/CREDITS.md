@@ -17,7 +17,8 @@ Sprites and maps come from *Mario & Luigi: Superstar Saga* (Nintendo / AlphaDrea
   - Goombella: no ripper is named on the sheet.
   - Koops: Joshr_691 (from Rogultgot's Yoshi / Troopea sprites).
   - Yoshi Kid: Joshr_691, Rogul, Boo Mansion.
-- Bosses (cut by tools/slice_sprites.py): Popple, Tolstar and Dragohoho from the Superstar Saga boss sheets ripped by A.J. Nitro; Wart: Frario (custom M&L Wart battle-style sprites).
+- Bosses (cut by tools/slice_sprites.py): Popple, Tolstar, Dragohoho, Piranha Bean, Hermie III, Mom Piranha, Chuckolator, Hoohooros, Trunkle, Birdo, Jojora and her friend, Queen Bean, the seven Koopalings, Cackletta, Cackletta's Soul, Fawful (both forms), Bowletta and Magikoopa from the Superstar Saga sheets ripped by A.J. Nitro (Fawful's overworld captures by Rocket Seviper Shadow); Yo Bro ripped by Parakoopa; Psycho Kamek ripped by Rocket Seviper Shadow; Wart: Frario (custom M&L Wart battle-style sprites).
+- Boss Tower floors: the Beanbean Castle hall and throne room maps, recoloured by tools/make_tower.py.
 - Townsfolk and building insides (cut by tools/slice_sprites.py and tools/make_maps.py from the Superstar Saga "Non-Playable Characters" and "Maps" sheets): Beanbean Kingdom residents and guards, Toads, Toadsworth, Dr. Toad, Lady Lima, Queen Bean, Koopa Troopas, Border Bros., Hoohoo villagers and the shopkeeper; the Castle Town, shop, Starbeans Cafe, Beanbean Castle and Hoohoo Village interiors and the Stardust Fields and Hoohoo Village maps. See the original sheets in the art folder for ripper credits.
 - Menus and text (game/assets/ui, cut by tools/slice_ui.py from the Superstar Saga "Miscellaneous" sheets):
   - MLSS alphabet (the game's font) and speech balloons: MajinPiccolo (Speech Boxes).

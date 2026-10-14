@@ -116,6 +116,52 @@ const MOVES := {
 		"info": "Fire on every enemy. Excellent sets them burning."},
 	"bubble_blast": {"name": "Bubble Blast", "kind": "blast", "bonus": 2, "stun": true,
 		"info": "Bubbles hit every enemy. Excellent stuns them."},
+	"bean_chomp": {"name": "Bean Chomp", "kind": "tackle", "bonus": 1,
+		"info": "A big leafy chomp."},
+	"crab_pinch": {"name": "Crab Pinch", "kind": "multi", "hits": 2, "bonus": 1,
+		"info": "Up to 2 pinches, {a} in the gold zone for each."},
+	"piranha_flame": {"name": "Piranha Flame", "kind": "throw", "color": Color(1.0, 0.45, 0.15), "burn": 2,
+		"info": "Spits fire. Excellent burns the enemy."},
+	"chain_chomp_toss": {"name": "Chain Toss", "kind": "throw", "color": Color(0.85, 0.2, 0.2), "bonus": 2, "pierce": true,
+		"info": "Swings a chain ball. Excellent hits the next enemy too."},
+	"chuckola_slash": {"name": "Chuckola Slash", "kind": "multi", "hits": 3,
+		"info": "Up to 3 slashes, {a} in the gold zone for each."},
+	"hoo_pillar": {"name": "Hoo Pillar", "kind": "stomp", "stun": true, "bonus": 1,
+		"info": "Drops a stone pillar. {a} as it lands; Excellent stuns."},
+	"trunk_slam": {"name": "Trunk Slam", "kind": "tackle", "bonus": 2,
+		"info": "A huge trunk punch."},
+	"egg_toss": {"name": "Egg Toss", "kind": "throw", "color": Color(1.0, 1.0, 0.95), "bonus": 2, "heal": 4,
+		"info": "Shoots an egg. Excellent heals the party 4 HP."},
+	"bowletta_breath": {"name": "Bowletta Breath", "kind": "blast", "bonus": 3, "burn": 2,
+		"info": "Fire on every enemy. Excellent burns them."},
+	"hypno_spark": {"name": "Hypno Spark", "kind": "throw", "color": Color(1.0, 0.5, 0.85), "stun": true,
+		"info": "A dizzying spark. Excellent stuns."},
+	"magic_bolt": {"name": "Magic Bolt", "kind": "throw", "color": Color(0.45, 0.6, 1.0), "ignore_def": true,
+		"info": "A magic bolt that ignores DEF."},
+	"frost_wand": {"name": "Frost Wand", "kind": "throw", "color": Color(0.6, 0.95, 1.0), "def_down": 2,
+		"info": "Freezing beam. Excellent lowers DEF."},
+	"royal_fist": {"name": "Royal Fist", "kind": "tackle", "bonus": 3, "stun": true,
+		"info": "A royal punch. Excellent stuns."},
+	"larry_flame": {"name": "Wand Flame", "kind": "throw", "color": Color(0.35, 0.55, 1.0), "bonus": 2,
+		"info": "A blue wand blast."},
+	"circus_ball": {"name": "Circus Ball", "kind": "stomp", "bonus": 2,
+		"info": "Bounces a ball onto the enemy. {a} as it lands for a 2nd hit."},
+	"morton_stomp": {"name": "Morton Stomp", "kind": "stomp", "bonus": 3, "stun": true,
+		"info": "A heavy stomp. {a} as you land; Excellent stuns."},
+	"ludwig_shell": {"name": "Shell Spin", "kind": "tackle", "bonus": 3, "def_down": 2,
+		"info": "Spinning shell. Excellent lowers DEF."},
+	"candy_ring": {"name": "Candy Ring", "kind": "throw", "color": Color(1.0, 0.85, 0.2), "bonus": 3, "pierce": true,
+		"info": "Throws a ring. Excellent hits the next enemy too."},
+	"iggy_whirl": {"name": "Iggy Whirl", "kind": "multi", "hits": 3, "bonus": 2,
+		"info": "Up to 3 spins, {a} in the gold zone for each."},
+	"roy_bash": {"name": "Roy Bash", "kind": "tackle", "bonus": 4, "stun": true,
+		"info": "A shell bash. Excellent stuns."},
+	"bat_bolt": {"name": "Bat Bolt", "kind": "blast", "bonus": 3, "stun": true,
+		"info": "Bats hit every enemy. Excellent stuns them."},
+	"fury_beam": {"name": "Fury Beam", "kind": "throw", "color": Color(0.4, 1.0, 0.4), "bonus": 3, "ignore_def": true,
+		"info": "A beam that ignores DEF."},
+	"soul_flare": {"name": "Soul Flare", "kind": "blast", "bonus": 4, "def_down": 2,
+		"info": "Ghost fire on every enemy. Excellent lowers DEF."},
 }
 
 ## Partners (good side) and recruitable enemies (evil side). `recruit` is the
@@ -227,13 +273,19 @@ const DROPS := {
 ## talk to it to fight; world.gd shows them, battle.gd runs their attacks
 ## (BOSS_ATTACKS). A boss stays beaten in the save (player["bosses"]: id ->
 ## wins) and can be fought again for smaller rewards. `level`: the level we
-## suggest. `reward` / `rematch_reward`: [item, count] on top of xp and coins
-## (halved for a rematch). `attacks` are used from the start, `phase2` joins
-## them once the boss is down to half HP (it also gets stronger and faster).
-## Evil players can ask a beaten boss to join (one boss per party);
-## `partner` is what it brings to the party then.
+## suggest. `reward` / `rematch_reward`: [item, count], or a list of them, on
+## top of xp and coins (halved for a rematch). `attacks` are used from the
+## start, `phase2` joins them once the boss is down to half HP (it also gets
+## stronger and faster). Evil players can ask a beaten boss to join (one boss
+## per party); `partner` is what it brings to the party then.
+## Sheets: `frames` columns; `idle` frames loop while it stands, and
+## `attack` (if set) is a 4th row played when it attacks. Optional:
+## `minions` (BOSS_MINIONS that fight beside it), `phase2_form` (BOSS_FORMS
+## sheet it turns into at phase 2). Bosses on the Boss Tower floors
+## (boss_tower_*) are fought floor by floor: a floor's stairs open once
+## every boss on it is beaten (MAPS exit "needs").
 const BOSSES := {
-	"popple": {"name": "Popple", "frames": 5, "hp": 64, "pow": 6, "def": 1, "xp": 40, "coins": 40, "level": 3,
+	"popple": {"name": "Popple", "frames": 5, "idle": 5, "hp": 64, "pow": 6, "def": 1, "xp": 40, "coins": 40, "level": 3,
 		"map": "outskirts", "pos": Vector2(1300, 222), "face": "left", "battle_bg": "outskirts",
 		"reward": ["super_mushroom", 2], "rematch_reward": ["mushroom", 1], "recruit": 0.05,
 		"attacks": ["sack_snatch", "bobomb_toss"], "phase2": "hammer_leap",
@@ -244,7 +296,7 @@ const BOSSES := {
 		"phase_line": "Popple is fired up! His hammer comes out!",
 		"won_line": "Popple: Nyeh! This ain't over, see?",
 		"partner": {"hp": 22, "pow": 6, "def": 2, "move": "sack_swipe"}},
-	"tolstar": {"name": "Tolstar", "frames": 10, "hp": 96, "pow": 8, "def": 2, "xp": 70, "coins": 60, "level": 7,
+	"tolstar": {"name": "Tolstar", "frames": 10, "idle": 10, "hp": 96, "pow": 8, "def": 2, "xp": 70, "coins": 60, "level": 7,
 		"map": "stardust_fields", "pos": Vector2(440, 352), "face": "left", "battle_bg": "sand_bird",
 		"reward": ["super_syrup", 2], "rematch_reward": ["syrup", 1], "recruit": 0.04,
 		"attacks": ["spike_ball", "belly_flop"], "phase2": "star_fall",
@@ -255,7 +307,7 @@ const BOSSES := {
 		"phase_line": "Tolstar is furious! The stars begin to fall!",
 		"won_line": "Tolstar: My stars... my precious stardust...",
 		"partner": {"hp": 30, "pow": 7, "def": 3, "move": "spike_toss"}},
-	"dragohoho": {"name": "Dragohoho", "frames": 9, "hp": 128, "pow": 10, "def": 3, "xp": 110, "coins": 80, "level": 11,
+	"dragohoho": {"name": "Dragohoho", "frames": 9, "idle": 9, "hp": 128, "pow": 10, "def": 3, "xp": 110, "coins": 80, "level": 11,
 		"map": "hoohoo_village", "pos": Vector2(586, 140), "face": "left", "battle_bg": "hoohoo_mountain",
 		"reward": ["ultra_mushroom", 1], "rematch_reward": ["red_pepper", 1], "recruit": 0.03,
 		"attacks": ["fire_breath_boss", "horn_charge"], "phase2": "hoho_rockfall",
@@ -266,8 +318,8 @@ const BOSSES := {
 		"phase_line": "Dragohoho roars! The mountain shakes and Hoho stones start to fall!",
 		"won_line": "Dragohoho: Hoo... hoo... the flame... goes out...",
 		"partner": {"hp": 34, "pow": 8, "def": 3, "move": "dragon_fire"}},
-	"wart": {"name": "Wart", "frames": 7, "hp": 170, "pow": 12, "def": 4, "xp": 160, "coins": 120, "level": 15,
-		"map": "bowser_castle", "pos": Vector2(205, 160), "face": "down", "battle_bg": "wart_throne",
+	"wart": {"name": "Wart", "frames": 7, "idle": 7, "hp": 170, "pow": 12, "def": 4, "xp": 160, "coins": 120, "level": 15,
+		"map": "bowser_castle", "pos": Vector2(168, 124), "face": "down", "battle_bg": "wart_throne",
 		"reward": ["one_up", 1], "rematch_reward": ["super_mushroom", 1], "recruit": 0.03,
 		"attacks": ["bubble_spray", "royal_stomp"], "phase2": "bubble_storm",
 		"intro": ["GWAH HA HA! King Wart has taken over this castle!",
@@ -277,13 +329,249 @@ const BOSSES := {
 		"phase_line": "Wart is livid! Bubbles everywhere!",
 		"won_line": "Wart: I... hate... vegetables... GWAAAH!",
 		"partner": {"hp": 38, "pow": 9, "def": 4, "move": "bubble_blast"}},
+	"piranha_bean": {"name": "Piranha Bean", "frames": 14, "idle": 8, "attack": 14, "hp": 52, "pow": 5, "def": 0, "xp": 22, "coins": 32, "level": 2,
+		"map": "outskirts_east", "pos": Vector2(480, 230), "face": "left", "battle_bg": "bean_fields",
+		"reward": [["super_mushroom", 2], ["syrup", 1]], "rematch_reward": [["mushroom", 2]], "recruit": 0.03,
+		"attacks": ["seed_spit", "bean_lunge"], "phase2": "petal_burrow",
+		"intro": ["Chomp chomp! A Piranha Bean sprouted right in the middle of the Meadow!", "It snaps at anything that walks by. Fight it?"],
+		"rematch": ["The Piranha Bean grew back! It looks hungry. Fight it again?"],
+		"battle_line": "Piranha Bean: CHOMP!",
+		"phase_line": "The Piranha Bean digs its roots in!",
+		"won_line": "The Piranha Bean wilts...",
+		"partner": {"hp": 18, "pow": 4, "def": 1, "move": "bean_chomp"}},
+	"hermie": {"name": "Hermie III", "frames": 10, "idle": 9, "attack": 10, "hp": 74, "pow": 7, "def": 1, "xp": 44, "coins": 48, "level": 4,
+		"map": "outskirts_pier", "pos": Vector2(126, 545), "face": "right", "battle_bg": "gwarhar_lagoon",
+		"reward": [["super_mushroom", 2], ["syrup", 1]], "rematch_reward": [["mushroom", 2]], "recruit": 0.03,
+		"attacks": ["claw_pinch", "shell_bash"], "phase2": "hermit_bubbles",
+		"intro": ["Hermie III, guardian of the shore! My shell is the finest on this beach!", "Nobody touches my pier without a pinch. Ready?"],
+		"rematch": ["Back for another pinch? Hermie III never retreats!"],
+		"battle_line": "Hermie III: Snip snip!",
+		"phase_line": "Hermie III hides in his shell and blows bubbles!",
+		"won_line": "Hermie III: My shell... is still the best...",
+		"partner": {"hp": 20, "pow": 5, "def": 1, "move": "crab_pinch"}},
+	"mom_piranha": {"name": "Mom Piranha", "frames": 9, "idle": 9, "attack": 8, "hp": 96, "pow": 8, "def": 1, "xp": 66, "coins": 64, "level": 6,
+		"map": "outskirts_woods", "pos": Vector2(650, 350), "face": "left", "battle_bg": "chucklehuck_woods",
+		"reward": [["super_mushroom", 2], ["super_syrup", 1]], "rematch_reward": [["super_mushroom", 1]], "recruit": 0.03,
+		"attacks": ["vine_whip", "piranha_fire"], "phase2": "seed_storm",
+		"intro": ["GRRRAAH! Mom Piranha rules these woods!", "You trampled my babies' garden. Now you get eaten!"],
+		"rematch": ["GRRAAH! Back to bother my garden again?"],
+		"battle_line": "Mom Piranha: Into my mouth you go!",
+		"phase_line": "Mom Piranha is furious! Seeds rain from the trees!",
+		"won_line": "Mom Piranha droops into the grass...",
+		"partner": {"hp": 23, "pow": 6, "def": 2, "move": "piranha_flame"}},
+	"yo_bro": {"name": "Yo Bro", "frames": 13, "idle": 13, "attack": 9, "hp": 118, "pow": 10, "def": 2, "xp": 88, "coins": 80, "level": 8,
+		"map": "stardust_fields", "pos": Vector2(300, 240), "face": "left", "battle_bg": "stardust_fields",
+		"reward": [["super_mushroom", 2], ["super_syrup", 1]], "rematch_reward": [["super_mushroom", 1]], "recruit": 0.03,
+		"attacks": ["chain_ball", "bro_rush"], "phase2": "chain_storm",
+		"intro": ["Yo yo YO! Yo Bro in the house! These star paths are my turf!", "You wanna pass? You gotta beat the Bro! Ready?"],
+		"rematch": ["Yo! Rematch time, bro?"],
+		"battle_line": "Yo Bro: Yo! Check this chain!",
+		"phase_line": "Yo Bro swings his chain balls wildly!",
+		"won_line": "Yo Bro: Yo... no...",
+		"partner": {"hp": 25, "pow": 6, "def": 2, "move": "chain_chomp_toss"}},
+	"chuckolator": {"name": "Chuckolator", "frames": 6, "idle": 6, "attack": 6, "hp": 129, "pow": 10, "def": 2, "xp": 99, "coins": 88, "level": 9,
+		"map": "outskirts_woods", "pos": Vector2(470, 235), "face": "left", "battle_bg": "chucklehuck_woods",
+		"reward": [["super_mushroom", 2], ["super_syrup", 1]], "rematch_reward": [["super_mushroom", 1]], "recruit": 0.03,
+		"attacks": ["blade_swipe", "juice_blob"], "phase2": "chuckola_rain",
+		"intro": ["I am Chuckolator, made of the finest Chuckola Reserve!", "You came to drink me? I'll slice you to pieces first!"],
+		"rematch": ["Chuckolator returns! Still thirsty?"],
+		"battle_line": "Chuckolator: Taste my blade!",
+		"phase_line": "Chuckolator boils over! Chuckola rains down!",
+		"won_line": "Chuckolator: Gurgle... I'm... just soda...",
+		"partner": {"hp": 26, "pow": 7, "def": 2, "move": "chuckola_slash"}},
+	"hoohooros": {"name": "Hoohooros", "frames": 13, "idle": 10, "attack": 13, "hp": 140, "pow": 11, "def": 2, "xp": 110, "coins": 96, "level": 10,
+		"map": "hoohoo_village", "pos": Vector2(72, 168), "face": "right", "battle_bg": "hoohoo_mountain",
+		"reward": [["super_mushroom", 2], ["super_syrup", 1]], "rematch_reward": [["super_mushroom", 1]], "recruit": 0.03,
+		"attacks": ["hoo_burrow", "hoo_beam"], "phase2": "pillar_fall",
+		"intro": ["HOOHOO... I am Hoohooros, guardian of the Hoo Stones!", "Only those with strong feet may pass. Show me!"],
+		"rematch": ["HOOHOO... You return to be tested again?"],
+		"battle_line": "Hoohooros: HOOOO!",
+		"phase_line": "Hoohooros roars! Hoo pillars fall from the sky!",
+		"won_line": "Hoohooros: Hoo... you pass the test...",
+		"partner": {"hp": 28, "pow": 7, "def": 2, "move": "hoo_pillar"}},
+	"trunkle": {"name": "Trunkle", "frames": 8, "idle": 7, "attack": 8, "hp": 151, "pow": 12, "def": 2, "xp": 121, "coins": 104, "level": 11,
+		"map": "outskirts_east", "pos": Vector2(1040, 400), "face": "left", "battle_bg": "outskirts",
+		"reward": [["super_mushroom", 2], ["super_syrup", 1]], "rematch_reward": [["super_mushroom", 1]], "recruit": 0.03,
+		"attacks": ["trunk_punch", "rock_toss"], "phase2": "rolling_rocks",
+		"intro": ["TRUNKLE STRONG! TRUNKLE BIGGEST TREE ON BEACH!", "You want fight Trunkle? Trunkle squish!"],
+		"rematch": ["Trunkle back! Trunkle want fight again!"],
+		"battle_line": "Trunkle: SQUISH!",
+		"phase_line": "Trunkle stomps! Rocks roll down the beach!",
+		"won_line": "Trunkle: Trunkle... tired...",
+		"partner": {"hp": 29, "pow": 7, "def": 2, "move": "trunk_slam"}},
+	"birdo": {"name": "Birdo", "frames": 9, "idle": 9, "attack": 8, "hp": 162, "pow": 12, "def": 3, "xp": 132, "coins": 112, "level": 12,
+		"map": "castle_hall", "pos": Vector2(60, 160), "face": "right", "battle_bg": "castle_town",
+		"reward": [["ultra_mushroom", 1], ["super_syrup", 1], ["red_pepper", 1]], "rematch_reward": [["super_mushroom", 1], ["syrup", 1]], "recruit": 0.03,
+		"attacks": ["egg_shot", "birdo_dash"], "phase2": "egg_roll",
+		"intro": ["Oh, hello! I'm the princess. Totally. Don't look at the bow.", "...Fine! It's Birdo! And you're about to get egged!"],
+		"rematch": ["Birdo is back, darling! Ready for more eggs?"],
+		"battle_line": "Birdo: Eat my eggs!",
+		"phase_line": "Birdo is livid! Eggs roll everywhere!",
+		"won_line": "Birdo: My bow... is ruined...",
+		"partner": {"hp": 30, "pow": 8, "def": 3, "move": "egg_toss"}},
+	"bowletta": {"name": "Bowletta", "frames": 10, "idle": 7, "attack": 10, "hp": 371, "pow": 22, "def": 6, "xp": 286, "coins": 224, "level": 26,
+		"map": "bowser_castle", "pos": Vector2(60, 280), "face": "right", "battle_bg": "bowser_castle_lava",
+		"reward": [["ultra_mushroom", 2], ["one_up", 1], ["green_pepper", 1]], "rematch_reward": [["ultra_mushroom", 1]], "recruit": 0.03,
+		"attacks": ["flaret_spit", "bowletta_chomp"], "phase2": "bowletta_fire",
+		"intro": ["Kehhh heh heh! Bowser's body is mine now! I am BOWLETTA!", "This castle, this kingdom, ALL of it is mine! Feel the flames of Bowletta!"],
+		"rematch": ["Kehh heh! Back for another roasting?"],
+		"battle_line": "Bowletta: Kehhh heh heh!",
+		"phase_line": "Bowletta breathes a storm of fire!",
+		"won_line": "Bowletta: Nooo! This body... won't... listen...",
+		"partner": {"hp": 47, "pow": 12, "def": 5, "move": "bowletta_breath"}},
+	"psycho_kamek": {"name": "Psycho Kamek", "frames": 5, "idle": 5, "attack": 4, "hp": 85, "pow": 8, "def": 1, "xp": 55, "coins": 56, "level": 5,
+		"map": "boss_tower_1", "pos": Vector2(75, 145), "face": "right", "battle_bg": "little_fungitown",
+		"reward": [["super_mushroom", 2], ["syrup", 1]], "rematch_reward": [["mushroom", 2]], "recruit": 0.03,
+		"attacks": ["hypno_wave", "kamek_summon"], "phase2": "star_shower",
+		"intro": ["Welcome to the Boss Tower, traveler. I am Psycho Kamek.", "Let me read your mind... I see... a beating! Yours!"],
+		"rematch": ["Hmm... I predicted you'd come back. Shall we?"],
+		"battle_line": "Psycho Kamek: Look into my eyes...",
+		"phase_line": "Psycho Kamek's eyes glow! Stars fall!",
+		"won_line": "Psycho Kamek: I... did not foresee this...",
+		"partner": {"hp": 22, "pow": 5, "def": 1, "move": "hypno_spark"}},
+	"magikoopa": {"name": "Magikoopa", "frames": 16, "idle": 6, "attack": 16, "hp": 107, "pow": 9, "def": 1, "xp": 77, "coins": 72, "level": 7,
+		"map": "boss_tower_1", "pos": Vector2(360, 145), "face": "left", "battle_bg": "koopa_cruiser",
+		"reward": [["super_mushroom", 2], ["super_syrup", 1]], "rematch_reward": [["super_mushroom", 1]], "recruit": 0.03,
+		"attacks": ["magic_blast", "koopa_summon"], "phase2": "magic_swoop",
+		"intro": ["Kehh! A Magikoopa never loses a duel of magic!", "I'll shrink you, zap you, and call in the troops!"],
+		"rematch": ["Kehh! More magic coming your way!"],
+		"battle_line": "Magikoopa: Abra-ka-zap!",
+		"phase_line": "Magikoopa takes to the air on his broom!",
+		"won_line": "Magikoopa: My... magic...",
+		"partner": {"hp": 24, "pow": 6, "def": 2, "move": "magic_bolt"}},
+	"jojora": {"name": "Jojora", "frames": 12, "idle": 8, "attack": 12, "hp": 162, "pow": 12, "def": 3, "xp": 132, "coins": 112, "level": 12,
+		"map": "boss_tower_1", "pos": Vector2(75, 245), "face": "right", "battle_bg": "jokes_end",
+		"reward": [["ultra_mushroom", 1], ["super_syrup", 1], ["red_pepper", 1]], "rematch_reward": [["super_mushroom", 1], ["syrup", 1]], "recruit": 0.03,
+		"attacks": ["ice_wand", "jojora_swoop"], "phase2": "ice_shard", "minions": ["jojora_friend"],
+		"intro": ["Hohoho! I am Jojora, finest of the Jokes End witches!", "And this is my dear friend! We'll freeze you solid together!"],
+		"rematch": ["Hohoho! My friend and I missed you!"],
+		"battle_line": "Jojora: Hohoho! Freeze!",
+		"phase_line": "Jojora is angry! Ice shards fall!",
+		"won_line": "Jojora: How... how could you?!",
+		"partner": {"hp": 30, "pow": 8, "def": 3, "move": "frost_wand"}},
+	"queen_bean_boss": {"name": "Queen Bean", "frames": 12, "idle": 12, "attack": 11, "hp": 184, "pow": 14, "def": 3, "xp": 154, "coins": 128, "level": 14,
+		"map": "boss_tower_1", "pos": Vector2(360, 245), "face": "left", "battle_bg": "castle_town",
+		"reward": [["ultra_mushroom", 1], ["super_syrup", 1], ["red_pepper", 1]], "rematch_reward": [["super_mushroom", 1], ["syrup", 1]], "recruit": 0.03,
+		"attacks": ["queen_punch", "royal_slam"], "phase2": "fist_barrage",
+		"intro": ["(This is Queen Bean's training arena. She has been waiting for a worthy foe.)", "Queen Bean: HOO HOO! Show me the strength of a true hero! Fight me!"],
+		"rematch": ["Queen Bean: Back for more royal training? HOO!"],
+		"battle_line": "Queen Bean: Feel my royal fists!",
+		"phase_line": "Queen Bean's muscles bulge! Punches fly!",
+		"won_line": "Queen Bean: Marvelous! What a fight!",
+		"partner": {"hp": 32, "pow": 8, "def": 3, "move": "royal_fist"}},
+	"larry": {"name": "Larry", "frames": 10, "idle": 6, "attack": 10, "hp": 195, "pow": 14, "def": 3, "xp": 165, "coins": 136, "level": 15,
+		"map": "boss_tower_2", "pos": Vector2(75, 145), "face": "right", "battle_bg": "bowser_castle",
+		"reward": [["ultra_mushroom", 1], ["super_syrup", 1], ["red_pepper", 1]], "rematch_reward": [["super_mushroom", 1], ["syrup", 1]], "recruit": 0.03,
+		"attacks": ["koopaling_fire", "wand_rush"], "phase2": "koopa_flames",
+		"intro": ["Hey! Larry Koopa here! First Koopaling to beat you!", "Bowser's castle is OUR castle. Get out!"],
+		"rematch": ["Larry wants a rematch! Let's go!"],
+		"battle_line": "Larry: Take that!",
+		"phase_line": "Larry waves his wand! Flames rain down!",
+		"won_line": "Larry: No fair! You cheated!",
+		"partner": {"hp": 34, "pow": 9, "def": 3, "move": "larry_flame"}},
+	"lemmy": {"name": "Lemmy", "frames": 8, "idle": 8, "attack": 8, "hp": 211, "pow": 15, "def": 4, "xp": 176, "coins": 144, "level": 16,
+		"map": "boss_tower_2", "pos": Vector2(360, 145), "face": "left", "battle_bg": "bowser_castle",
+		"reward": [["ultra_mushroom", 1], ["super_syrup", 1], ["red_pepper", 1]], "rematch_reward": [["super_mushroom", 1], ["syrup", 1]], "recruit": 0.03,
+		"attacks": ["ball_bounce", "koopaling_fire"], "phase2": "circus_barrage",
+		"intro": ["Hee hee! Lemmy's circus is in town!", "Watch me bounce on your head!"],
+		"rematch": ["Hee hee! Encore! Encore!"],
+		"battle_line": "Lemmy: Hee hee hee!",
+		"phase_line": "Lemmy juggles circus balls at you!",
+		"won_line": "Lemmy: Aww, show's over...",
+		"partner": {"hp": 35, "pow": 9, "def": 3, "move": "circus_ball"}},
+	"morton": {"name": "Morton", "frames": 8, "idle": 8, "attack": 8, "hp": 227, "pow": 16, "def": 4, "xp": 187, "coins": 152, "level": 17,
+		"map": "boss_tower_2", "pos": Vector2(75, 245), "face": "right", "battle_bg": "bowser_castle",
+		"reward": [["ultra_mushroom", 1], ["super_syrup", 1], ["red_pepper", 1]], "rematch_reward": [["super_mushroom", 1], ["syrup", 1]], "recruit": 0.03,
+		"attacks": ["morton_leap", "koopaling_fire"], "phase2": "morton_quake",
+		"intro": ["Morton Koopa Jr.! Biggest! Strongest! Loudest!", "I'm gonna smash you flat flat FLAT!"],
+		"rematch": ["Morton's back! Morton smash again!"],
+		"battle_line": "Morton: SMASH!",
+		"phase_line": "Morton stomps! The whole tower shakes!",
+		"won_line": "Morton: Ugh... Morton needs a nap...",
+		"partner": {"hp": 36, "pow": 9, "def": 3, "move": "morton_stomp"}},
+	"ludwig": {"name": "Ludwig", "frames": 8, "idle": 8, "attack": 8, "hp": 243, "pow": 17, "def": 4, "xp": 198, "coins": 160, "level": 18,
+		"map": "boss_tower_2", "pos": Vector2(360, 245), "face": "left", "battle_bg": "bowser_castle",
+		"reward": [["ultra_mushroom", 1], ["super_syrup", 1], ["red_pepper", 1]], "rematch_reward": [["super_mushroom", 1], ["syrup", 1]], "recruit": 0.03,
+		"attacks": ["ludwig_spin", "koopaling_fire"], "phase2": "ludwig_rain",
+		"intro": ["I am Ludwig von Koopa, genius composer and eldest Koopaling.", "Your defeat shall be my finest symphony!"],
+		"rematch": ["Ah, an encore. How delightful."],
+		"battle_line": "Ludwig: A crescendo of fire!",
+		"phase_line": "Ludwig conducts a storm of flames!",
+		"won_line": "Ludwig: Such... a sour note...",
+		"partner": {"hp": 37, "pow": 10, "def": 4, "move": "ludwig_shell"}},
+	"wendy": {"name": "Wendy", "frames": 10, "idle": 8, "attack": 10, "hp": 259, "pow": 17, "def": 4, "xp": 209, "coins": 168, "level": 19,
+		"map": "boss_tower_3", "pos": Vector2(75, 145), "face": "right", "battle_bg": "bowser_castle",
+		"reward": [["ultra_mushroom", 1], ["super_syrup", 1], ["red_pepper", 1]], "rematch_reward": [["super_mushroom", 1], ["syrup", 1]], "recruit": 0.03,
+		"attacks": ["ring_toss", "koopaling_fire"], "phase2": "wendy_rain",
+		"intro": ["Ugh, you AGAIN? I'm Wendy O. Koopa, and this floor is MINE!", "Prepare to be ringed!"],
+		"rematch": ["Hmph! Fine, one more time!"],
+		"battle_line": "Wendy: Catch!",
+		"phase_line": "Wendy throws a tantrum! Rings rain down!",
+		"won_line": "Wendy: Hmph! I wasn't even trying!",
+		"partner": {"hp": 38, "pow": 10, "def": 4, "move": "candy_ring"}},
+	"iggy": {"name": "Iggy", "frames": 10, "idle": 10, "attack": 8, "hp": 275, "pow": 18, "def": 5, "xp": 220, "coins": 176, "level": 20,
+		"map": "boss_tower_3", "pos": Vector2(360, 145), "face": "left", "battle_bg": "bowser_castle",
+		"reward": [["ultra_mushroom", 2], ["one_up", 1], ["green_pepper", 1]], "rematch_reward": [["ultra_mushroom", 1]], "recruit": 0.03,
+		"attacks": ["iggy_spin", "koopaling_fire"], "phase2": "iggy_rain",
+		"intro": ["HYAHAHA! Iggy's here! Iggy's crazy! Iggy spins!", "Can you keep up?! HYAHAHA!"],
+		"rematch": ["HYAHAHA! Spin again!"],
+		"battle_line": "Iggy: HYAHAHA!",
+		"phase_line": "Iggy goes wild! Rainbow flames!",
+		"won_line": "Iggy: So... dizzy...",
+		"partner": {"hp": 40, "pow": 10, "def": 4, "move": "iggy_whirl"}},
+	"roy": {"name": "Roy", "frames": 9, "idle": 8, "attack": 9, "hp": 291, "pow": 19, "def": 5, "xp": 231, "coins": 184, "level": 21,
+		"map": "boss_tower_3", "pos": Vector2(75, 245), "face": "right", "battle_bg": "bowser_castle",
+		"reward": [["ultra_mushroom", 2], ["one_up", 1], ["green_pepper", 1]], "rematch_reward": [["ultra_mushroom", 1]], "recruit": 0.03,
+		"attacks": ["shell_dash", "koopaling_fire"], "phase2": "roy_slam",
+		"intro": ["Roy's the toughest Koopaling, punk. No way you're getting past me.", "Let's go!"],
+		"rematch": ["Back for more, punk?"],
+		"battle_line": "Roy: Out of my way!",
+		"phase_line": "Roy is mad! He jumps to pound you flat!",
+		"won_line": "Roy: Not... cool...",
+		"partner": {"hp": 41, "pow": 11, "def": 4, "move": "roy_bash"}},
+	"cackletta": {"name": "Cackletta", "frames": 12, "idle": 12, "attack": 8, "hp": 307, "pow": 19, "def": 5, "xp": 242, "coins": 192, "level": 22,
+		"map": "boss_tower_3", "pos": Vector2(360, 245), "face": "left", "battle_bg": "woohoo_hooniversity",
+		"reward": [["ultra_mushroom", 2], ["one_up", 1], ["green_pepper", 1]], "rematch_reward": [["ultra_mushroom", 1]], "recruit": 0.03,
+		"attacks": ["bat_swarm", "shadow_sink"], "phase2": "cackle_bolt",
+		"intro": ["Ehh heh heh! So YOU climbed my tower? How charming.", "I am Cackletta! I'll take your voice and your life!"],
+		"rematch": ["Ehh heh heh! Back to be cackled at?"],
+		"battle_line": "Cackletta: Ehh heh heh heh!",
+		"phase_line": "Cackletta spreads her wings! Lightning strikes!",
+		"won_line": "Cackletta: Impossible! I... am... Cackletta!",
+		"partner": {"hp": 42, "pow": 11, "def": 4, "move": "bat_bolt"}},
+	"fawful": {"name": "Fawful", "frames": 7, "idle": 6, "attack": 7, "hp": 339, "pow": 21, "def": 6, "xp": 264, "coins": 208, "level": 24,
+		"map": "boss_tower_top", "pos": Vector2(50, 330), "face": "right", "battle_bg": "bowser_castle",
+		"reward": [["ultra_mushroom", 2], ["one_up", 1], ["green_pepper", 1]], "rematch_reward": [["ultra_mushroom", 1]], "recruit": 0.03,
+		"attacks": ["headgear_chomp", "fawful_beam"], "phase2": "fawful_bombs", "phase2_form": "fawful_2",
+		"intro": ["I HAVE FURY! I am Fawful, and this tower is my mustard of doom!", "You are fools who will be eaten like bread!"],
+		"rematch": ["Fawful is back with the fury! Fink-rat!"],
+		"battle_line": "Fawful: I HAVE FURY!",
+		"phase_line": "Fawful's headgear breaks! He fights on with fury bombs!",
+		"won_line": "Fawful: This is... not... the end! I HAVE... fury...",
+		"partner": {"hp": 44, "pow": 12, "def": 5, "move": "fury_beam"}},
+	"cackletta_soul": {"name": "Cackletta's Soul", "frames": 8, "idle": 8, "attack": 8, "hp": 435, "pow": 25, "def": 7, "xp": 330, "coins": 256, "level": 30,
+		"map": "boss_tower_top", "pos": Vector2(107, 250), "face": "down", "battle_bg": "bowser_castle_lava",
+		"reward": [["ultra_mushroom", 3], ["one_up", 2], ["super_syrup", 2]], "rematch_reward": [["ultra_mushroom", 1]], "recruit": 0.03,
+		"attacks": ["soul_swipe", "soul_beam"], "phase2": "soul_storm",
+		"intro": ["Ehh... heh... heh... So you reached the top of my tower.", "My body is gone, but my SOUL burns on! Now I'll take YOURS!"],
+		"rematch": ["Ehh heh... Again you come to the top. Again you will fall!"],
+		"battle_line": "Cackletta's Soul: Your souls are MINE!",
+		"phase_line": "Cackletta's Soul howls! The tower trembles!",
+		"won_line": "Cackletta's Soul: Nooooooooo...!",
+		"partner": {"hp": 52, "pow": 14, "def": 6, "move": "soul_flare"}},
 }
 ## Boss attacks (battle.gd _boss_turn). kind: "dash" (runs at you: {a} to
 ## jump over it), "slam" (leaps onto you: {a} to jump out of the way),
 ## "volley" (`count` things thrown at you: {a} just before each hits to
-## hammer it back at the boss) or "rain" (something falls on every ally:
-## {a} to jump each). power: added to the boss's POW. steal: coins it grabs
-## when it hits (you get them back if you win). burn: chance a hit burns.
+## hammer it back at the boss), "rain" (something falls on every ally: {a}
+## to jump each), "barrage" (`count` things roll along the ground at you,
+## quick and uneven: {a} to jump each), "burrow" (it digs under you and
+## bursts out, sometimes after a fake rumble: {a} as it bursts), "swoop" (it
+## flies up and dives, sometimes faking the first dive: {a} as it lands) or
+## "summon" (calls a `minion` enemy into the battle). A dash with `count`
+## runs at you that many times. power: added to the boss's POW. steal: coins
+## it grabs when it hits (you get them back if you win). burn: chance a hit
+## burns.
 const BOSS_ATTACKS := {
 	"sack_snatch": {"name": "Sack Snatch", "kind": "dash", "power": 0, "steal": 4},
 	"bobomb_toss": {"name": "Bob-omb Toss", "kind": "volley", "count": 2, "power": 1, "color": Color(0.95, 0.3, 0.45)},
@@ -298,14 +586,93 @@ const BOSS_ATTACKS := {
 	"bubble_spray": {"name": "Bubble Spray", "kind": "volley", "count": 3, "power": 0, "color": Color(1.0, 0.6, 0.85)},
 	"royal_stomp": {"name": "Royal Stomp", "kind": "slam", "power": 3},
 	"bubble_storm": {"name": "Bubble Storm", "kind": "rain", "power": 2, "color": Color(1.0, 0.55, 0.8)},
+	"seed_spit": {"name": "Seed Spit", "kind": "volley", "count": 2, "power": 0, "color": Color(0.45, 0.8, 0.3)},
+	"bean_lunge": {"name": "Bean Lunge", "kind": "dash", "power": 1},
+	"petal_burrow": {"name": "Root Burrow", "kind": "burrow", "power": 2},
+	"claw_pinch": {"name": "Claw Pinch", "kind": "dash", "count": 2, "power": 0},
+	"shell_bash": {"name": "Shell Bash", "kind": "slam", "power": 2},
+	"hermit_bubbles": {"name": "Bubble Roll", "kind": "barrage", "count": 3, "power": 1, "color": Color(0.6, 0.85, 1.0)},
+	"vine_whip": {"name": "Vine Whip", "kind": "dash", "power": 1},
+	"piranha_fire": {"name": "Fire Spit", "kind": "volley", "count": 3, "power": 0, "burn": 0.25, "color": Color(1.0, 0.45, 0.15)},
+	"seed_storm": {"name": "Seed Storm", "kind": "rain", "power": 2, "color": Color(0.5, 0.85, 0.3)},
+	"chain_ball": {"name": "Chain Ball", "kind": "volley", "count": 2, "power": 1, "color": Color(0.85, 0.2, 0.2)},
+	"bro_rush": {"name": "Bro Rush", "kind": "dash", "count": 2, "power": 0},
+	"chain_storm": {"name": "Chain Storm", "kind": "barrage", "count": 4, "power": 1, "color": Color(0.3, 0.75, 0.3)},
+	"blade_swipe": {"name": "Blade Swipe", "kind": "dash", "power": 2},
+	"juice_blob": {"name": "Juice Blob", "kind": "volley", "count": 3, "power": 0, "color": Color(0.85, 0.15, 0.4)},
+	"chuckola_rain": {"name": "Chuckola Rain", "kind": "rain", "power": 2, "color": Color(0.9, 0.2, 0.45)},
+	"hoo_burrow": {"name": "Hoo Burrow", "kind": "burrow", "power": 2},
+	"hoo_beam": {"name": "Hoo Beam", "kind": "volley", "count": 2, "power": 1, "color": Color(0.8, 0.5, 1.0)},
+	"pillar_fall": {"name": "Pillar Fall", "kind": "rain", "power": 3, "color": Color(0.95, 0.55, 0.35)},
+	"trunk_punch": {"name": "Trunk Punch", "kind": "dash", "power": 2},
+	"rock_toss": {"name": "Rock Toss", "kind": "volley", "count": 3, "power": 0, "color": Color(0.6, 0.45, 0.3)},
+	"rolling_rocks": {"name": "Rolling Rocks", "kind": "barrage", "count": 4, "power": 1, "color": Color(0.55, 0.42, 0.3)},
+	"egg_shot": {"name": "Egg Shot", "kind": "volley", "count": 3, "power": 0, "color": Color(1.0, 1.0, 0.95)},
+	"birdo_dash": {"name": "Birdo Dash", "kind": "dash", "power": 2},
+	"egg_roll": {"name": "Egg Roll", "kind": "barrage", "count": 4, "power": 1, "color": Color(1.0, 0.75, 0.85)},
+	"hypno_wave": {"name": "Hypno Wave", "kind": "volley", "count": 2, "power": 0, "color": Color(1.0, 0.5, 0.85)},
+	"kamek_summon": {"name": "Goomba Call", "kind": "summon", "minion": "goomba"},
+	"star_shower": {"name": "Star Shower", "kind": "rain", "power": 1, "color": Color(1.0, 0.9, 0.3)},
+	"magic_blast": {"name": "Magic Blast", "kind": "volley", "count": 3, "power": 0, "color": Color(0.45, 0.6, 1.0)},
+	"koopa_summon": {"name": "Koopa Call", "kind": "summon", "minion": "koopa"},
+	"magic_swoop": {"name": "Broom Swoop", "kind": "swoop", "power": 2},
+	"ice_wand": {"name": "Ice Wand", "kind": "volley", "count": 2, "power": 1, "color": Color(0.6, 0.95, 1.0)},
+	"jojora_swoop": {"name": "Jojora Swoop", "kind": "swoop", "power": 1},
+	"ice_shard": {"name": "Ice Shards", "kind": "rain", "power": 2, "color": Color(0.7, 0.95, 1.0)},
+	"queen_punch": {"name": "Queen Punch", "kind": "dash", "count": 2, "power": 1},
+	"royal_slam": {"name": "Royal Slam", "kind": "slam", "power": 3},
+	"fist_barrage": {"name": "Fist Barrage", "kind": "barrage", "count": 4, "power": 1, "color": Color(0.5, 0.95, 0.35)},
+	"koopaling_fire": {"name": "Fire Spit", "kind": "volley", "count": 3, "power": 0, "burn": 0.2, "color": Color(1.0, 0.5, 0.15)},
+	"wand_rush": {"name": "Wand Rush", "kind": "dash", "power": 2},
+	"koopa_flames": {"name": "Wand Flames", "kind": "rain", "power": 2, "color": Color(1.0, 0.4, 0.1)},
+	"ball_bounce": {"name": "Ball Bounce", "kind": "slam", "power": 2},
+	"circus_barrage": {"name": "Circus Balls", "kind": "barrage", "count": 4, "power": 1, "color": Color(0.95, 0.85, 0.3)},
+	"morton_leap": {"name": "Morton Leap", "kind": "slam", "power": 3},
+	"morton_quake": {"name": "Morton Quake", "kind": "rain", "power": 3, "color": Color(0.6, 0.45, 0.35)},
+	"ludwig_spin": {"name": "Shell Spin", "kind": "dash", "count": 2, "power": 1},
+	"ludwig_rain": {"name": "Ludwig's Overture", "kind": "rain", "power": 3, "color": Color(0.6, 0.4, 1.0)},
+	"ring_toss": {"name": "Ring Toss", "kind": "barrage", "count": 3, "power": 1, "color": Color(1.0, 0.85, 0.2)},
+	"wendy_rain": {"name": "Ring Rain", "kind": "rain", "power": 3, "color": Color(1.0, 0.8, 0.3)},
+	"iggy_spin": {"name": "Iggy Spin", "kind": "dash", "count": 3, "power": 0},
+	"iggy_rain": {"name": "Rainbow Flames", "kind": "rain", "power": 3, "color": Color(1.0, 0.5, 0.8)},
+	"shell_dash": {"name": "Shell Dash", "kind": "dash", "count": 2, "power": 2},
+	"roy_slam": {"name": "Roy Pound", "kind": "slam", "power": 5},
+	"bat_swarm": {"name": "Bat Swarm", "kind": "barrage", "count": 4, "power": 1, "color": Color(0.3, 0.15, 0.3)},
+	"shadow_sink": {"name": "Shadow Sink", "kind": "burrow", "power": 3},
+	"cackle_bolt": {"name": "Cackle Bolt", "kind": "rain", "power": 4, "color": Color(1.0, 0.35, 0.75)},
+	"headgear_chomp": {"name": "Headgear Chomp", "kind": "dash", "power": 3},
+	"fawful_beam": {"name": "Fawful Beam", "kind": "volley", "count": 3, "power": 1, "color": Color(0.4, 1.0, 0.4)},
+	"fawful_bombs": {"name": "Fury Bombs", "kind": "rain", "power": 4, "color": Color(1.0, 0.7, 0.2)},
+	"flaret_spit": {"name": "Flaret Spit", "kind": "volley", "count": 3, "power": 1, "burn": 0.3, "color": Color(1.0, 0.6, 0.1)},
+	"bowletta_chomp": {"name": "Chomp Charge", "kind": "dash", "count": 2, "power": 3},
+	"bowletta_fire": {"name": "Fire Breath", "kind": "barrage", "count": 5, "power": 2, "burn": 0.2, "color": Color(1.0, 0.45, 0.1)},
+	"soul_swipe": {"name": "Soul Swipe", "kind": "slam", "power": 5},
+	"soul_beam": {"name": "Soul Beam", "kind": "volley", "count": 4, "power": 2, "color": Color(0.85, 0.3, 1.0)},
+	"soul_storm": {"name": "Soul Storm", "kind": "rain", "power": 5, "color": Color(0.75, 0.25, 0.95)},
+}
+## Helpers that fight beside a boss (BOSSES "minions" join its battle; a
+## "summon" attack can call one in too). They attack like ordinary enemies
+## and can't be asked to join.
+const BOSS_MINIONS := {
+	"jojora_friend": {"name": "Jojora's Friend", "frames": 10, "idle": 8, "attack": 10, "hp": 60, "pow": 10, "def": 2, "xp": 40, "coins": 20, "recruit": 0.0},
+}
+## Sheets a boss turns into at phase 2 (BOSSES "phase2_form").
+const BOSS_FORMS := {
+	"fawful_2": {"frames": 8, "idle": 8, "attack": 8},
 }
 ## The chance a boss you just beat says yes when an evil player asks it to join.
 const BOSS_JOIN_CHANCE := 0.35
+
+## The Boss Tower floors' bosses (see BOSSES); a floor's stairs need them all beaten.
+const _TOWER_1 := ["psycho_kamek", "magikoopa", "jojora", "queen_bean_boss"]
+const _TOWER_2 := ["larry", "lemmy", "morton", "ludwig"]
+const _TOWER_3 := ["wendy", "iggy", "roy", "cackletta"]
 
 ## Maps: art and walk mask in res://assets/maps/ (built by tools/make_maps.py).
 ## battle_bg: res://assets/battle/backgrounds/<id>.png, behind battles started here.
 ## exits: walking into `rect` moves you to `to` at that map's `spawn` point.
 ## A `door` exit (a building's door) only opens while you push up into it.
+## An exit with `needs` (boss ids) stays sealed until you have beaten them all.
 ## npcs: {id, pos, talk (dialogue id, defaults to id), face ("down", "left",
 ## "right" or "up"), fixed (stand exactly at pos, e.g. behind a counter),
 ## reach (talking distance, for counters)}.
@@ -372,8 +739,11 @@ const MAPS := {
 	},
 	"bowser_castle": {
 		"name": "Bowser's Castle", "battle_bg": "bowser_castle", "safe": true,
-		"spawns": {"start": Vector2(205, 250), "bridge": Vector2(205, 580)},
-		"exits": [{"rect": Rect2(170, 605, 70, 10), "to": "outskirts", "spawn": "east_bridge"}],
+		"spawns": {"start": Vector2(205, 250), "bridge": Vector2(205, 580), "tower": Vector2(205, 116)},
+		"exits": [
+			{"rect": Rect2(170, 605, 70, 10), "to": "outskirts", "spawn": "east_bridge"},
+			{"rect": Rect2(186, 96, 40, 8), "to": "boss_tower_1", "spawn": "south", "door": true},
+		],
 		"enemies": [],
 		"npcs": [
 			{"id": "koopa_troop", "pos": Vector2(140, 240), "talk": "koopa_guard", "face": "right"},
@@ -568,6 +938,46 @@ const MAPS := {
 			{"id": "shopkeeper", "pos": Vector2(350, 468), "talk": "pier_shop", "fixed": true, "reach": 56.0},
 			{"id": "bean_elder", "pos": Vector2(100, 470), "talk": "pier_rest", "face": "right"},
 		],
+	},
+	# The Boss Tower, through the castle door in Bowser's Castle (tools/make_tower.py
+	# builds its floors). Its bosses (Game.BOSSES) stand round the walls; the
+	# stairs up open once a floor's bosses are all beaten ("needs").
+	"boss_tower_1": {
+		"name": "Boss Tower 1F", "battle_bg": "bowser_castle", "safe": true,
+		"spawns": {"south": Vector2(224, 286), "top": Vector2(224, 125)},
+		"exits": [
+			{"rect": Rect2(192, 300, 65, 13), "to": "bowser_castle", "spawn": "tower"},
+			{"rect": Rect2(198, 92, 52, 16), "to": "boss_tower_2", "spawn": "south", "door": true, "needs": _TOWER_1},
+		],
+		"enemies": [],
+		"npcs": [{"id": "toad_blue", "pos": Vector2(300, 275), "talk": "tower_rest", "face": "left"}],
+	},
+	"boss_tower_2": {
+		"name": "Boss Tower 2F", "battle_bg": "bowser_castle", "safe": true,
+		"spawns": {"south": Vector2(224, 286), "top": Vector2(224, 125)},
+		"exits": [
+			{"rect": Rect2(192, 300, 65, 13), "to": "boss_tower_1", "spawn": "top"},
+			{"rect": Rect2(198, 92, 52, 16), "to": "boss_tower_3", "spawn": "south", "door": true, "needs": _TOWER_2},
+		],
+		"enemies": [],
+		"npcs": [],
+	},
+	"boss_tower_3": {
+		"name": "Boss Tower 3F", "battle_bg": "bowser_castle", "safe": true,
+		"spawns": {"south": Vector2(224, 286), "top": Vector2(224, 125)},
+		"exits": [
+			{"rect": Rect2(192, 300, 65, 13), "to": "boss_tower_2", "spawn": "top"},
+			{"rect": Rect2(198, 92, 52, 16), "to": "boss_tower_top", "spawn": "south", "door": true, "needs": _TOWER_3},
+		],
+		"enemies": [],
+		"npcs": [{"id": "toad_blue", "pos": Vector2(300, 275), "talk": "tower_rest", "face": "left"}],
+	},
+	"boss_tower_top": {
+		"name": "Boss Tower Summit", "battle_bg": "bowser_castle_lava", "safe": true,
+		"spawns": {"south": Vector2(107, 435)},
+		"exits": [{"rect": Rect2(82, 455, 50, 13), "to": "boss_tower_3", "spawn": "top"}],
+		"enemies": [],
+		"npcs": [],
 	},
 }
 
@@ -847,9 +1257,15 @@ func is_defeated(key: String) -> bool:
 
 # --- Bosses -------------------------------------------------------------------
 
-## An enemy's or a boss's table entry (ENEMIES, then BOSSES).
+## An enemy's, a boss's or a boss minion's table entry.
 func foe_info(type: String) -> Dictionary:
-	return ENEMIES.get(type, BOSSES.get(type, {}))
+	return ENEMIES.get(type, BOSSES.get(type, BOSS_MINIONS.get(type, {})))
+
+
+## How many rows a character sheet has: 3 (down, side, up), plus an attack
+## row for bosses that have one.
+func sheet_rows(info: Dictionary) -> int:
+	return 4 if int(info.get("attack", 0)) > 0 else 3
 
 
 ## How many times you have beaten boss `id` (0: never). Old saves have none.
@@ -871,7 +1287,7 @@ func has_boss_partner() -> bool:
 
 ## Starts a fight with boss `id` (from talking to it on the map).
 func start_boss(id: String, overworld_position: Vector2) -> void:
-	start_battle([id], "boss:" + id, overworld_position)
+	start_battle([id] + BOSSES[id].get("minions", []), "boss:" + id, overworld_position)
 	pending_battle["boss"] = id
 	pending_battle["battle_bg"] = BOSSES[id].get("battle_bg", "outskirts")
 
