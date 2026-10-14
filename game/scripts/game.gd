@@ -575,7 +575,7 @@ func start_pvp(foe: Dictionary, first: bool, overworld_position: Vector2) -> voi
 	pending_battle = {"pvp": foe, "first": first, "key": ""}
 	player["in_duel"] = true  # cleared when the duel ends; quitting mid-duel counts as a loss
 	save()
-	get_tree().call_deferred("change_scene_to_file", PVP_SCENE)
+	BattleTransition.into_battle(get_tree(), PVP_SCENE)
 
 
 ## Coins a player drops when they lose a duel (the winner picks them up).
