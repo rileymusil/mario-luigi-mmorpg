@@ -15,6 +15,12 @@ extends Control
 
 func _ready() -> void:
 	visible = false
+	get_tree().root.size_changed.connect(_center_book)
+
+
+func _center_book() -> void:
+	var book: Control = $Book
+	book.position = ((get_viewport_rect().size - book.size) / 2.0).round()
 
 
 func open(p: Dictionary, character_name: String, place_name: String) -> void:
@@ -26,6 +32,7 @@ func open(p: Dictionary, character_name: String, place_name: String) -> void:
 	hp.text = "%d/%d" % [p["hp"], p["max_hp"]]
 	sp.text = "%d/%d" % [p["sp"], p["max_sp"]]
 	place.text = place_name
+	_center_book()
 	visible = true
 
 

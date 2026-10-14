@@ -20,11 +20,51 @@ func _ready() -> void:
 	_build_card()
 	TouchControls.active_changed.connect(_show_controls_hint)
 	_show_controls_hint(TouchControls.active)
+	get_tree().root.size_changed.connect(_layout_title)
+	_layout_title()
 	_main_menu()
 
 
 func _show_controls_hint(touch: bool) -> void:
 	$HintBox/Hint.text = "Tap to choose   Tap outside: back" if touch else "Arrows: choose   Z: confirm   X: back"
+
+
+func _layout_title() -> void:
+	var vp := get_viewport_rect().size
+	var safe := Game.get_safe_rect()
+	var sky: TextureRect = $Sky
+	sky.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	sky.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	sky.position = Vector2.ZERO
+	sky.size = vp
+
+	var logo: TextureRect = $Logo
+	var mmo: Label = $MMO
+	var logo_total_w := 275.0
+	var logo_start_x := roundf(safe.position.x + (safe.size.x - logo_total_w) / 2.0)
+	logo.position = Vector2(logo_start_x, safe.position.y + 8.0)
+	mmo.position = Vector2(logo_start_x + 219.0, safe.position.y + 12.0)
+
+	var hint_box: Control = $HintBox
+	hint_box.position.x = roundf(safe.position.x + (safe.size.x - hint_box.size.x) / 2.0)
+	hint_box.position.y = safe.end.y - hint_box.size.y - 2.0
+
+	prompt.position = ((vp - prompt.size) / 2.0).round()
+
+	if not preview.visible:
+		menu.position = ((vp - menu.size) / 2.0).round()
+		menu.position.y = maxf(safe.position.y + 60.0, menu.position.y)
+	else:
+		_layout_char_select()
+
+
+func _layout_char_select() -> void:
+	var safe := Game.get_safe_rect()
+	var total_w := 270.0
+	var start_x := roundf(safe.position.x + (safe.size.x - total_w) / 2.0)
+	preview.position = Vector2(start_x + 24.0, safe.position.y + 144.0)
+	menu.position = Vector2(start_x + 64.0, safe.position.y + 50.0)
+	card.position = Vector2(start_x + 180.0, safe.position.y + 50.0)
 
 
 func _build_card() -> void:
@@ -113,12 +153,11 @@ func _pick_character(side: String) -> void:
 				_show_character(id)
 			await get_tree().process_frame
 	watcher.call()
-	var home := menu.position
-	menu.position = Vector2(100, 50)
+	_layout_char_select()
 	var i := await menu.choose(names, "Choose your character", true)
-	menu.position = home
 	preview.visible = false
 	card.visible = false
+	_layout_title()
 	if i < 0:
 		_pick_side()
 		return

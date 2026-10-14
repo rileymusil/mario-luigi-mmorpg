@@ -73,6 +73,7 @@ func _ready() -> void:
 	props.build(actors, art)
 	rebuild_collision()
 	_fit_camera()
+	get_tree().root.size_changed.connect(_on_viewport_resized)
 
 	player = _spawn_character(Game.player["character"])
 	var pos: Vector2
@@ -124,22 +125,30 @@ func _ready() -> void:
 	Game.save()
 
 
+var _backdrop: ColorRect
+
+
 ## Keeps the camera inside the map. A room smaller than the screen is shown
-## centred on black.
+## centred on dark backdrop.
 func _fit_camera() -> void:
-	var pad := ((get_viewport_rect().size - map_size) / 2.0).max(Vector2.ZERO).ceil()
+	var vp := get_viewport_rect().size
+	var pad := ((vp - map_size) / 2.0).max(Vector2.ZERO).ceil()
 	camera.limit_left = -int(pad.x)
 	camera.limit_top = -int(pad.y)
 	camera.limit_right = int(map_size.x + pad.x)
 	camera.limit_bottom = int(map_size.y + pad.y)
 	if pad != Vector2.ZERO:
-		var backdrop := ColorRect.new()
-		backdrop.color = Color.BLACK
-		backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		backdrop.position = -pad - Vector2(8, 8)
-		backdrop.size = map_size + pad * 2.0 + Vector2(16, 16)
-		backdrop.z_index = -2
-		add_child(backdrop)
+		if _backdrop == null:
+			_backdrop = ColorRect.new()
+			_backdrop.color = Color(0.02, 0.02, 0.04)
+			_backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_backdrop.z_index = -2
+			add_child(_backdrop)
+		_backdrop.position = -pad - Vector2(100, 100)
+		_backdrop.size = map_size + pad * 2.0 + Vector2(200, 200)
+		_backdrop.visible = true
+	elif _backdrop:
+		_backdrop.visible = false
 
 
 func _spawn_character(id: String) -> CharacterSprite:
@@ -343,7 +352,13 @@ func _process(delta: float) -> void:
 
 	# Dynamic camera lead: smoothly tilts focus slightly ahead in movement direction
 	var lead := player.facing * 12.0 if player.move_velocity.length() > 15.0 else Vector2.ZERO
-	camera.position = player.position + lead
+	var vp := get_viewport_rect().size
+	var target_cam := player.position + lead
+	if map_size.x < vp.x:
+		target_cam.x = map_size.x / 2.0
+	if map_size.y < vp.y:
+		target_cam.y = map_size.y / 2.0
+	camera.position = target_cam
 
 	_update_followers(delta)
 	_update_enemies(delta)
@@ -697,9 +712,18 @@ func _show_area_name() -> void:
 	area_name.show_name(map_info["name"])
 
 
+func _on_viewport_resized() -> void:
+	_fit_camera()
+	_update_hud()
+
+
 func _update_hud() -> void:
+	var safe := Game.get_safe_rect()
+	var vp := get_viewport_rect().size
 	var p: Dictionary = Game.player
 	status.refresh(p, Game.character_name())
+	status.position = Vector2(safe.position.x + 4.0, safe.position.y + 3.0)
+
 	var npc: Variant = null if busy else _nearest_npc()
 	if busy:
 		hint.text = ""
@@ -711,7 +735,15 @@ func _update_hud() -> void:
 	var hint_box: Control = hint.get_parent()
 	hint_box.visible = hint.text != ""
 	hint_box.reset_size()
-	hint_box.position.x = roundf((get_viewport_rect().size.x - hint_box.size.x) / 2.0)
+	hint_box.position.x = roundf(safe.position.x + (safe.size.x - hint_box.size.x) / 2.0)
+	hint_box.position.y = safe.end.y - hint_box.size.y - 2.0
+
+	area_name.position.x = roundf(safe.position.x + (safe.size.x - area_name.size.x) / 2.0)
+	area_name.position.y = safe.position.y + 30.0
+
+	# Keep overworld menu anchored to top-right safe edge
+	menu.position = Vector2(safe.end.x - menu.size.x - 4.0, safe.position.y + 24.0)
+
 	# A "!" bubble pops up over whoever you can talk to.
 	talk_bubble.visible = npc != null
 	if npc != null:
@@ -719,3 +751,4 @@ func _update_hud() -> void:
 		var head := node.get_global_transform_with_canvas().origin - Vector2(0, node.height() + 6)
 		var bob := roundf(absf(sin(Time.get_ticks_msec() / 160.0)) * 2.0)
 		talk_bubble.position = (head - Vector2(talk_bubble.size.x / 2.0, talk_bubble.size.y + bob)).round()
+
