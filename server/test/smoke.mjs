@@ -191,6 +191,9 @@ check(act.move === "jump" && act.hits.length === 3 && act.rating === "Excellent"
 gd.send({ t: "duel_hit", dmg: 12, hp: 10, dodged: false });
 check((await ev.next("duel_hit")).hp === 10, "hit results go back to the attacker");
 
+const scoreUrl = `${base.replace(/^ws/, "http")}/score`;
+const before = await (await fetch(scoreUrl)).json();
+check(Number.isInteger(before.good) && Number.isInteger(before.evil) && before.ends_at > Date.now(), "the weekly score can be read");
 gd.send({ t: "duel_over", result: "lost" });
 check((await ev.next("duel_over")).result === "lost", "the winner hears the loser lost");
 ev.send({ t: "duel", to: "eeeeeeeeeee2", stats: {} });
@@ -206,6 +209,9 @@ gd2.send({ t: "duel_ready", stats: {} });
 await ev2.next("duel_start");
 gd2.ws.close();
 check((await ev2.next("duel_over")).result === "left", "leaving mid-duel tells the foe");
+await new Promise((r) => setTimeout(r, 500));
+const after = await (await fetch(scoreUrl)).json();
+check(after.week !== before.week || after.evil >= before.evil + 2, "a loss and a walk-out each count a win for evil");
 
 ev.send({ t: "duel_act", move: "jump" });
 for (const x of [ev, gd, town, ev2]) x.ws.close();

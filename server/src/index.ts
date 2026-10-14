@@ -46,22 +46,31 @@
 //     {t:"full"}                            zone is full; the socket is closed
 //     {t:"replaced"}                        the same save connected again; this socket is closed
 //   Player = {id, name, character, side, x, y}
+// A duel that ends with someone losing, leaving or timing out counts a win
+// for the other side on the weekly score (scores.ts, GET /score).
 // The text "ping" is answered with "pong" without waking the zone.
 
 import { DurableObject } from "cloudflare:workers";
 import { cleanChat } from "./filter";
 import { Account, accountKey, MAX_SAVE_BYTES, NAME } from "./accounts";
 
-export { Account };
+import { Scores } from "./scores";
+
+export { Account, Scores };
 
 export interface Env {
   ZONES: DurableObjectNamespace<Zone>;
   ACCOUNTS: DurableObjectNamespace<Account>;
+  SCORES: DurableObjectNamespace<Scores>;
+}
+
+function scores(env: Env) {
+  return env.SCORES.get(env.SCORES.idFromName("scores"));
 }
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Max-Age": "86400",
 };
@@ -124,6 +133,7 @@ export default {
     }
     const acct = url.pathname.match(/^\/account\/(register|login|save|load)$/);
     if (acct) return account(acct[1], request, env);
+    if (url.pathname === "/score") return json(200, await scores(env).current());
     if (url.pathname === "/") return new Response("Mario & Luigi MMO server is running.\n");
     return new Response("not found", { status: 404 });
   },
@@ -210,7 +220,7 @@ export class Zone extends DurableObject<Env> {
       if (taken && key && (taken.deserializeAttachment() as Attachment).key === key) {
         // The same save again (a reconnect, or coming back to this map before
         // the old socket was noticed closing): drop the old one, keep the id.
-        this.leave(taken);
+        await this.leave(taken);
         try {
           taken.send(JSON.stringify({ t: "replaced" }));
           taken.close(1000, "replaced");
@@ -384,32 +394,47 @@ export class Zone extends DurableObject<Env> {
       foe.send(JSON.stringify(out));
     } else if (msg.t === "duel_over") {
       const result = ["lost", "fled", "timeout", "cancel"].includes(String(msg.result)) ? String(msg.result) : "cancel";
-      this.endDuel(ws, a, result, now);
+      await this.recordWin(this.endDuel(ws, a, result, now));
     } else {
       ws.serializeAttachment(a);
     }
   }
 
-  // Ends the duel `a` is in and tells the foe how it ended.
-  private endDuel(ws: WebSocket | null, a: Attachment, result: string, now: number): void {
+  // Ends the duel `a` is in and tells the foe how it ended. Returns the
+  // winning side for the weekly score, or null when nobody won.
+  private endDuel(ws: WebSocket | null, a: Attachment, result: string, now: number): "good" | "evil" | null {
     const foe = a.duel ? this.socketFor(a.duel) : null;
     const fought = a.dueling;
     a.duel = undefined;
     a.dueling = false;
     if (fought) a.safeUntil = now + DUEL_COOLDOWN_MS;
     ws?.serializeAttachment(a);
-    if (!foe) return;
+    if (!foe) return null;
     const f = foe.deserializeAttachment() as Attachment;
-    if (f.duel !== a.player?.id) return;
+    if (f.duel !== a.player?.id) return null;
     f.duel = undefined;
     f.dueling = false;
     if (fought) f.safeUntil = now + DUEL_COOLDOWN_MS;
     foe.serializeAttachment(f);
     foe.send(JSON.stringify({ t: "duel_over", result }));
+    if (!fought || !a.player || !f.player) return null;
+    // "lost" / "left": `a` lost; "timeout": `a` waited out a foe who stopped answering.
+    if (result === "lost" || result === "left") return f.player.side;
+    if (result === "timeout") return a.player.side;
+    return null;
+  }
+
+  private async recordWin(side: "good" | "evil" | null): Promise<void> {
+    if (!side) return;
+    try {
+      await scores(this.env).addWin(side);
+    } catch {
+      // the score is nice to have; a duel never fails over it
+    }
   }
 
   async webSocketClose(ws: WebSocket, code: number, _reason: string, _wasClean: boolean): Promise<void> {
-    this.leave(ws);
+    await this.leave(ws);
     try {
       ws.close(code === 1005 ? 1000 : code, "bye");
     } catch {
@@ -418,17 +443,18 @@ export class Zone extends DurableObject<Env> {
   }
 
   async webSocketError(ws: WebSocket, _error: unknown): Promise<void> {
-    this.leave(ws);
+    await this.leave(ws);
   }
 
-  private leave(ws: WebSocket): void {
+  private async leave(ws: WebSocket): Promise<void> {
     const a = ws.deserializeAttachment() as Attachment | null;
     if (!a?.player) return;
     const id = a.player.id;
-    if (a.duel) this.endDuel(null, a, "left", Date.now());
+    const won = a.duel ? this.endDuel(null, a, "left", Date.now()) : null;
     a.player = null;
     ws.serializeAttachment(a);
     this.broadcast({ t: "leave", id }, ws);
+    await this.recordWin(won);
   }
 
   private socketFor(id: string): WebSocket | null {
