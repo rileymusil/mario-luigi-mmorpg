@@ -260,11 +260,13 @@ const MAPS := {
 	},
 	"outskirts": {
 		"name": "Beanbean Outskirts", "battle_bg": "outskirts", "safe": false,
-		"spawns": {"south_path": Vector2(800, 615), "east_bridge": Vector2(1420, 65), "east_path": Vector2(1425, 405)},
+		"spawns": {"south_path": Vector2(800, 615), "east_bridge": Vector2(1420, 65), "east_path": Vector2(1425, 405),
+			"pier": Vector2(381, 612)},
 		"exits": [
 			{"rect": Rect2(760, 630, 90, 7), "to": "castle_town", "spawn": "east_gate"},
 			{"rect": Rect2(1455, 30, 10, 70), "to": "bowser_castle", "spawn": "bridge"},
-			{"rect": Rect2(1452, 380, 13, 50), "to": "stardust_fields", "spawn": "west_low"},
+			{"rect": Rect2(1452, 380, 13, 50), "to": "outskirts_east", "spawn": "west"},
+			{"rect": Rect2(362, 630, 38, 7), "to": "outskirts_pier", "spawn": "north"},
 		],
 		"enemies": [
 			{"type": "goomba", "pos": Vector2(628, 178)}, {"type": "goomba", "pos": Vector2(607, 345)},
@@ -388,8 +390,8 @@ const MAPS := {
 		"spawns": {"west_low": Vector2(40, 590), "west_high": Vector2(30, 418), "north": Vector2(205, 30),
 			"east": Vector2(495, 134)},
 		"exits": [
-			{"rect": Rect2(0, 568, 12, 36), "to": "outskirts", "spawn": "east_path"},
-			{"rect": Rect2(0, 400, 12, 36), "to": "outskirts", "spawn": "east_path"},
+			{"rect": Rect2(0, 568, 12, 36), "to": "outskirts_east", "spawn": "north"},
+			{"rect": Rect2(0, 400, 12, 36), "to": "outskirts_east", "spawn": "north"},
 			{"rect": Rect2(180, 0, 50, 10), "to": "hoohoo_village", "spawn": "south"},
 			{"rect": Rect2(515, 118, 15, 32), "to": "hoohoo_village", "spawn": "west"},
 		],
@@ -436,6 +438,48 @@ const MAPS := {
 		"exits": [{"rect": Rect2(26, 228, 32, 14), "to": "hoohoo_village", "spawn": "hut_e"}],
 		"enemies": [],
 		"npcs": [{"id": "hoohoo_villager_b", "pos": Vector2(100, 180), "talk": "hoohoo_shop"}],
+	},
+	# Phase 7: more of the Outskirts (tools/make_maps.py cuts them so their
+	# edges meet the Outskirts map).
+	"outskirts_east": {
+		"name": "Outskirts Meadow", "battle_bg": "outskirts", "safe": false,
+		"spawns": {"west": Vector2(30, 450), "north": Vector2(383, 30), "south": Vector2(197, 505)},
+		"exits": [
+			{"rect": Rect2(0, 413, 8, 79), "to": "outskirts", "spawn": "east_path"},
+			{"rect": Rect2(351, 0, 64, 8), "to": "stardust_fields", "spawn": "west_low"},
+			{"rect": Rect2(139, 530, 117, 8), "to": "outskirts_woods", "spawn": "north"},
+		],
+		"enemies": [
+			{"type": "goomba", "pos": Vector2(300, 350)}, {"type": "beanie", "pos": Vector2(520, 300)},
+			{"type": "koopa", "pos": Vector2(560, 420)}, {"type": "galoomba", "pos": Vector2(900, 400)},
+			{"type": "shy_guy", "pos": Vector2(1100, 380)}, {"type": "buzzy_beetle", "pos": Vector2(1180, 260)},
+			{"type": "koopa", "pos": Vector2(860, 120)},
+		],
+		"npcs": [
+			{"id": "bean_villager", "pos": Vector2(330, 250), "talk": "meadow_bean"},
+			{"id": "toad_blue", "pos": Vector2(1200, 200), "talk": "beach_toad", "face": "right"},
+		],
+	},
+	"outskirts_woods": {
+		"name": "Outskirts Woods", "battle_bg": "outskirts", "safe": false,
+		"spawns": {"north": Vector2(133, 25)},
+		"exits": [{"rect": Rect2(75, 0, 118, 8), "to": "outskirts_east", "spawn": "south"}],
+		"enemies": [
+			{"type": "goomba", "pos": Vector2(300, 150)}, {"type": "shy_guy", "pos": Vector2(480, 200)},
+			{"type": "dry_bones", "pos": Vector2(660, 120)}, {"type": "galoomba", "pos": Vector2(100, 520)},
+			{"type": "buzzy_beetle", "pos": Vector2(400, 550)}, {"type": "beanie", "pos": Vector2(560, 520)},
+		],
+		"npcs": [{"id": "bean_kid", "pos": Vector2(60, 180), "talk": "woods_kid"}],
+	},
+	"outskirts_pier": {
+		"name": "Outskirts Pier", "battle_bg": "outskirts", "safe": true,
+		"spawns": {"north": Vector2(233, 22)},
+		"exits": [{"rect": Rect2(220, 0, 26, 6), "to": "outskirts", "spawn": "pier"}],
+		"enemies": [],
+		"npcs": [
+			{"id": "shopkeeper", "pos": Vector2(350, 468), "talk": "pier_shop", "fixed": true, "reach": 56.0},
+			{"id": "bean_elder", "pos": Vector2(100, 470), "talk": "pier_rest", "face": "right"},
+		],
 	},
 }
 

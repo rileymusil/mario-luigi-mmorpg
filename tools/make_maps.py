@@ -234,6 +234,7 @@ MAPS = {
 #   (mirrored left-right if mirror is true), to mend seams between pieces. white: colour for the sheet's leftover white
 #   background (patches of pure white). paint: [(box, colour)] art fixes.
 # Interiors are small rooms: a door mat at the bottom leads back outside.
+_OUTSKIRTS = "Maps/Game Boy Advance - Mario & Luigi_ Superstar Saga - Maps - Beanbean Outskirts.png"
 _INTERIOR = "Maps/Game Boy Advance - Mario & Luigi_ Superstar Saga - Maps - Beanbean Castle Town (Interior).png"
 _SHOP = "Maps/Game Boy Advance - Mario & Luigi_ Superstar Saga - Maps - Beanbean Castle Town Shop (Interior).png"
 _PALACE = "Maps/Game Boy Advance - Mario & Luigi_ Superstar Saga - Maps - Beanbean Castle.gif"
@@ -327,6 +328,58 @@ MAPS.update({
                      "fixes": [("walk", (10, 135, 154, 208)), ("walk", (39, 100, 67, 135)), ("walk", (137, 95, 154, 135)),
                                ("block", (10, 110, 40, 158)),  # pot
                                ("walk", (26, 206, 58, 238))]},  # doorway
+})
+
+
+# Phase 7: the Outskirts go on. Pieces of the same sheet next to the
+# Outskirts crop, cut so that their edges meet it: walking off one map
+# arrives on the matching spot of the next.
+MAPS.update({
+    # East of the Outskirts: the meadow with the stone ring and the beach.
+    # x 2892 is where the Outskirts crop now ends (its last 20px were a gap).
+    "outskirts_east": {
+        "sheet": _OUTSKIRTS, "crop": (2892, 1860, 4270, 2398), "walk": field_walk, "hard": is_water, "smooth": 5,
+        "islands": 200, "trees": True, "seeds": [(20, 450)],
+        "fixes": [
+            ("walk", (688, 207, 783, 253)),  # bridge over the pit
+            ("block", (30, 105, 98, 235)), ("block", (38, 232, 98, 300)),  # brick pillar, gate
+            ("block", (78, 315, 158, 445)),  # brick ledge with the hedge
+            ("block", (415, 150, 462, 300)),  # stone post in the ring
+            ("block", (925, 0, 1180, 190)), ("block", (975, 190, 1120, 310)),  # the high ground by the beach
+            ("block", (1213, 122, 1250, 150)),  # signpost on the beach
+            ("walk", (1120, 292, 1136, 314)),  # under the tree by the cliff, the way up the beach
+        ],
+    },
+    # South of the meadow: the woods and their streams.
+    "outskirts_woods": {
+        "sheet": _OUTSKIRTS, "crop": (2956, 2398, 3675, 3028), "walk": field_walk, "hard": is_water, "smooth": 5,
+        "islands": 200, "trees": True, "seeds": [(130, 170), (250, 170), (480, 180), (660, 120), (100, 520), (400, 550)],
+        "fixes": [
+            ("walk", (557, 84, 624, 114)), ("walk", (557, 261, 624, 289)),  # bridges over the stream
+            ("walk", (480, 372, 622, 418)), ("walk", (176, 547, 238, 581)),
+            ("block", (208, 195, 368, 352)),  # walled garden
+            ("block", (158, 40, 225, 178)),  # stump with the signboard
+        ],
+    },
+    # South of the Outskirts' stone path: the pier with the rest stop.
+    "outskirts_pier": {
+        # The deck is drawn in pinks the field colours don't know: walkable
+        # ground is all set by hand.
+        "sheet": _OUTSKIRTS, "crop": (1595, 2571, 2075, 3205), "walk": never, "hard": lambda r, g, b: True,
+        "smooth": 1, "islands": 1, "seeds": [(233, 10)],
+        "fixes": [
+            ("walk", (220, 0, 246, 130)), ("walk", (158, 64, 308, 118)),  # stone path, lawn
+            ("walk", (212, 95, 254, 430)),  # the long stairs
+            ("walk", (50, 426, 416, 568)),  # the deck
+            ("block", (282, 350, 420, 506)),  # rest stop hut and counter
+            ("block", (184, 395, 210, 446)), ("block", (258, 395, 284, 446)), ("block", (360, 536, 386, 568)),  # plants
+            ("block", (50, 510, 120, 568)), ("block", (158, 510, 244, 568)),  # benches
+        ],
+        "props": [
+            {"name": "pier_sign", "shape": "rect", "rect": [186, 176, 94, 100], "base": 276},
+            {"name": "pier_arch", "shape": "rect", "rect": [200, 343, 66, 30], "base": 400},
+        ],
+    },
 })
 
 
@@ -621,6 +674,14 @@ def build(map_id, cfg, root, heights=False):
         touch_up(art, cfg)
         os.makedirs(OUT, exist_ok=True)
         art.save(os.path.join(OUT, map_id + ".png"))
+        props_path = os.path.join(OUT, map_id + "_props.json")
+        if (cfg.get("trees") or cfg.get("props")) and not os.path.exists(props_path):
+            # A new map: its trees and hand-placed props (edit them in the map
+            # editor afterwards; an existing props file is kept).
+            props = (find_trees(root, art) if cfg.get("trees") else []) + cfg.get("props", [])
+            with open(props_path, "w") as f:
+                f.write('{"props": [\n' + ",\n".join(json.dumps(p, separators=(",", ":")) for p in props) + "\n]}\n")
+            print(map_id, "props: %d written" % len(props))
     else:
         art = Image.open(os.path.join(OUT, map_id + ".png")).convert("RGB")
     mask = build_mask(map_id, cfg, art)
@@ -661,7 +722,45 @@ HAND_OUTLINES = {
     ("outskirts", "platform_ne_1"): [(0, 0), (46, 0), (46, 56), (31, 58), (31, 96), (13, 96), (13, 58), (0, 56)],
     ("outskirts", "platform_ne_2"): [(0, 0), (80, 0), (80, 58), (48, 58), (48, 96), (32, 96), (32, 58), (0, 58)],
     ("outskirts", "platform_ne_3"): [(0, 0), (92, 0), (92, 56), (46, 56), (46, 96), (30, 96), (30, 56), (0, 56)],
+    ("outskirts_pier", "pier_sign"): [(0, 2), (94, 2), (94, 42), (84, 42), (84, 100), (70, 100), (70, 42), (20, 42),
+                                      (20, 100), (8, 100), (8, 42), (0, 42)],
+    ("outskirts_pier", "pier_arch"): [(0, 0), (66, 0), (66, 30), (58, 30), (58, 20), (50, 14), (40, 12), (26, 12),
+                                      (16, 14), (8, 20), (8, 30), (0, 30)],
 }
+
+
+# --- Finding trees ------------------------------------------------------------------
+# New outdoor maps get their teal trees as props automatically ("trees": True
+# in MAPS): every copy of the Outskirts tree sprite (51x72, the same one as
+# TREE_51x72) whose canopy top shows is found by matching its pixels.
+TREE_SAMPLE = (2058, 1998)  # top-left of a whole tree on the Outskirts sheet
+
+
+def find_trees(root, art):
+    sheet = Image.open(os.path.join(root, _OUTSKIRTS)).convert("RGB")
+    tpl = sheet.crop((TREE_SAMPLE[0], TREE_SAMPLE[1], TREE_SAMPLE[0] + 51, TREE_SAMPLE[1] + 72)).load()
+    # Canopy pixels well inside the outline, rows 2-39 (lower rows are often
+    # hidden by the tree in front).
+    pts = [(x, 1 + i) for i, (l, r) in enumerate(TREE_51x72[1:39], 1) for x in range(l + 1, r)]
+    w, h = art.size
+    px = art.load()
+    data = art.tobytes()
+    ay, ax0, ax1 = 10, 12, 33  # a run of row 10 to search for
+    run = b"".join(bytes(tpl[x, ay]) for x in range(ax0, ax1))
+    found = []
+    for y in range(h):
+        row = data[y * w * 3:(y + 1) * w * 3]
+        i = row.find(run)
+        while i != -1:
+            if i % 3 == 0:
+                x, y0 = i // 3 - ax0, y - ay
+                inside = [(x + u, y0 + v, u, v) for u, v in pts if 0 <= x + u < w and 0 <= y0 + v < h]
+                bad = sum(1 for X, Y, u, v in inside if px[X, Y] != tpl[u, v])
+                if bad <= 0.05 * len(inside):
+                    found.append((x, y0))
+            i = row.find(run, i + 1)
+    return [{"kind": "tree", "rect": [x, y, 51, 72], "base": y + 71, "foot": [x + 18, y + 64, 12, 7],
+             "name": "tree", "shape": "tree"} for x, y in found]
 
 
 def span_poly(spans, first_row):

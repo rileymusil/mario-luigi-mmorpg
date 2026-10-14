@@ -292,5 +292,51 @@
         "Have you met the Border Bros? They check everyone who comes through the fields."
       ]}
     ]
+  },
+  "meadow_bean": {
+    "branches": [
+      {"if": {"side": "evil"}, "say": ["Eek! One of Bowser's lot, out here in the meadow?", "Just... don't trample the flowers, {character}."]},
+      {"random": true, "say": [
+        "Nobody knows who put up the stone ring. The trees grew round it all by themselves!",
+        "The bridge north crosses over to Stardust Fields. Watch your step on the way.",
+        "Follow the flower beds south and you'll end up in the woods."
+      ]}
+    ]
+  },
+  "beach_toad": {
+    "branches": [
+      {"say": ["Ahh, sea air! I came all the way from the Mushroom Kingdom for this beach.", "The high ground behind me? Way too steep to climb. I've tried."]}
+    ]
+  },
+  "woods_kid": {
+    "branches": [
+      {"random": true, "say": [
+        "Shh! I'm hiding from my big brother. He'll never find me in the woods!",
+        "The streams are too wide to jump. Use the bridges!",
+        "There's a walled garden in the middle of the woods, but I've never found the way in."
+      ]}
+    ]
+  },
+  "pier_shop": {
+    "name": "Pier Shopkeeper",
+    "branches": [
+      {"if": {"side": "evil"}, "say": ["A Koopa at my rest stop? Prices just went up, pal."],
+       "choices": [{"text": "Shop", "do": "shop"}, {"text": "No thanks"}], "markup": 1.5,
+       "shop": [{"item": "mushroom"}, {"item": "syrup"}, {"item": "super_mushroom"}, {"item": "red_pepper"}, {"item": "green_pepper"}]},
+      {"say": ["Welcome to the pier rest stop! Snacks for the road?"],
+       "choices": [{"text": "Shop", "do": "shop"}, {"text": "No thanks"}],
+       "shop": [
+         {"item": "mushroom", "thanks": "Enjoy the view!"},
+         {"item": "syrup", "thanks": "Enjoy the view!"},
+         {"item": "super_mushroom", "thanks": "Good pick for the woods."},
+         {"item": "red_pepper", "thanks": "Spicy! Careful with that."},
+         {"item": "green_pepper", "thanks": "Crunchy and tough!"}
+       ]}
+    ]
+  },
+  "pier_rest": {
+    "branches": [
+      {"say": ["The sea breeze does wonders. Sit a while?"], "choices": [{"text": "Rest", "do": "heal", "done": "You rested on the pier. HP and SP are full!"}, {"text": "No thanks"}]}
+    ]
   }
 }
