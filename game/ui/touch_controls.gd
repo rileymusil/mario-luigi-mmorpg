@@ -32,6 +32,9 @@ var fullscreen_button: TouchButton
 
 var _root: Control
 var _can_fullscreen := false
+var _portrait_overlay: Control
+var _phone_icon: Control
+var _anim_time := 0.0
 
 
 func _ready() -> void:
@@ -57,7 +60,68 @@ func _ready() -> void:
 		c.visible = false
 		_root.add_child(c)
 
+	_build_portrait_overlay()
+	get_tree().root.size_changed.connect(_on_size_changed)
+
 	_set_active(DisplayServer.is_touchscreen_available() or OS.has_feature("web_android") or OS.has_feature("web_ios"))
+
+
+func _build_portrait_overlay() -> void:
+	_portrait_overlay = Control.new()
+	_portrait_overlay.name = "PortraitOverlay"
+	_portrait_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_portrait_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	_portrait_overlay.visible = false
+
+	var dim := ColorRect.new()
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0.04, 0.05, 0.1, 0.96)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_portrait_overlay.add_child(dim)
+
+	var center := VBoxContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	center.add_theme_constant_override("separation", 10)
+	center.alignment = BoxContainer.ALIGNMENT_CENTER
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_portrait_overlay.add_child(center)
+
+	# Animated rotating phone icon
+	_phone_icon = Control.new()
+	_phone_icon.custom_minimum_size = Vector2(40, 40)
+	_phone_icon.pivot_offset = Vector2(20, 20)
+	_phone_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_phone_icon.draw.connect(_draw_phone_icon)
+	center.add_child(_phone_icon)
+
+	var title := Label.new()
+	title.text = "ROTATE YOUR DEVICE"
+	title.theme_type_variation = &"TitleLabel"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	center.add_child(title)
+
+	var desc := Label.new()
+	desc.text = "Turn your phone sideways for landscape view"
+	desc.theme_type_variation = &"LightLabel"
+	desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	center.add_child(desc)
+
+	add_child(_portrait_overlay)
+
+
+func _draw_phone_icon() -> void:
+	# Draws a cute pixel phone outline
+	var rect := Rect2(-10, -18, 20, 36)
+	_phone_icon.draw_rect(rect, Color(0.95, 0.95, 0.95), false, 2.0)
+	# Screen inside
+	_phone_icon.draw_rect(Rect2(-8, -14, 16, 26), Color(0.18, 0.35, 0.65, 0.7), true)
+	# Home indicator
+	_phone_icon.draw_rect(Rect2(-4, 13, 8, 2), Color(0.85, 0.85, 0.85))
+
+
+func _on_size_changed() -> void:
+	var scene := get_tree().current_scene
+	_layout(scene != null and scene.is_in_group(&"battles"))
 
 
 func _panel_button(action: StringName, content: Control) -> TouchButton:
@@ -124,7 +188,20 @@ func _notification(what: int) -> void:
 
 # --- Every frame: which controls show, and where --------------------------------
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	var is_port := Game.is_portrait()
+	if _portrait_overlay:
+		_portrait_overlay.visible = is_port
+		if is_port:
+			_anim_time += delta
+			# Smooth phone rotation rocking animation
+			_phone_icon.rotation = sin(_anim_time * 3.5) * 0.75 - 0.75
+			_phone_icon.queue_redraw()
+			release_all()
+			_root.visible = false
+			return
+
+	_root.visible = true
 	var scene := get_tree().current_scene
 	var path := scene.scene_file_path if scene else ""
 	var blocked: bool = _any_visible(&"touch_blockers") or (scene != null and scene.get("editing") == true)
@@ -154,28 +231,28 @@ func _any_visible(group: StringName) -> bool:
 
 
 func _layout(battle := false) -> void:
-	var vp := _root.get_viewport_rect().size
-	stick.position = (Vector2(44, vp.y - 56) - stick.size / 2.0).round()
+	var safe := Game.get_safe_rect()
+	stick.position = (Vector2(safe.position.x + 44, safe.end.y - 56) - stick.size / 2.0).round()
 	if battle:
 		# Battles (and duels): A over B on the right edge, under the foe list,
-		# above the party bar and clear of where enemies stand and of the
-		# characters you tap to pick a target (battle.gd ENEMY_SPOTS).
-		a_button.position = (Vector2(vp.x - 21, 96) - a_button.size / 2.0).round()
-		b_button.position = (Vector2(vp.x - 21, 146) - b_button.size / 2.0).round()
+		# respecting safe area so notches don't cover them.
+		a_button.position = (Vector2(safe.end.x - 24, safe.position.y + 96) - a_button.size / 2.0).round()
+		b_button.position = (Vector2(safe.end.x - 24, safe.position.y + 146) - b_button.size / 2.0).round()
 	else:
-		# Clear of the bottom bars (hint, chat), touch circles not overlapping.
-		a_button.position = (Vector2(vp.x - 30, vp.y - 72) - a_button.size / 2.0).round()
-		b_button.position = (Vector2(vp.x - 70, vp.y - 46) - b_button.size / 2.0).round()
-	var x := vp.x - 4.0
+		# Clear of the bottom bars (hint, chat), respecting safe area margins.
+		a_button.position = (Vector2(safe.end.x - 30, safe.end.y - 72) - a_button.size / 2.0).round()
+		b_button.position = (Vector2(safe.end.x - 70, safe.end.y - 46) - b_button.size / 2.0).round()
+	var x := safe.end.x - 4.0
 	for b in [menu_button, fullscreen_button]:
 		var panel: Control = b.get_child(0)
 		b.size = panel.get_combined_minimum_size()
 		panel.size = b.size
 		x -= b.size.x
-		b.position = Vector2(x, 3)
-		x -= 3.0
+		b.position = Vector2(x, safe.position.y + 3)
+		x -= 4.0
 
 
 func _toggle_fullscreen() -> void:
 	var full := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if full else DisplayServer.WINDOW_MODE_FULLSCREEN)
+
