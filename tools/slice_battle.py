@@ -4,6 +4,8 @@ Sources (in the Mario&LuigiMMO art drop):
   MISC UI AND MORE/... Battle Backgrounds        - battle backgrounds (Ryan914)
   Maps/Custom ... Backgrounds - Wart Throne       - Wart's throne room (Frario; veggie machine by Starpower)
   Maps/Custom ... Backgrounds - Sand Bird         - Sand Bird stage (Joshr_691)
+  Boss Enemies/... Tutankoopa, Swiggler, Cortez, Grubba - their arenas (pyramid by Medaforcer, Vim Factory by
+                                                    Larry the Sharp and Parakoopa, treasury by Parakoopa, Glitz Pit)
   MISC UI AND MORE/... Action Icons               - action command icons (SpaceSandwich)
   MISC UI AND MORE/Custom ... Blocks (M&L_ Superstar Saga-Battle Style) - blocks (Ridge Troopa)
   MISC UI AND MORE/Custom ... Mushrooms           - the Mushroom (Spencer EX, Ridge Troopa)
@@ -62,6 +64,11 @@ BACKGROUNDS = {
     "little_fungitown": (SHEET, (731, 327)),
     "wart_throne": (MAPS + "Wart Throne (Mario & Luigi_ Superstar Saga-Style).png", (10, 172)),
     "sand_bird": (MAPS + "Sand Bird (Mario & Luigi_ Superstar Saga-Style).png", (5, 409)),
+    # From boss sheets: Tutankoopa's pyramid, Swiggler's room, Cortez's treasury, the Glitz Pit.
+    "pyramid": ("Boss Enemies/Custom _ Edited - Paper Mario Customs - Paper Mario 64 Bosses - Tutankoopa (Mario & Luigi_ Superstar Saga-Style).png", (4, 431)),
+    "vim_factory": ("Boss Enemies/Custom _ Edited - Mario & Luigi Customs - Bosses - Swiggler (Mario & Luigi_ Superstar Saga-Style).png", (689, 1541)),
+    "pirate_grotto": ("Boss Enemies/Custom _ Edited - Paper Mario Customs - Thousand-Year Door Bosses - Cortez (Mario & Luigi_ Superstar Saga-Style).png", (265, 1255)),
+    "glitz_pit": ("Boss Enemies/Custom _ Edited - Paper Mario Customs - Thousand-Year Door Bosses - Grubba _ Macho Grubba (Mario & Luigi_ Superstar Saga-Style).png", (200, 765)),
 }
 
 # --- Command blocks and icons ---------------------------------------------------
