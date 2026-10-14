@@ -136,6 +136,18 @@ NPCS = {
 # used for all three rows, like Vivian. They face left on the sheets (towards
 # the heroes in battle). Dimentio stays out of the game on purpose.
 _BOSS = "Boss Enemies/Game Boy Advance - Mario & Luigi_ Superstar Saga - Bosses - "
+_MC = "Boss Enemies/Custom _ Edited - Mario Customs - "
+_PM = "Boss Enemies/Custom _ Edited - Paper Mario Customs - "
+_GOOMBOSS = _PM + "Paper Mario 64 Bosses - King Goomba _ Goomboss (Mario & Luigi_ Superstar Saga-Style).png"
+
+
+def _virus(y):
+    """One colour of the Viruses sheet: down, side, back rows, and the big face to attack with."""
+    return {"sheet": _MC + "Other Enemies - Viruses (Superstar Saga-Style).png",
+            "rows": [(3, y, 66, y + 21), (3, y + 46, 101, y + 68), (3, y + 23, 66, y + 44)],
+            "side_faces_left": True, "attack": (70, y, 103, y + 44), "attack_faces_left": False, "flood": True}
+
+
 BOSSES = {
     "popple": {"sheet": _BOSS + "Popple.png", "rows": [(0, 35, 145, 72)] * 3, "side_faces_left": True},
     "tolstar": {"sheet": _BOSS + "Tolstar.png", "rows": [(0, 33, 545, 88)] * 3, "side_faces_left": True,
@@ -196,6 +208,53 @@ BOSSES = {
                "attack_skip": [8, 9, 10, 11]},
     "psycho_kamek": {"sheet": "Boss Enemies/Game Boy Advance - Mario & Luigi_ Superstar Saga - Non-Playable Characters - Psycho Kamek.png",
                      "rows": [(0, 15, 146, 47)] * 3, "side_faces_left": True, "attack": (165, 63, 325, 97)},
+    # Custom Superstar Saga-style bosses (Mario, Paper Mario and TTYD customs).
+    "jr_troopa": {"sheet": _PM + "Paper Mario 64 Bosses - Jr. Troopa (Mario & Luigi_ Superstar Saga-Style).png",
+                  "rows": [(1, 25, 199, 57)] * 3, "side_faces_left": True, "strip": [(76, 108, 117), (40, 48, 64)]},
+    "goomboss": {"sheet": _GOOMBOSS, "rows": [(5, 264, 352, 346)] * 3, "side_faces_left": True,
+                 "attack": (358, 264, 570, 346), "flood": True},
+    "goomboss_2": {"sheet": _GOOMBOSS, "rows": [(5, 1151, 352, 1232)] * 3, "side_faces_left": True,
+                   "attack": (380, 1151, 595, 1232), "flood": True},  # red with rage (phase 2)
+    "red_goomba": {"sheet": _GOOMBOSS, "rows": [(712, 106, 832, 131), (712, 181, 832, 205), (712, 132, 832, 156)],
+                   "side_faces_left": False, "flood": True},
+    "blue_goomba": {"sheet": _GOOMBOSS, "rows": [(712, 205, 832, 229), (712, 279, 832, 303), (712, 230, 832, 254)],
+                    "side_faces_left": False, "flood": True},
+    "gooper_blooper": {"sheet": _MC + "Blooper & Related Enemies - Gooper Blooper (Mario & Luigi_ Superstar Saga-Style).png",
+                       "rows": [(0, 28, 156, 112)] * 3, "side_faces_left": True, "attack": (0, 28, 465, 112), "scale": 0.7},
+    "big_bobomb": {"sheet": _MC + "Bob-omb & Related Enemies - Big Bob-omb (Mario & Luigi_ Superstar Saga-Style).png",
+                   "rows": [(0, 4, 482, 111)] * 3, "side_faces_left": True, "attack": (0, 234, 575, 340), "flood": True,
+                   "scale": 0.6},
+    "swiggler": {"sheet": "Boss Enemies/Custom _ Edited - Mario & Luigi Customs - Bosses - Swiggler (Mario & Luigi_ Superstar Saga-Style).png",
+                 "rows": [(0, 32, 935, 93)] * 3, "side_faces_left": True, "attack": (0, 369, 590, 448), "flood": True},
+    "lakithunder": {"sheet": _MC + "Lakitu & Related Enemies - Lakithunder (Mario & Luigi_ Superstar Saga-Style).png",
+                    "rows": [(0, 33, 180, 111)] * 3, "side_faces_left": True, "attack": (0, 235, 320, 334), "flood": True},
+    "petey": {"sheet": _MC + "Petey Piranha - Petey Piranha (M&L_ Superstar Saga-Style).png",
+              "rows": [(0, 39, 600, 133)] * 3, "side_faces_left": True, "attack": (92, 272, 166, 370)},
+    "tatanga": {"sheet": _MC + "Tatanga - Tatanga (Mario & Luigi_ Superstar Saga-Style).png",
+                "rows": [(10, 56, 310, 122)] * 3, "side_faces_left": False, "attack": (80, 124, 200, 177)},
+    "tutankoopa": {"sheet": _PM + "Paper Mario 64 Bosses - Tutankoopa (Mario & Luigi_ Superstar Saga-Style).png",
+                   "rows": [(224, 140, 320, 180)] * 3, "side_faces_left": True, "attack": (224, 195, 382, 235),
+                   "attack_skip": [2], "flood": True},
+    "general_guy": {"sheet": _PM + "Paper Mario 64 Bosses - General Guy (Mario & Luigi_ Superstar Saga-Style).png",
+                    "rows": [(55, 145, 262, 222)] * 3, "side_faces_left": False, "attack": (125, 72, 262, 142), "flood": True},
+    "kammy": {"sheet": _PM + "Kammy Koopa - Kammy Koopa (Mario & Luigi_ Superstar Saga-Style).png",
+              "rows": [(0, 540, 230, 589)] * 3, "side_faces_left": True, "attack": (0, 688, 470, 750)},
+    "virus_fever": _virus(147),
+    "virus_chill": _virus(3),
+    "virus_weird": _virus(75),
+    "lava_piranha": {"sheet": _PM + "Paper Mario 64 Bosses - Lava Piranha (Mario & Luigi_ Superstar Saga-Style).png",
+                     "rows": [(440, 135, 785, 198)] * 3, "side_faces_left": True, "attack": (440, 410, 662, 488),
+                     "attack_skip": [4], "flood": True},
+    "beldam": {"sheet": _PM + "Thousand-Year Door Bosses - Beldam (Mario & Luigi_ Superstar Saga-Style).png",
+               "rows": [(4, 84, 126, 116)] * 3, "side_faces_left": True, "attack": (4, 48, 64, 82), "flood": True},
+    "marilyn": {"sheet": _PM + "Thousand-Year Door Bosses - Marilyn (Mario & Luigi_ Superstar Saga-Style).gif",
+                "rows": [(4, 5, 85, 53)] * 3, "side_faces_left": True, "attack": (4, 100, 126, 173)},
+    "cortez": {"sheet": _PM + "Thousand-Year Door Bosses - Cortez (Mario & Luigi_ Superstar Saga-Style).png",
+               "rows": [(0, 538, 312, 613)] * 3, "side_faces_left": True, "attack": (0, 656, 880, 731), "flood": True},
+    "macho_grubba": {"sheet": _PM + "Thousand-Year Door Bosses - Grubba _ Macho Grubba (Mario & Luigi_ Superstar Saga-Style).png",
+                     "rows": [(0, 34, 410, 147)] * 3, "side_faces_left": True, "attack": (0, 407, 740, 518), "scale": 0.75},
+    "smorg": {"sheet": _PM + "Thousand-Year Door Bosses - Smorg (Mario & Luigi_ Superstar Saga-Style).png",
+              "rows": [(125, 8, 845, 198)] * 3, "side_faces_left": True, "attack": (15, 218, 745, 446), "scale": 0.3},
 }
 
 
