@@ -50,9 +50,46 @@
 
 import { DurableObject } from "cloudflare:workers";
 import { cleanChat } from "./filter";
+import { Account, accountKey, MAX_SAVE_BYTES, NAME } from "./accounts";
+
+export { Account };
 
 export interface Env {
   ZONES: DurableObjectNamespace<Zone>;
+  ACCOUNTS: DurableObjectNamespace<Account>;
+}
+
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Max-Age": "86400",
+};
+
+function json(status: number, body: object): Response {
+  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...CORS } });
+}
+
+// Online saves, see accounts.ts.
+async function account(op: string, request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
+  if (request.method !== "POST") return json(405, { error: "method" });
+  const text = await request.text();
+  if (text.length > MAX_SAVE_BYTES + 1024) return json(413, { error: "save" });
+  let body: Record<string, unknown>;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    return json(400, { error: "json" });
+  }
+  if (typeof body !== "object" || body === null) return json(400, { error: "json" });
+  const name = String(body.name ?? "").trim();
+  if (!NAME.test(name)) return json(400, { error: "name" });
+  body.name = name;
+  const stub = env.ACCOUNTS.get(env.ACCOUNTS.idFromName(accountKey(name)));
+  // (RPC typing can't follow the unknown-valued body, so name the shape here.)
+  const reply = (await stub.handle(op, body)) as unknown as { status: number; body: object };
+  return json(reply.status, reply.body);
 }
 
 const ZONE_NAME = /^[a-z0-9_]{1,32}$/;
@@ -85,6 +122,8 @@ export default {
       }
       return env.ZONES.get(env.ZONES.idFromName(zone)).fetch(request);
     }
+    const acct = url.pathname.match(/^\/account\/(register|login|save|load)$/);
+    if (acct) return account(acct[1], request, env);
     if (url.pathname === "/") return new Response("Mario & Luigi MMO server is running.\n");
     return new Response("not found", { status: 404 });
   },

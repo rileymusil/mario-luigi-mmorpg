@@ -876,14 +876,16 @@ func start_boss(id: String, overworld_position: Vector2) -> void:
 	pending_battle["battle_bg"] = BOSSES[id].get("battle_bg", "outskirts")
 
 
-# --- Saving (browser storage on the web build) -------------------------------
+# --- Saving (browser storage on the web build, and online: see Cloud) --------
 
 func save() -> void:
 	if player.is_empty():
 		return
+	player["saved_at"] = Time.get_unix_time_from_system()  # which copy is newer (see Cloud)
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(player))
+	Cloud.mark_dirty()
 
 
 func has_save() -> bool:
@@ -893,7 +895,12 @@ func has_save() -> bool:
 func load_save() -> bool:
 	if not has_save():
 		return false
-	var data = JSON.parse_string(FileAccess.get_file_as_string(SAVE_PATH))
+	return use_save(JSON.parse_string(FileAccess.get_file_as_string(SAVE_PATH)))
+
+
+## Makes `data` (a save read from this browser or from the server) the
+## player, fixing up saves from older versions. False if it can't be used.
+func use_save(data: Variant) -> bool:
 	if typeof(data) != TYPE_DICTIONARY:
 		return false
 	if not CHARACTERS.has(data.get("character", "")):
@@ -915,6 +922,8 @@ func load_save() -> bool:
 	_migrate_items(data)
 	if typeof(data.get("bosses")) != TYPE_DICTIONARY:
 		data.erase("bosses")  # boss wins (see boss_wins); old saves have none
+	if typeof(data.get("party")) != TYPE_ARRAY:
+		data["party"] = []
 	for member in data["party"]:
 		for key in ["max_hp", "hp", "pow", "def"]:
 			member[key] = int(member[key])

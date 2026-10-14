@@ -90,10 +90,11 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
 
   Beaten enemies drop coins, and sometimes an item. In a partner's co-op battle you can use HP and SP items and Red Peppers on yourself; the rest are greyed out there.
 - **Grow.** XP and levels (cap 50), coins, items. Losing sends you home with a few coins lost.
-- **Switch sides** any time from the menu. **Saves** go to the browser automatically.
+- **Switch sides** any time from the menu. **Saves** go to the browser automatically. Pick *Save* in the menu and then *Save online* to set a password for your username: from then on the game also saves to the server, and *Log In* on the title screen picks it up in any browser or on your phone.
 
 ## Project layout
 - `scenes/title.tscn` (main scene), `scenes/world.tscn` (any map), `scenes/battle.tscn`.
+- `scripts/cloud.gd` (autoload `Cloud`): online saves (register, log in, upload every few seconds), talking to `server/src/accounts.ts`.
 - `scripts/game.gd` (autoload `Game`): all data tables (characters, specials, battle moves of partners and recruits, partners, enemies, bosses and their attacks (`BOSSES`, `BOSS_ATTACKS`), maps with exits, spawns, enemies and NPCs), the save, and scene changes. Most tuning happens here.
 - `scripts/world.gd`: map loading, walking on the walk mask, doors and exits, followers, enemies, talking (choices, shops, heals), pause menu.
 - `data/dialogue.json` and `scripts/dialogue_data.gd`: what NPCs say (see *Dialogue* below).

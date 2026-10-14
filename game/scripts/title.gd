@@ -1,5 +1,6 @@
 extends Control
-## Title screen: Continue / New Game, then pick a side and a character.
+## Title screen: Continue / New Game / Log In (an online save), then pick a
+## side and a character.
 
 @onready var menu: ChoiceMenu = $Menu
 @onready var preview: CharacterSprite = $Preview
@@ -27,6 +28,9 @@ func _ready() -> void:
 
 func _show_controls_hint(touch: bool) -> void:
 	$HintBox/Hint.text = "Tap to choose   Tap outside: back" if touch else "Arrows: choose   Z: confirm   X: back"
+	$HintBox.reset_size()
+	if is_node_ready():
+		_layout_title()
 
 
 func _layout_title() -> void:
@@ -88,13 +92,21 @@ func _build_card() -> void:
 
 
 func _main_menu() -> void:
-	var options := ["New Game"]
-	if Game.load_save():
+	var options := ["New Game", "Log In"]
+	var has_save := Game.load_save()
+	if has_save:
 		options.push_front("Continue (%s Lv %d)" % [Game.character_name(), Game.player["level"]])
 	var i := await menu.choose(options)
 	if options[i] == "New Game":
 		_pick_side()
 		return
+	if options[i] == "Log In":
+		_log_in(has_save)
+		return
+	# Saved online too: if another device played on since, carry on from there.
+	if Cloud.linked():
+		_note("Checking your online save...")
+		await Cloud.pull_newer()
 	# Saves from before usernames existed pick one now.
 	if Game.player.get("username", "") == "":
 		var u := await _ask_username(Game.character_name())
@@ -104,6 +116,44 @@ func _main_menu() -> void:
 		Game.player["username"] = u
 		Game.save()
 	Game.continue_game()
+
+
+## Log In: name and password, then the online save replaces this browser's.
+func _log_in(has_save: bool) -> void:
+	if has_save and not Cloud.linked():
+		var c := await menu.choose(["Log in", "Back"], "This replaces %s Lv %d saved in this browser." % [
+			Game.username(), Game.player["level"]], true)
+		if c != 0:
+			_main_menu()
+			return
+	var who := Game.clean_username(await prompt.ask("Username", "", 16, "The name you saved online with."))
+	if who == "":
+		_main_menu()
+		return
+	var password := await prompt.ask("Password", "", 64, "Enter: OK   Esc: back", true)
+	if password == "":
+		_main_menu()
+		return
+	_note("Logging in...")
+	var err := await Cloud.login(who, password)
+	_show_controls_hint(TouchControls.active)
+	if err != "":
+		await _show_message(Cloud.error_text(err))
+		_main_menu()
+		return
+	Game.continue_game()
+
+
+## A line of text in the menu balloon, until the player says OK.
+func _show_message(text: String) -> void:
+	await menu.choose(["OK"], text, true)
+
+
+## Shows what the game is waiting on where the controls hint goes.
+func _note(text: String) -> void:
+	$HintBox/Hint.text = text
+	$HintBox.reset_size()
+	_layout_title()
 
 
 ## Returns a cleaned username, or "" if the player backed out.
