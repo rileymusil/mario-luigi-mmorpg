@@ -59,12 +59,10 @@ CHARACTERS = {
                 "rows": [(0, 30, 175, 75)] * 3, "side_faces_left": True, "strip": [(84, 109, 142)]},
     "buzzy_beetle": {"sheet": "Enemies/Custom _ Edited - Mario Customs - Buzzy Beetle, Spiny & Related Enemies - Buzzy Beetle (Mario & Luigi_ Superstar Saga-Style).png",
                      "rows": [(0, 27, 220, 55)] * 3, "side_faces_left": True},
-    # Phase 6 roster. Battle-style sheets with one pose (Vivian,
-    # Bombette) repeat the same box for all three rows.
+    # Phase 6 roster. Battle-style sheets with one pose (Bombette) repeat
+    # the same box for all three rows.
     "egadd": {"sheet": "Playable Characters GOOD/Game Boy Advance - Mario & Luigi_ Superstar Saga - Non-Playable Characters - Professor E. Gadd.png",
               "rows": [(0, 4, 230, 48), (0, 100, 230, 146), (0, 52, 230, 97)], "side_faces_left": False},
-    "vivian": {"sheet": "Playable Characters GOOD/Custom _ Edited - Paper Mario Customs - Thousand-Year Door Partners - Vivian (Mario & Luigi_ Superstar Saga-Style).png",
-               "rows": [(0, 0, 58, 42)] * 3, "side_faces_left": False, "flood": True},
     "rookie_bowser": {"sheet": "Playable Characters EVIL/Game Boy Advance - Mario & Luigi_ Superstar Saga - Non-Playable Characters - Rookie Bowser (USA).png",
                       "rows": [(0, 20, 300, 70), (0, 138, 365, 186), (0, 82, 300, 132)], "side_faces_left": False},
     "grodus": {"sheet": "Playable Characters EVIL/Custom _ Edited - Paper Mario Customs - Grodus & the X-Nauts - Grodus (Mario & Luigi_ Superstar Saga-Style).png",
@@ -133,8 +131,8 @@ NPCS = {
 
 
 # Bosses (the BOSSES table in game.gd). Battle-style sheets: the idle row is
-# used for all three rows, like Vivian. They face left on the sheets (towards
-# the heroes in battle). Dimentio stays out of the game on purpose.
+# used for all three rows, like Bombette. They face left on the sheets (towards
+# the heroes in battle). Dimentio and Vivian stay out of the game on purpose.
 _BOSS = "Boss Enemies/Game Boy Advance - Mario & Luigi_ Superstar Saga - Bosses - "
 _MC = "Boss Enemies/Custom _ Edited - Mario Customs - "
 _PM = "Boss Enemies/Custom _ Edited - Paper Mario Customs - "

@@ -18,11 +18,11 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
 
 **Mouse and touch.** Every menu works with the mouse: point at an option to move the pointer, click it to pick it, right-click or click outside the menu to go back (where the menu has a way back). On a touch screen, tap an option to pick it (slide your finger off before lifting to change your mind) and tap outside the menu to go back. Click or tap anywhere to read on when someone is talking. Click or tap someone with a "!" over their head to talk to them, and click a partner's card in the party screen to pick them. Text boxes (username, chat) have OK and Back buttons.
 
-**Phones and tablets.** Hold the phone sideways. The on-screen controls show on touch screens (or after your first touch) and hide when you press a key; several fingers work at once, so you can walk and jump together. Only the buttons that make sense show: none on the title screen (tap the menus), A and B in battle, all of them while walking around, and none while someone is talking. On Android, the corners button next to MENU goes full screen and keeps the game sideways; on iPhone, use Share > Add to Home Screen to play full screen. Typing (your username, or chat with the Chat button) opens the browser's own text box, so the phone's keyboard comes up.
+**Phones and tablets.** Hold the phone sideways. The on-screen controls show on touch screens (or after your first touch) and hide when you press a key; several fingers work at once, so you can walk and jump together. Only the buttons that make sense show: none on the title screen (tap the menus), A and B in battle, all of them while walking around, and none while someone is talking. On Android, the corners button next to MENU goes full screen and keeps the game sideways; on iPhone, use Share > Add to Home Screen to play full screen. Typing (your username, or chat with the Chat button under MENU) opens the browser's own text box, so the phone's keyboard comes up.
 
 ## What you can do
-- **Pick a side and a character** (eight good, six evil; the card on the right shows stats and the signature move).
-  Good: Mario, Luigi, Princess Peach, Professor E. Gadd, Vivian, Waluigi, Rosalina, Toadette.
+- **Pick a side and a character** (seven good, six evil; the card on the right shows stats and the signature move).
+  Good: Mario, Luigi, Princess Peach, Professor E. Gadd, Waluigi, Rosalina, Toadette.
   Evil: Bowser, Rookie Bowser, Grodus, the Koopa Bros., Bowser Jr., Shadow Mario.
   Good players start in Beanbean Castle Town, evil players at Bowser's Castle.
 - **Explore** maps built from the Superstar Saga map art (see *Maps* below): Castle Town with ten buildings you can walk into, Beanbean Outskirts, Stardust Fields, Hoohoo Village and Bowser's Castle. Walk up into a door to go in; walk down onto the door mat to go back out.
@@ -38,7 +38,6 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
     | Luigi | Thunderhand | Electric punch. Excellent stuns (Good: half the time); a stunned enemy loses its next turn. |
     | Princess Peach | Peach's Heart | Heals the whole party 6 / 10 / 14 HP (Miss / Good / Excellent). |
     | Professor E. Gadd | Poltergust Pull | Sucks HP out of an enemy into E. Gadd. Excellent also steals its item: a Mushroom, then coins once it has nothing left. |
-    | Vivian | Shade Veil | Vivian hides in the shadows: the next attack on her misses and she hits back with fire (Excellent also burns). If nobody attacks, the fire comes out at her next turn. |
     | Bowser | Fire Breath | Hits every enemy. |
     | Rookie Bowser | Rookie Rush | Up to 3 shell bashes, Z as each one hits. Every Excellent in a row adds 2 damage; a miss ends the rush. |
     | Grodus | Grodus Bolt | Lightning on every enemy; lowers their DEF for the battle (1 on Good, 2 on Excellent). |
@@ -134,7 +133,7 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
 - **Grow.** XP and levels (cap 50), coins, items. Losing sends you home with a few coins lost.
 - **Home base.** Up to 2 partners (or recruits) follow you. Anyone who joins while your party is full, or whom you send home from *Party*, waits at your home base (Castle Town for good, Bowser's Castle for evil); there, *Party* > *Waiting here* takes them along again, rested. Switching sides sends your party home too.
 - **Gear.** Pants and badges, like Superstar Saga: wear one of each (menu > *Gear*, Z to put on or take off) for extra HP, SP, POW or DEF. The Badge Shop in Castle Town, the Hoohoo Trader and the Koopa Troop shop at Bowser's Castle sell them; data in `Game.GEAR`, pictures from `tools/slice_gear.py`.
-- **Weekly score.** In towns, the top right shows this week's good vs evil count of PvP wins (a duel won, or a foe who quit or timed out). A new week starts every Monday 00:00 UTC.
+- **Weekly score.** In towns, the top right (under the status bar when playing by touch) shows this week's good vs evil count of PvP wins (a duel won, or a foe who quit or timed out). A new week starts every Monday 00:00 UTC.
 - **Switch sides** any time from the menu. **Saves** go to the browser automatically. Pick *Save* in the menu and then *Save online* to set a password for your username: from then on the game also saves to the server, and *Log In* on the title screen picks it up in any browser or on your phone.
 
 ## Project layout

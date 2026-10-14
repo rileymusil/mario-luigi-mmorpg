@@ -164,8 +164,15 @@ func _process(delta: float) -> void:
 
 	_prompt.position = Vector2(left_x, safe.end.y - _prompt.size.y - 4.0)
 
-	# Chat button sits at the safe edge, clear of the touch joystick and A/B buttons
-	_button.position = Vector2(safe.end.x - _button.size.x - 6.0, (safe.position.y + 4.0) if touch else (safe.end.y - _button.size.y - 4.0))
+	# On touch the Chat button sits under MENU (the top row has no room for it
+	# beside the status bar on narrow screens) and only while you can walk,
+	# like MENU; on keys it sits bottom right.
+	if touch:
+		var menu: Control = TouchControls.menu_button
+		_button.position = Vector2(menu.position.x + menu.size.x - _button.size.x, menu.position.y + menu.size.y + 3.0)
+	else:
+		_button.position = Vector2(safe.end.x - _button.size.x - 6.0, safe.end.y - _button.size.y - 4.0)
+	_button.visible = not is_typing() and (touch or not TouchControls.active)
 
 	# Keep the log's bottom edge just above the text box or hint bar
 	var base_bottom := (_prompt.position.y - 2.0) if is_typing() else (safe.end.y - 24.0)

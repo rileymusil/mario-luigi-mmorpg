@@ -161,8 +161,6 @@ func _foe_turn(f: Dictionary) -> void:
 		await _boss_turn(f)  # battle.gd; attacks on the partner go to _boss_remote
 		return
 	var target: Dictionary = _alive(allies).pick_random()
-	if await _foe_attack_taken(f, target):  # Vivian's Shade Veil
-		return
 	await _charge(f, target, not target.get("remote", false))
 
 

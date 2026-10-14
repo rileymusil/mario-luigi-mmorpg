@@ -311,10 +311,6 @@ func _boss_fight() -> bool:
 
 
 func _ally_turn(a: Dictionary) -> String:
-	if a.get("veil", 0) > 0:
-		await _end_veil(a)  # nobody attacked the shadows: the fire comes out anyway
-		if _alive(foes).is_empty():
-			return ""
 	if await _ally_status(a):
 		return ""
 	var commands := _commands_for(a)
@@ -612,8 +608,6 @@ func _special(a: Dictionary, target: Dictionary) -> void:
 			_show_rating("%s  +%d HP" % [result, dealt])
 		"poltergust_pull":
 			await _poltergust_pull(a, target)
-		"shade_veil":
-			await _shade_veil(a)
 		"rookie_rush":
 			await _rookie_rush(a, target)
 		"grodus_bolt":
@@ -768,19 +762,8 @@ func _lower_def(f: Dictionary, amount: int) -> int:
 	return drop
 
 
-## The enemy has picked who to attack, and a
-## veiled Vivian dodges and hits back. True when the veil took the attack.
-func _foe_attack_taken(f: Dictionary, target: Dictionary) -> bool:
-	f["last_move"] = Game.move_of("enemy", f["type"])
-	if target.get("veil", 0) > 0:
-		await _veil_counter(f, target)
-		return true
-	return false
-
-
 # --- Signature moves (the design roster) ----------------------------------------
 
-const VEIL_TINT := Color(0.35, 0.2, 0.5, 0.45)
 const BROS := ["green", "yellow", "black"]   # who climbs onto the Koopa Bros. tower
 
 
@@ -812,60 +795,6 @@ func _steal(target: Dictionary) -> String:
 	var coins: int = mini(int(Game.foe_info(target["type"])["coins"]), 10)
 	p["coins"] += coins
 	return "Stole %d coins from %s!" % [coins, target["name"]]
-
-
-## Shade Veil (Vivian): she sinks into the shadows. The next attack on her
-## misses and she hits back with fire (_veil_counter); if nobody attacks
-## before her next turn, the fire comes out then (_end_veil).
-func _shade_veil(a: Dictionary) -> void:
-	var result := await _timing_bar(1.0)
-	a["veil"] = a["pow"] + {"Excellent": 3, "Good": 1, "Miss": 0}[result]
-	a["veil_burn"] = 2 if result == "Excellent" else 0
-	var t := create_tween()
-	t.tween_property(a["node"], "modulate", VEIL_TINT, 0.3)
-	await t.finished
-	message.text = "%s hides in the shadows!" % a["name"]
-
-
-func _veil_counter(f: Dictionary, target: Dictionary) -> void:
-	var fnode: CharacterSprite = f["node"]
-	var node: CharacterSprite = target["node"]
-	message.text = "%s charges at the shadows..." % f["name"]
-	var contact := Vector2(node.position.x + 8, node.position.y)
-	fnode.move_velocity = Vector2.LEFT * 100
-	await _slide(fnode, contact, 0.5)
-	await _slide(fnode, contact + Vector2(-40, 0), 0.2)  # straight through her
-	_show_rating("Dodged!")
-	await _wait(0.2)
-	await _end_veil(target, f)
-	fnode.move_velocity = Vector2.RIGHT * 100
-	await _slide(fnode, f["home"], 0.4)
-	fnode.move_velocity = Vector2.ZERO
-	fnode.facing = Vector2.LEFT
-	await _wait(0.3)
-
-
-## Brings `a` out of the shadows with a fireball at `foe` (or any enemy).
-func _end_veil(a: Dictionary, foe: Dictionary = {}) -> void:
-	var power: int = a["veil"]
-	var burn: int = a.get("veil_burn", 0)
-	a["veil"] = 0
-	var t := create_tween()
-	t.tween_property(a["node"], "modulate", Color(1, 1, 1, 1.0 if _hp(a) > 0 else 0.4), 0.2)
-	await t.finished
-	if foe.is_empty() or _hp(foe) <= 0:
-		var alive := _alive(foes)
-		if alive.is_empty():
-			return
-		foe = alive.pick_random()
-	message.text = "%s strikes back with fire!" % a["name"]
-	await _projectile(_middle(a), _middle(foe), Color(1.0, 0.45, 0.1))
-	_burst(_middle(foe), Color(1.0, 0.5, 0.1), 16.0)
-	_damage(foe, power)
-	if burn > 0 and foe["hp"] > 0:
-		foe["burn"] = maxi(foe["burn"], burn)
-	_refresh()
-	await _wait(0.6)
 
 
 ## Rookie Rush (Rookie Bowser): up to 3 shell bashes, Z as each one hits.
@@ -1069,8 +998,6 @@ func _foe_turn(f: Dictionary) -> void:
 		await _boss_turn(f)
 		return
 	var target: Dictionary = _alive(allies).pick_random()
-	if await _foe_attack_taken(f, target):
-		return
 	var node: CharacterSprite = target["node"]
 	_say("%s charges at %s! Press {a} to jump!", [f["name"], target["name"]])
 	var badge := _show_badge(target, "jump")
@@ -1157,8 +1084,6 @@ func _boss_turn(f: Dictionary) -> void:
 			return
 		atk = {"name": atk["name"], "kind": "dash"}  # no room for another helper
 	var target: Dictionary = _alive(allies).pick_random()
-	if await _foe_attack_taken(f, target):  # Vivian's Shade Veil
-		return
 	if target.get("remote", false):
 		await _boss_remote(f, target)
 		return

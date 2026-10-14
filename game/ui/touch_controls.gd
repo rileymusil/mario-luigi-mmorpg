@@ -242,8 +242,12 @@ func _layout(battle := false) -> void:
 		# Clear of the bottom bars (hint, chat), respecting safe area margins.
 		a_button.position = (Vector2(safe.end.x - 30, safe.end.y - 72) - a_button.size / 2.0).round()
 		b_button.position = (Vector2(safe.end.x - 70, safe.end.y - 46) - b_button.size / 2.0).round()
+	# MENU and full screen line up from the top-right corner; a hidden one
+	# leaves no gap (the title shows full screen alone, in the corner).
 	var x := safe.end.x - 4.0
 	for b in [menu_button, fullscreen_button]:
+		if not b.visible:
+			continue
 		var panel: Control = b.get_child(0)
 		b.size = panel.get_combined_minimum_size()
 		panel.size = b.size

@@ -26,8 +26,6 @@ const CHARACTERS := {
 		"special": "peach_heart"},
 	"egadd": {"name": "Professor E. Gadd", "side": "good", "frames": 8, "hp": 18, "sp": 12, "pow": 4, "def": 2,
 		"special": "poltergust_pull"},
-	"vivian": {"name": "Vivian", "side": "good", "frames": 2, "hp": 19, "sp": 12, "pow": 5, "def": 2,
-		"special": "shade_veil"},
 	"waluigi": {"name": "Waluigi", "side": "good", "frames": 5, "hp": 21, "sp": 10, "pow": 5, "def": 2,
 		"special": "wicked_whirl"},
 	"rosalina": {"name": "Rosalina", "side": "good", "frames": 7, "hp": 18, "sp": 14, "pow": 4, "def": 2,
@@ -50,7 +48,7 @@ const CHARACTERS := {
 
 ## Characters that were taken out of the game, and who old saves with them
 ## play as now (see load_save).
-const REMOVED_CHARACTERS := {"dimentio": "bowser", "mimi": "bowser"}
+const REMOVED_CHARACTERS := {"dimentio": "bowser", "mimi": "bowser", "vivian": "mario"}
 
 ## Signature moves (battle.gd _special), each a timed press. {a} in an info
 ## line names the A button: Z on keys, A on touch (battle.gd _keys).
@@ -60,8 +58,6 @@ const SPECIALS := {
 	"peach_heart": {"name": "Peach's Heart", "sp": 5, "info": "Heals the whole party. Good timing heals more."},
 	"poltergust_pull": {"name": "Poltergust Pull", "sp": 5,
 		"info": "Sucks HP out of an enemy. Excellent also steals its item."},
-	"shade_veil": {"name": "Shade Veil", "sp": 5,
-		"info": "Hide in the shadows, dodge the next attack, then hit back with fire."},
 	"fire_breath": {"name": "Fire Breath", "sp": 5, "info": "Fire hits every enemy at once."},
 	"rookie_rush": {"name": "Rookie Rush", "sp": 5,
 		"info": "Up to 3 shell bashes; {a} as each hits. Excellents in a row hit harder."},
@@ -1813,8 +1809,9 @@ func use_save(data: Variant) -> bool:
 	if typeof(data) != TYPE_DICTIONARY:
 		return false
 	if not CHARACTERS.has(data.get("character", "")):
-		# A character that left the game (Dimentio): play on as Bowser, or
-		# whoever leads that side's list, keeping levels and items.
+		# A character that left the game (Dimentio, Vivian): play on as the
+		# REMOVED_CHARACTERS pick, or whoever leads that side's list, keeping
+		# levels and items.
 		var id: String = REMOVED_CHARACTERS.get(data.get("character", ""), "")
 		if id == "":
 			for c in CHARACTERS:

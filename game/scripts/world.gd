@@ -1110,10 +1110,11 @@ func _update_hud() -> void:
 	if score_box != null:
 		score_box.reset_size()
 		score_box.position = Vector2(safe.end.x - score_box.size.x - 4.0, safe.position.y + 3.0)
-		if score_box.position.x < status.position.x + status.size.x + 2.0:
-			# No room beside the status bar: just under its right end.
-			score_box.position = Vector2(status.position.x + status.size.x - score_box.size.x,
-				status.position.y + status.size.y + 1.0).round()
+		# On touch the top right holds Chat, full screen and MENU.
+		if TouchControls.stick.visible or score_box.position.x < status.position.x + status.size.x + 2.0:
+			# No room beside the status bar: just under its left end, clear of
+			# the area name that shows in the middle when you arrive.
+			score_box.position = Vector2(status.position.x, status.position.y + status.size.y + 1.0).round()
 
 	# Keep overworld menu anchored to top-right safe edge
 	menu.position = Vector2(safe.end.x - menu.size.x - 4.0, safe.position.y + 24.0)
