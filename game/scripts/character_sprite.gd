@@ -2,10 +2,13 @@ class_name CharacterSprite
 extends Node2D
 ## Draws a character from res://assets/characters/<id>.png (3 rows: down,
 ## right, up; left is the right row mirrored), animates walking and jumps.
+## Bosses also loop their idle frames and have a 4th row, their attack.
 
 const GRAVITY := 650.0
 const JUMP_SPEED := 190.0
 const WALK_FPS := 12.0
+const IDLE_FPS := 8.0     # bosses' idle loop
+const ATTACK_FPS := 12.0  # bosses' attack row
 
 ## Emitted when a jump starts (followers replay it where it happened).
 signal jumped
@@ -28,6 +31,12 @@ var _sprite: Sprite2D
 var _squash := Vector2.ONE
 var _was_airborne := false
 var _jump_buffer := 0.0
+var _rows := 3            # sheet rows: down, side, up (+ attack, see play_attack)
+var _idle := 0            # bosses: frames of the idle loop played while standing
+var _attack := 0          # bosses: frames in the attack row
+var _idle_time := 0.0
+var _attack_time := -1.0  # >= 0 while the attack row plays
+var _attack_hold := false
 
 
 func _ready() -> void:
@@ -38,20 +47,47 @@ func _ready() -> void:
 
 func _load_sheet() -> void:
 	var info: Dictionary = Game.CHARACTERS.get(character_id, Game.PARTNERS.get(character_id,
-		Game.ENEMIES.get(character_id, Game.NPCS.get(character_id, Game.BOSSES.get(character_id, {})))))
+		Game.ENEMIES.get(character_id, Game.NPCS.get(character_id, Game.BOSSES.get(character_id,
+		Game.BOSS_MINIONS.get(character_id, Game.BOSS_FORMS.get(character_id, {})))))))
 	_frames = info.get("frames", 8)
+	_idle = int(info.get("idle", 0))
+	_attack = int(info.get("attack", 0))
+	_rows = Game.sheet_rows(info)
+	_attack_time = -1.0
 	_sprite.texture = load("res://assets/characters/%s.png" % character_id)
 	_sprite.hframes = _frames
-	_sprite.vframes = 3
+	_sprite.vframes = _rows
 	_sprite.centered = true
 	# Feet sit on this node's origin.
-	_sprite.offset = Vector2(0, -_sprite.texture.get_height() / 6.0)
+	_sprite.offset = Vector2(0, -_sprite.texture.get_height() / (2.0 * _rows))
 	_update_frame()
 	queue_redraw()
 
 
+func width() -> float:
+	return _sprite.texture.get_width() / float(_frames) if _sprite and _sprite.texture else 16.0
+
+
 func height() -> float:
-	return _sprite.texture.get_height() / 3.0 if _sprite and _sprite.texture else 32.0
+	return _sprite.texture.get_height() / float(_rows) if _sprite and _sprite.texture else 32.0
+
+
+## How big to draw this character in battle: `base`, but never taller than
+## `max_height` px (the biggest bosses).
+func battle_scale(base: float, max_height := 120.0) -> float:
+	return minf(base, max_height / maxf(height(), 1.0))
+
+
+## Plays the attack row once (bosses with one). hold: stay on its last frame
+## until end_attack().
+func play_attack(hold := false) -> void:
+	if _attack > 0:
+		_attack_time = 0.0
+		_attack_hold = hold
+
+
+func end_attack() -> void:
+	_attack_time = -1.0
 
 
 func _draw() -> void:
@@ -101,6 +137,11 @@ func _process(delta: float) -> void:
 
 	if _jump_buffer > 0.0:
 		_jump_buffer -= delta
+	_idle_time += delta
+	if _attack_time >= 0.0:
+		_attack_time += delta
+		if not _attack_hold and _attack_time * ATTACK_FPS >= _attack + 2:
+			_attack_time = -1.0
 
 	var airborne_now := is_airborne()
 	if airborne_now:
@@ -137,11 +178,17 @@ func _process(delta: float) -> void:
 func _update_frame() -> void:
 	if _sprite == null or _sprite.texture == null:
 		return
+	if _attack_time >= 0.0:
+		_sprite.frame = 3 * _frames + mini(int(_attack_time * ATTACK_FPS), _attack - 1)
+		_sprite.flip_h = facing.x < 0.0
+		return
 	var is_side_only: bool = character_id in ["buzzy_beetle", "shy_guy"]
 	var row := 1
 	if not is_side_only and absf(facing.y) > absf(facing.x) * 1.2:
 		row = 0 if facing.y > 0.0 else 2
 	var col := int(_anim_time * WALK_FPS) % _frames if _anim_time > 0.0 else 0
+	if _idle > 0 and _anim_time == 0.0:
+		col = int(_idle_time * IDLE_FPS) % _idle
 	if is_airborne():
 		col = mini(2, _frames - 1)
 	_sprite.frame = row * _frames + col
