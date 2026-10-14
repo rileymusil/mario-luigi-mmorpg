@@ -766,3 +766,36 @@ func load_save() -> bool:
 
 func continue_game() -> void:
 	get_tree().call_deferred("change_scene_to_file", WORLD_SCENE)
+
+
+## Returns the visible safe area rect in viewport canvas coordinates,
+## accounting for phone screen notches, pills, rounded corners, and navigation bars.
+func get_safe_rect() -> Rect2:
+	var vp := get_viewport()
+	if vp == null:
+		return Rect2(0, 0, 384, 216)
+	var vp_size := vp.get_visible_rect().size
+	var safe := DisplayServer.get_display_safe_area()
+	var win_size := DisplayServer.window_get_size()
+	if win_size.x <= 0 or win_size.y <= 0 or safe.size.x <= 0:
+		return Rect2(Vector2.ZERO, vp_size)
+	var left_m := clampf(float(safe.position.x) / float(win_size.x), 0.0, 0.35)
+	var top_m := clampf(float(safe.position.y) / float(win_size.y), 0.0, 0.35)
+	var right_m := clampf(float(win_size.x - (safe.position.x + safe.size.x)) / float(win_size.x), 0.0, 0.35)
+	var bottom_m := clampf(float(win_size.y - (safe.position.y + safe.size.y)) / float(win_size.y), 0.0, 0.35)
+	return Rect2(
+		vp_size.x * left_m,
+		vp_size.y * top_m,
+		vp_size.x * (1.0 - left_m - right_m),
+		vp_size.y * (1.0 - top_m - bottom_m)
+	)
+
+
+## True if the screen is currently in portrait orientation (height > width).
+func is_portrait() -> bool:
+	var vp := get_viewport()
+	if vp == null:
+		return false
+	var s := vp.get_visible_rect().size
+	return s.y > s.x
+

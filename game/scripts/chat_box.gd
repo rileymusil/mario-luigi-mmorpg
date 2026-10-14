@@ -156,14 +156,23 @@ func _show_all() -> void:
 
 
 func _process(delta: float) -> void:
-	# On touch screens, stay clear of the joystick (left) and the B button (right).
+	var safe := Game.get_safe_rect()
 	var touch: bool = TouchControls.stick.visible
-	_log.position.x = 88.0 if touch else 6.0
-	# Keep the log's bottom edge just above the hint bar (or the text box).
+	var left_x := safe.position.x + (88.0 if touch else 6.0)
+	_log.position.x = left_x
 	_log.size = _log.get_combined_minimum_size()
-	_log.position.y = (156.0 if is_typing() else 186.0) - _log.size.y
+
+	_prompt.position = Vector2(left_x, safe.end.y - _prompt.size.y - 4.0)
+
+	# Chat button sits at the safe edge, clear of the touch joystick and A/B buttons
+	_button.position = Vector2(safe.end.x - _button.size.x - 6.0, (safe.position.y + 4.0) if touch else (safe.end.y - _button.size.y - 4.0))
+
+	# Keep the log's bottom edge just above the text box or hint bar
+	var base_bottom := (_prompt.position.y - 2.0) if is_typing() else (safe.end.y - 24.0)
+	_log.position.y = base_bottom - _log.size.y
+
 	for line in _lines:
-		line["label"].custom_minimum_size.x = 200.0 if touch else 250.0
+		line["label"].custom_minimum_size.x = clampf(safe.size.x - 140.0, 180.0, 320.0) if touch else clampf(safe.size.x - 40.0, 220.0, 360.0)
 		line["age"] += delta
 		var a: float = 1.0 if is_typing() else clampf((FADE_AFTER + 1.0 - line["age"]), 0.0, 1.0)
 		line["label"].modulate.a = a

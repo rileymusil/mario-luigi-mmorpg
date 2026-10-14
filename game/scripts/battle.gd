@@ -110,7 +110,49 @@ func _setup_presentation(map_id: String) -> void:
 	rating.modulate.a = 0.0
 	blocks.highlighted.connect(func(info: String): _say(info))
 	TouchControls.active_changed.connect(_on_touch_mode_changed)
+	get_tree().root.size_changed.connect(_layout_battle)
+	_layout_battle()
 	_refresh()
+
+
+func _layout_battle() -> void:
+	var vp := get_viewport_rect().size
+	var safe := Game.get_safe_rect()
+
+	var backdrop: ColorRect = $Backdrop
+	backdrop.position = Vector2.ZERO
+	backdrop.size = vp
+	background.position = Vector2.ZERO
+	background.size = vp
+	background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+
+	var center_offset := ((vp - Vector2(384, 216)) / 2.0).round()
+	stage.position = center_offset
+
+	var msg_box: Control = message.get_parent()
+	msg_box.size.x = minf(safe.size.x - 16.0, 368.0)
+	msg_box.position = Vector2(roundf(safe.position.x + (safe.size.x - msg_box.size.x) / 2.0), safe.position.y + 4.0)
+
+	party_bar.reset_size()
+	party_bar.position.x = roundf(safe.position.x + (safe.size.x - party_bar.size.x) / 2.0)
+	party_bar.position.y = safe.end.y - party_bar.size.y - 2.0
+
+	foe_box.reset_size()
+	foe_box.position = Vector2(safe.end.x - foe_box.size.x - 8.0, safe.position.y + 30.0)
+
+	var frame_x := roundf((vp.x - bar_frame.size.x) / 2.0)
+	var frame_y := roundf((vp.y - bar_frame.size.y) / 2.0)
+	bar_frame.position = Vector2(frame_x, frame_y)
+	bar.position = Vector2(frame_x + 8.0, frame_y + 6.0)
+	bar_badge.position = Vector2(frame_x - 24.0, frame_y - 4.0)
+
+	rating.position.x = roundf((vp.x - rating.size.x) / 2.0)
+	rating.position.y = roundf(vp.y * 0.28)
+
+	blocks.size = vp
+	targets.size = vp
+	menu.position = Vector2(safe.position.x + 8.0, safe.position.y + 30.0)
 
 
 ## Shows a hint in the message box. {a} and {b} in it name the buttons: the
@@ -1178,11 +1220,12 @@ func _flash(node: CanvasItem) -> void:
 
 func _shake(strength := 3.0, duration := 0.14) -> void:
 	var tw := create_tween()
+	var base := ((get_viewport_rect().size - Vector2(384, 216)) / 2.0).round()
 	var steps := 4
 	for i in steps:
 		var off := Vector2(randf_range(-strength, strength), randf_range(-strength, strength))
-		tw.tween_property(stage, "position", off, duration / float(steps))
-	tw.tween_property(stage, "position", Vector2.ZERO, 0.03)
+		tw.tween_property(stage, "position", base + off, duration / float(steps))
+	tw.tween_property(stage, "position", base, 0.03)
 
 
 func _popup(pos: Vector2, text: String) -> void:
@@ -1252,7 +1295,8 @@ func _place_badges() -> void:
 	_badges = _badges.filter(func(b): return is_instance_valid(b[0]) and not b[0].is_queued_for_deletion())
 	for b in _badges:
 		var node: CharacterSprite = b[1]
-		b[0].position = (node.position + Vector2(-20, -node.height() * node.scale.y * 0.75)).round()
+		var origin := node.get_global_transform_with_canvas().origin
+		b[0].position = (origin + Vector2(-20, -node.height() * node.scale.y * 0.75)).round()
 
 
 ## A star that circles stunned foes and a flame by burning ones.
