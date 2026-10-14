@@ -58,6 +58,7 @@ func is_open() -> bool:
 ## secret: shows dots instead of the letters (passwords).
 func ask(title: String, initial := "", max_length := 16, hint := "Enter: OK   Esc: cancel", secret := false) -> String:
 	_edit.secret = secret
+	_edit.secret_character = "*"  # the game font has no dot
 	_title.text = title
 	_title.visible = title != ""
 	_hint.text = hint
