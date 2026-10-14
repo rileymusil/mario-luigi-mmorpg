@@ -10,7 +10,6 @@ Sprites and maps come from *Mario & Luigi: Superstar Saga* (Nintendo / AlphaDrea
   - Vivian: Tonberry2k.
   - Rookie Bowser: Superstar Saga's Rookie Bowser NPC sheet (USA); no ripper is named on the sheet.
   - Grodus: Sniper the Yoshi/Boo/Person (scepter rings by Bean).
-  - Mimi: ShyGuy Grey.
   - Koopa Bros.: Parakoopa's Koopa Troopa, edited by A.J. Nitro; the green, yellow and black brothers are palette swaps from the sheet's colour swatches.
   - Bombette: A.J. Nitro's M&L battle Bob-omb, from Bonzai's original.
   - Bow: captainkakarot64.

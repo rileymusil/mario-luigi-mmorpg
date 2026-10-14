@@ -31,7 +31,7 @@ const CHARACTERS := {
 		"special": "wicked_whirl"},
 	"rosalina": {"name": "Rosalina", "side": "good", "frames": 7, "hp": 18, "sp": 14, "pow": 4, "def": 2,
 		"special": "star_spin"},
-	"toadette": {"name": "Toadette", "side": "good", "frames": 10, "hp": 17, "sp": 12, "pow": 4, "def": 2,
+	"toadette": {"name": "Toadette", "side": "good", "frames": 8, "hp": 17, "sp": 12, "pow": 4, "def": 2,
 		"special": "pickaxe_pound"},
 	"bowser": {"name": "Bowser", "side": "evil", "frames": 5, "hp": 26, "sp": 10, "pow": 6, "def": 3,
 		"special": "fire_breath"},
@@ -39,8 +39,6 @@ const CHARACTERS := {
 		"special": "rookie_rush"},
 	"grodus": {"name": "Grodus", "side": "evil", "frames": 5, "hp": 21, "sp": 14, "pow": 5, "def": 2,
 		"special": "grodus_bolt"},
-	"mimi": {"name": "Mimi", "side": "evil", "frames": 4, "hp": 20, "sp": 12, "pow": 5, "def": 2,
-		"special": "mimic"},
 	"koopa_bros": {"name": "Koopa Bros.", "side": "evil", "frames": 5, "hp": 22, "sp": 12, "pow": 5, "def": 3,
 		"special": "bros_tower"},
 	"bowser_jr": {"name": "Bowser Jr.", "side": "evil", "frames": 1, "hp": 22, "sp": 12, "pow": 5, "def": 2,
@@ -51,7 +49,7 @@ const CHARACTERS := {
 
 ## Characters that were taken out of the game, and who old saves with them
 ## play as now (see load_save).
-const REMOVED_CHARACTERS := {"dimentio": "bowser"}
+const REMOVED_CHARACTERS := {"dimentio": "bowser", "mimi": "bowser"}
 
 ## Signature moves (battle.gd _special), each a timed press. {a} in an info
 ## line names the A button: Z on keys, A on touch (battle.gd _keys).
@@ -67,7 +65,6 @@ const SPECIALS := {
 	"rookie_rush": {"name": "Rookie Rush", "sp": 5,
 		"info": "Up to 3 shell bashes; {a} as each hits. Excellents in a row hit harder."},
 	"grodus_bolt": {"name": "Grodus Bolt", "sp": 6, "info": "Lightning hits every enemy and lowers their DEF."},
-	"mimic": {"name": "Mimic", "sp": 4, "info": "Copies the last move the target used."},
 	"bros_tower": {"name": "Bros. Tower", "sp": 6,
 		"info": "{a} as each brother lands on the stack, then the tower spins into the enemy."},
 	"wicked_whirl": {"name": "Wicked Whirl", "sp": 5, "info": "Hits every enemy. Excellent stuns all."},
@@ -78,7 +75,7 @@ const SPECIALS := {
 }
 
 ## What partners and recruited enemies do on their own turn (battle.gd
-## _partner_move). Enemies are known for theirs, which is what Mimi copies.
+## _partner_move). Enemies are known for theirs.
 ## kind: "tackle" (Z in the gold zone, then run in), "stomp" (jump, Z as you
 ## land), "throw" (Z in the gold zone, something flies at the enemy), "blast"
 ## (hits every enemy) or "multi" (up to `hits` hits, a press each; a miss

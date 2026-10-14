@@ -21,9 +21,9 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
 **Phones and tablets.** Hold the phone sideways. The on-screen controls show on touch screens (or after your first touch) and hide when you press a key; several fingers work at once, so you can walk and jump together. Only the buttons that make sense show: none on the title screen (tap the menus), A and B in battle, all of them while walking around, and none while someone is talking. On Android, the corners button next to MENU goes full screen and keeps the game sideways; on iPhone, use Share > Add to Home Screen to play full screen. Typing (your username, or chat with the Chat button) opens the browser's own text box, so the phone's keyboard comes up.
 
 ## What you can do
-- **Pick a side and a character** (eight good, seven evil; the card on the right shows stats and the signature move).
+- **Pick a side and a character** (eight good, six evil; the card on the right shows stats and the signature move).
   Good: Mario, Luigi, Princess Peach, Professor E. Gadd, Vivian, Waluigi, Rosalina, Toadette.
-  Evil: Bowser, Rookie Bowser, Grodus, Mimi, the Koopa Bros., Bowser Jr., Shadow Mario.
+  Evil: Bowser, Rookie Bowser, Grodus, the Koopa Bros., Bowser Jr., Shadow Mario.
   Good players start in Beanbean Castle Town, evil players at Bowser's Castle.
 - **Explore** maps built from the Superstar Saga map art (see *Maps* below): Castle Town with ten buildings you can walk into, Beanbean Outskirts, Stardust Fields, Hoohoo Village and Bowser's Castle. Walk up into a door to go in; walk down onto the door mat to go back out.
 - **Jump up ledges.** Hedges, flat tree tops, plateaus and low walls are raised ground: walking into them stops you, so jump (Z) while walking into them to get up. Low steps take an ordinary jump; tall cliffs can't be climbed, only dropped down (walk off any ledge to drop). Your party jumps up and drops down behind you. In the Outskirts, the hedge west of the start and the flat tree tops beyond it are the way to the west islands; in Stardust Fields, the pink plateaus are a jump up from the violet ground; Castle Town's low terrace walls and the step by Hoohoo Village's mountain door can be hopped up.
@@ -42,7 +42,6 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
     | Bowser | Fire Breath | Hits every enemy. |
     | Rookie Bowser | Rookie Rush | Up to 3 shell bashes, Z as each one hits. Every Excellent in a row adds 2 damage; a miss ends the rush. |
     | Grodus | Grodus Bolt | Lightning on every enemy; lowers their DEF for the battle (1 on Good, 2 on Excellent). |
-    | Mimi | Mimic | Copies the last move the target used (what it is known for if it hasn't acted yet), with Mimi's power. |
     | Koopa Bros. | Bros. Tower | The other three brothers jump onto the stack, Z as each lands (a miss knocks him off); then the tower spins into the enemy. More brothers, more damage. |
     | Waluigi / Rosalina / Toadette | Wicked Whirl / Star Spin / Pickaxe Pound | Hits all and can stun all / hits and heals the party / ignores DEF. |
     | Bowser Jr. / Shadow Mario | Goop Paint / Shadow Drain | Can stun / steals HP. |

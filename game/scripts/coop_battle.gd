@@ -158,7 +158,7 @@ func _foe_turn(f: Dictionary) -> void:
 		await _wait(0.8)
 		return
 	var target: Dictionary = _alive(allies).pick_random()
-	if await _foe_attack_taken(f, target):  # Mimic's memory, Vivian's Shade Veil
+	if await _foe_attack_taken(f, target):  # Vivian's Shade Veil
 		return
 	await _charge(f, target, not target.get("remote", false))
 

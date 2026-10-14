@@ -59,7 +59,7 @@ CHARACTERS = {
                 "rows": [(0, 30, 175, 75)] * 3, "side_faces_left": True, "strip": [(84, 109, 142)]},
     "buzzy_beetle": {"sheet": "Enemies/Custom _ Edited - Mario Customs - Buzzy Beetle, Spiny & Related Enemies - Buzzy Beetle (Mario & Luigi_ Superstar Saga-Style).png",
                      "rows": [(0, 27, 220, 55)] * 3, "side_faces_left": True},
-    # Phase 6 roster. Battle-style sheets with one pose (Vivian, Mimi,
+    # Phase 6 roster. Battle-style sheets with one pose (Vivian,
     # Bombette) repeat the same box for all three rows.
     "egadd": {"sheet": "Playable Characters GOOD/Game Boy Advance - Mario & Luigi_ Superstar Saga - Non-Playable Characters - Professor E. Gadd.png",
               "rows": [(0, 4, 230, 48), (0, 100, 230, 146), (0, 52, 230, 97)], "side_faces_left": False},
@@ -70,8 +70,6 @@ CHARACTERS = {
     "grodus": {"sheet": "Playable Characters EVIL/Custom _ Edited - Paper Mario Customs - Grodus & the X-Nauts - Grodus (Mario & Luigi_ Superstar Saga-Style).png",
                "rows": [(300, 160, 620, 216), (300, 284, 620, 340), (300, 220, 606, 276)], "side_faces_left": False,
                "bg": (255, 255, 255), "flood": True},
-    "mimi": {"sheet": "Playable Characters EVIL/Custom _ Edited - Paper Mario Customs - Other Bosses - Mimi (Mario & Luigi Superstar Saga Battle-Style).png",
-             "rows": [(0, 32, 130, 80)] * 3, "side_faces_left": True, "flood": True},
     # recolor: extra sheets with the red shell/mask swapped for the other three
     # brothers' colours (swatches from the sheet's "Pallets" box).
     "koopa_bros": {"sheet": "Playable Characters EVIL/Custom _ Edited - Paper Mario Customs - Paper Mario 64 Bosses - Koopa Bros (Mario & Luigi_ Superstar Saga-Style).png",
@@ -191,7 +189,10 @@ def build(name, cfg, root):
     if "order" in cfg:
         rows = [rows[i] for i in cfg["order"]]
     if cfg["side_faces_left"]:
-        rows[1] = [f.transpose(Image.FLIP_LEFT_RIGHT) for f in rows[1]]
+        if len(set(boxes)) == 1:
+            rows = [[f.transpose(Image.FLIP_LEFT_RIGHT) for f in r] for r in rows]
+        else:
+            rows[1] = [f.transpose(Image.FLIP_LEFT_RIGHT) for f in rows[1]]
     n = max(len(r) for r in rows)
     cw = max(f.size[0] for r in rows for f in r) + 2
     ch = max(f.size[1] for r in rows for f in r) + 2

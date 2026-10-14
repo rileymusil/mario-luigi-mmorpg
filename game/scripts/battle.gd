@@ -595,8 +595,6 @@ func _special(a: Dictionary, target: Dictionary) -> void:
 			await _rookie_rush(a, target)
 		"grodus_bolt":
 			await _grodus_bolt(a)
-		"mimic":
-			await _mimic(a, target)
 		"bros_tower":
 			await _bros_tower(a, target)
 	_refresh()
@@ -653,7 +651,7 @@ func _move_id(a: Dictionary) -> String:
 	return Game.move_of(a["member"].get("kind", "partner"), a["member"]["id"])
 
 
-## Runs a Game.MOVES move for `a` (a partner, a recruit, or Mimi copying one)
+## Runs a Game.MOVES move for `a` (a partner or a recruit)
 ## and returns the rating.
 func _partner_move(a: Dictionary, target: Dictionary, id: String) -> String:
 	var move: Dictionary = Game.MOVES[id]
@@ -734,7 +732,7 @@ func _lower_def(f: Dictionary, amount: int) -> int:
 	return drop
 
 
-## The enemy has picked who to attack: remember its move for Mimic, and a
+## The enemy has picked who to attack, and a
 ## veiled Vivian dodges and hits back. True when the veil took the attack.
 func _foe_attack_taken(f: Dictionary, target: Dictionary) -> bool:
 	f["last_move"] = Game.move_of("enemy", f["type"])
@@ -871,20 +869,6 @@ func _grodus_bolt(a: Dictionary) -> void:
 	_show_rating(result)
 	if not lowered.is_empty():
 		message.text = "DEF down: %s" % ", ".join(lowered)
-
-
-## Mimic (Mimi): copies the last move the target used (what it is known for
-## if it hasn't acted yet) and uses it with Mimi's own power and timing.
-func _mimic(a: Dictionary, target: Dictionary) -> void:
-	var id: String = target.get("last_move", "")
-	if id == "" or not Game.MOVES.has(id):
-		id = Game.move_of("enemy", target["type"])
-	var t := create_tween()
-	t.tween_property(a["node"], "modulate", Color(0.75, 0.5, 1.0), 0.15)
-	t.tween_property(a["node"], "modulate", Color.WHITE, 0.3)
-	message.text = "%s copies %s's %s!" % [a["name"], target["name"], Game.MOVES[id]["name"]]
-	await _wait(0.8)
-	await _partner_move(a, target, id)
 
 
 ## Bros. Tower (Koopa Bros.): the other three brothers jump onto the stack,
