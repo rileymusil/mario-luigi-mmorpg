@@ -134,9 +134,7 @@ func _layout_battle() -> void:
 	msg_box.size.x = minf(safe.size.x - 16.0, 368.0)
 	msg_box.position = Vector2(roundf(safe.position.x + (safe.size.x - msg_box.size.x) / 2.0), safe.position.y + 4.0)
 
-	party_bar.reset_size()
-	party_bar.position.x = roundf(safe.position.x + (safe.size.x - party_bar.size.x) / 2.0)
-	party_bar.position.y = safe.end.y - party_bar.size.y - 2.0
+	_place_party_bar()
 
 	foe_box.reset_size()
 	foe_box.position = Vector2(safe.end.x - foe_box.size.x - 8.0, safe.position.y + 30.0)
@@ -1354,6 +1352,15 @@ func _wait(seconds: float) -> void:
 
 # --- Status display --------------------------------------------------------------
 
+## The HP boxes along the bottom of the safe area. Called again whenever they
+## change (they are empty when the layout first runs, so their height was 0).
+func _place_party_bar() -> void:
+	var safe := Game.get_safe_rect()
+	party_bar.reset_size()
+	party_bar.position.x = roundf(safe.position.x + (safe.size.x - party_bar.size.x) / 2.0)
+	party_bar.position.y = safe.end.y - party_bar.size.y - 2.0
+
+
 ## One navy box per ally on the bottom bar: face, heart and HP (SP for you).
 ## Adds an HP box for every ally that doesn't have one yet (allies can join
 ## after the start, e.g. a co-op partner). _refresh() calls it.
@@ -1401,6 +1408,7 @@ func _refresh() -> void:
 		a["hp_label"].modulate = Color(1, 0.55, 0.5) if hp * 4 <= max_hp else Color.WHITE
 		if a.has("sp_label"):
 			a["sp_label"].text = "%d/%d" % [p["sp"], p["max_sp"]]
+	_place_party_bar.call_deferred()
 	for row in foe_list.get_children():
 		foe_list.remove_child(row)
 		row.queue_free()

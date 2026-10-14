@@ -209,5 +209,62 @@ check((await ev2.next("duel_over")).result === "left", "leaving mid-duel tells t
 
 ev.send({ t: "duel_act", move: "jump" });
 for (const x of [ev, gd, town, ev2]) x.ws.close();
+
+// Good and evil players can't team up, even with a modified client.
+const zone4 = `${zone}_d`;
+const hero = open("Hero", "mario", 0, 0, { uid: "fffffffff001", side: "good", key: "aaaaaaaaaaaaaaaa" }, zone4);
+await hero.ready;
+await hero.next("welcome");
+const vil = open("Vil", "bowser", 0, 0, { uid: "fffffffff002", side: "evil" }, zone4);
+await vil.ready;
+await vil.next("welcome");
+const pal = open("Pal", "luigi", 0, 0, { uid: "fffffffff003", side: "good" }, zone4);
+await pal.ready;
+await pal.next("welcome");
+vil.send({ t: "invite", to: "fffffffff001" });
+const nope = await vil.next("declined");
+check(nope.reason === "side" && nope.name === "Hero", "an invite across sides is refused");
+await new Promise((res) => setTimeout(res, 200));
+check(!hero.inbox.some((m) => m.t === "invite"), "the other side never sees a cross-side invite");
+hero.send({ t: "accept", from: "fffffffff002" });
+await new Promise((res) => setTimeout(res, 200));
+check(!hero.inbox.some((m) => m.t === "party") && !vil.inbox.some((m) => m.t === "party"), "accepting a cross-side invite that was never sent does nothing");
+hero.send({ t: "invite", to: "fffffffff003" });
+await pal.next("invite");
+pal.send({ t: "accept", from: "fffffffff001" });
+check((await hero.next("party")).id === "fffffffff003", "same-side players can still team up");
+await pal.next("party");
+
+// Hero switches to evil: arriving with the party claim doesn't relink, and the partner hears it's over.
+hero.ws.close();
+await pal.next("leave");
+const hero2 = open("Hero", "bowser", 0, 0, { uid: "fffffffff001", side: "evil", party: "fffffffff003", key: "aaaaaaaaaaaaaaaa" }, zone4);
+await hero2.ready;
+await hero2.next("welcome");
+await hero2.next("party_end");
+await pal.next("party_end");
+check(true, "switching sides breaks the party on both ends");
+
+// The same save reconnecting (same uid and key) replaces the stale socket and keeps its id.
+const hero3 = open("Hero", "bowser", 0, 0, { uid: "fffffffff001", side: "evil", key: "aaaaaaaaaaaaaaaa" }, zone4);
+await hero3.ready;
+check((await hero3.next("welcome")).id === "fffffffff001", "a reconnect with the save's key keeps the id");
+check((await hero2.next("replaced")).t === "replaced", "the stale socket is told it was replaced");
+check((await pal.next("leave")).id === "fffffffff001", "others drop the stale copy");
+const fake = open("Fake", "bowser", 0, 0, { uid: "fffffffff001", side: "evil", key: "bbbbbbbbbbbbbbbb" }, zone4);
+await fake.ready;
+check((await fake.next("welcome")).id !== "fffffffff001", "a wrong key can't take over someone's id");
+
+// Duel guard flag is relayed.
+const g5 = open("Gil", "mario", 0, 0, { uid: "fffffffff005", side: "good" }, zone4);
+await g5.ready;
+await g5.next("welcome");
+hero3.send({ t: "duel", to: "fffffffff005", stats: {} });
+await g5.next("challenge");
+g5.send({ t: "duel_ready", stats: {} });
+await hero3.next("duel_start");
+g5.send({ t: "duel_hit", dmg: 3, hp: 17, dodged: false, guard: true });
+check((await hero3.next("duel_hit")).guard === true, "a guarded hit says so");
+for (const x of [hero3, vil, pal, fake, g5]) x.ws.close();
 console.log("all good");
 process.exit(0);
