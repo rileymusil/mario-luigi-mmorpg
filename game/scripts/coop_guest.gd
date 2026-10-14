@@ -10,6 +10,11 @@ var me_index := -1
 var over := false
 var _queue: Array = []  # turn / dodge requests, handled one at a time
 var _setup := {}
+var _pow_bonus := 0     # a Red Pepper's POW, for the rest of this battle
+## Items you can use on yourself in your partner's battle. The rest (1-Up,
+## Refreshing Herb, Green Pepper) need their game to change things it keeps
+## (partners, statuses, DEF), so they're greyed out here.
+const GUEST_ITEMS := ["hp", "sp", "pow"]
 
 
 func _ready() -> void:
@@ -127,7 +132,8 @@ func _my_turn() -> void:
 	var commands := [
 		{"label": "Jump", "icon": "jump", "info": "Stomp! Press {a} as you land for a 2nd hit."},
 		{"label": "%s (%d SP)" % [sp["name"], sp["sp"]], "icon": "burst", "enabled": p["sp"] >= sp["sp"], "info": sp["info"]},
-		{"label": "Mushroom (%d)" % p["mushrooms"], "icon": "mushroom", "enabled": p["mushrooms"] > 0, "info": "Heal 10 HP."},
+		{"label": "Items", "icon": "mushroom", "enabled": Game.owned_items().any(_guest_usable),
+			"info": "Use an item. It takes this turn."},
 	]
 	_set_turn(me)
 	var choice := -1
@@ -138,7 +144,9 @@ func _my_turn() -> void:
 			return
 		target_i = -1
 		if choice == 2:
-			break
+			if await _guest_item(me):
+				return
+			continue
 		var alive := []
 		for i in foes.size():
 			if foes[i]["hp"] > 0:
@@ -158,11 +166,6 @@ func _my_turn() -> void:
 	message.text = ""
 	var hp: int = me["member"]["hp"]
 	var max_hp: int = me["member"]["max_hp"]
-	if choice == 2:  # Mushroom
-		p["mushrooms"] -= 1
-		_show_rating("+10 HP")
-		Net.send_party({"kind": "act", "move": "heal", "hp": mini(max_hp, hp + 10)})
-		return
 	if target_i < 0:
 		Net.send_party({"kind": "act", "move": "wait"})
 		return
@@ -177,9 +180,10 @@ func _my_turn() -> void:
 		var result := _rate_landing(await _arc(node, node.position, top, 50.0, 0.55, true))
 		badge.queue_free()
 		_show_rating(result)
-		var hits := [p["pow"]]
+		var pow: int = p["pow"] + _pow_bonus
+		var hits := [pow]
 		if result != "Miss":
-			hits.append(p["pow"] + (1 if result == "Excellent" else 0))
+			hits.append(pow + (1 if result == "Excellent" else 0))
 		Net.send_party({"kind": "act", "move": "jump", "target": target_i, "hits": hits, "rating": result})
 		if result != "Miss":
 			await _arc(node, top, top, 38.0, 0.45, false)
@@ -194,11 +198,68 @@ func _my_turn() -> void:
 			_show_rating("%s  +%d HP" % [result, heal])
 			return
 		var bonus: int = {"Excellent": 3, "Good": 1, "Miss": 0}[result]
-		Net.send_party({"kind": "act", "move": "special", "target": target_i, "hits": [p["pow"] + 2 + bonus],
+		Net.send_party({"kind": "act", "move": "special", "target": target_i, "hits": [p["pow"] + _pow_bonus + 2 + bonus],
 			"rating": result, "name": sp["name"]})
 		await _walk(node, target["node"].position + Vector2(-22, 0), 220.0)
 	await _walk(node, me["home"], 160.0)
 	node.facing = Vector2.RIGHT
+
+
+## Can you use item `id` on yourself right now, in your partner's battle?
+func _guest_usable(id: String) -> bool:
+	var item: Dictionary = Game.ITEMS[id]
+	var me: Dictionary = allies[me_index]["member"]
+	var p: Dictionary = Game.player
+	if item.has("hp"):
+		return me["hp"] < me["max_hp"]
+	if item.has("sp"):
+		return p["sp"] < p["max_sp"]
+	return item.has("pow")
+
+
+## The item list. Uses the pick on yourself and tells their game; false if
+## you backed out.
+func _guest_item(me: Dictionary) -> bool:
+	var ids := Game.owned_items()
+	var labels := []
+	var enabled := []
+	var infos := []
+	var icons := []
+	for id in ids:
+		var item: Dictionary = Game.ITEMS[id]
+		labels.append("%s x%d" % [item["name"], Game.item_count(id)])
+		enabled.append(_guest_usable(id))
+		var usable_here: bool = GUEST_ITEMS.any(func(k): return item.has(k))
+		infos.append(item["info"] if usable_here else "Can't be used in a partner's battle.")
+		icons.append(load("res://assets/items/%s.png" % id))
+	menu.max_rows = 5
+	_say("Which item? {b} to go back.")
+	var i := await menu.choose(labels, "Items", true, enabled, infos, icons)
+	message.text = ""
+	if i < 0 or over:
+		return false
+	_set_turn({})
+	var id: String = ids[i]
+	var item: Dictionary = Game.ITEMS[id]
+	var p: Dictionary = Game.player
+	Game.add_item(id, -1)
+	await _item_pop(me, id)
+	if item.has("hp"):
+		var m: Dictionary = me["member"]
+		var hp := mini(m["max_hp"], m["hp"] + int(item["hp"]))
+		_show_rating("+%d HP" % (hp - m["hp"]))
+		Net.send_party({"kind": "act", "move": "heal", "hp": hp})
+		return true
+	if item.has("sp"):
+		var before: int = p["sp"]
+		p["sp"] = mini(p["max_sp"], p["sp"] + int(item["sp"]))
+		_show_rating("+%d SP" % (p["sp"] - before))
+	else:
+		_pow_bonus += int(item["pow"])
+		_show_rating("POW +%d" % int(item["pow"]))
+	_refresh()
+	Net.send_party({"kind": "act", "move": "wait"})
+	return true
 
 
 # --- An enemy charges at you -----------------------------------------------------
@@ -255,6 +316,7 @@ func _finish(d: Dictionary) -> void:
 			var levels := Game.gain_xp(xp)
 			message.text = "You won! +%d XP  +%d coins" % [xp, coins]
 			await _wait(1.6)
+			await _show_drops(Game.roll_drops(foes.map(func(f): return f["type"])))
 			if levels > 0:
 				message.text = "Level up! %s is now level %d!" % [Game.character_name(), p["level"]]
 				_show_rating("LEVEL UP!")
