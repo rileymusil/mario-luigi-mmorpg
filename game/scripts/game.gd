@@ -529,6 +529,8 @@ func switch_side() -> void:
 			break
 	player["side"] = other
 	player["party"] = []
+	if Net.party_id != "":
+		Net.leave_party()  # good and evil can't be a party (the server ends it too)
 	go_to_map(HOME_MAP[other], "start")
 
 

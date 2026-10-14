@@ -3,7 +3,8 @@ extends Node
 ## Draws the other players on this map (from Net), puts name tags over
 ## everyone (you included), runs text chat with speech bubbles, and handles
 ## parties: X next to another player to team up; your partner's tag is green
-## and taking an exit brings them along. Evil players can also pick "Battle!"
+## and taking an exit brings them along. Only players on the same side can
+## team up (the server refuses the rest too). Evil players can also pick "Battle!"
 ## on a good player outside town to start an online duel (pvp_battle.gd).
 ## The world creates one and calls setup(), then tick() every frame.
 
@@ -12,6 +13,7 @@ const BUBBLE_SECONDS := 5.0
 const REACH := 26.0  # how close you must be to press X on someone
 const PARTNER_COLOR := Color(0.55, 1, 0.55)
 const REACH_COLOR := Color(1, 0.9, 0.3)
+const EVIL_TAG := Color(1, 0.62, 0.58)  # name tags of evil players are reddish
 const CHALLENGE_WAIT := 10.0  # give up if the other game doesn't answer by then
 const BUSY_GRACE := 6.0       # an attacked player in a menu gets this long to close it
 
@@ -43,7 +45,8 @@ func setup(world: Node, spawn_character: Callable, local_player: CharacterSprite
 	add_child(chat)
 	chat.message_shown.connect(_show_bubble)
 	Net.invited.connect(func(from_id, who): _invites.append({"from": from_id, "name": who}))
-	Net.invite_declined.connect(func(who): chat.system("%s said no thanks." % who))
+	Net.invite_declined.connect(func(who, reason):
+		chat.system("Good and evil players can't team up." if reason == "side" else "%s said no thanks." % who))
 	Net.party_changed.connect(_on_party_changed)
 	Net.in_world = true
 	tree_exiting.connect(func(): Net.in_world = false)
@@ -57,10 +60,12 @@ func setup(world: Node, spawn_character: Callable, local_player: CharacterSprite
 	Net.player_jumped.connect(_on_player_jumped)
 	Net.player_left.connect(_on_player_left)
 	Net.zone_reset.connect(_clear)
-	# Coming back from a battle keeps the connection, so draw who is already here.
+	# Join first: a new map drops the last map's players (so they aren't drawn
+	# here as ghosts); coming back from a battle keeps the connection, so draw
+	# who is already here.
+	Net.join_zone(map_id, Game.player["character"], Game.username(), _player.position)
 	for p in Net.players.values():
 		_on_player_joined(p)
-	Net.join_zone(map_id, Game.player["character"], Game.username(), _player.position)
 
 
 ## Call every frame from the world.
@@ -128,9 +133,10 @@ func _nearest_other() -> String:
 ## X next to another player.
 func _interact(id: String) -> void:
 	var who: String = Net.players[id]["name"]
+	var same_side: bool = Net.players[id].get("side", "good") == Game.player["side"]
 	var options := ["Team up", "Cancel"]
-	var enabled := [Net.party_id == "", true]
-	var infos := ["Travel together.", ""]
+	var enabled := [Net.party_id == "" and same_side, true]
+	var infos := ["Travel together." if same_side else "Good and evil can't team up.", ""]
 	if id == Net.party_id:
 		options = ["Leave party", "Cancel"]
 		enabled = [true, true]
@@ -159,7 +165,8 @@ func _interact(id: String) -> void:
 
 
 func _answer_invite(inv: Dictionary) -> void:
-	if Net.party_id != "" or not Net.players.has(inv["from"]):
+	if Net.party_id != "" or not Net.players.has(inv["from"]) \
+			or Net.players[inv["from"]].get("side", "good") != Game.player["side"]:
 		Net.answer_invite(inv["from"], false)
 		return
 	_world.busy = true
@@ -177,6 +184,9 @@ func _on_party_message(d: Dictionary) -> void:
 		Net.send_party({"kind": "coop_no"})
 		return
 	var p: Dictionary = Game.player
+	# Keep their messages from now on: the setup comes before the battle loads.
+	Net.party_inbox.clear()
+	Net.hold_party = true
 	Net.send_party({"kind": "coop_yes", "name": Game.username(), "id": p["character"],
 		"hp": p["hp"], "max_hp": p["max_hp"], "pow": p["pow"], "def": p["def"]})
 	_world.busy = true
@@ -272,7 +282,9 @@ func _on_player_joined(p: Dictionary) -> void:
 	var character: String = p["character"] if Game.CHARACTERS.has(p["character"]) else "mario"
 	var node: CharacterSprite = _spawn.call(character)
 	node.position = _snapped(Vector2(p["x"], p["y"]))
-	add_name_tag(node, p["name"])
+	var tag := add_name_tag(node, p["name"])
+	if p.get("side", "good") == "evil":
+		tag.add_theme_color_override("font_color", EVIL_TAG)
 	others[p["id"]] = {"node": node, "target": node.position, "velocity": Vector2.ZERO}
 
 

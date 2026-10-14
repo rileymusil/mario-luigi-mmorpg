@@ -6,7 +6,9 @@ extends Node
 ## The server lives in server/ at the repository root; see server/README.md.
 
 ## wss:// address of the deployed Worker. On the web build you can also
-## override it with ?server=wss://... in the page address.
+## override it with ?server=wss://... in the page address; on desktop (for
+## testing against `npx wrangler dev`) with the MLMMO_SERVER environment
+## variable or `-- --server=ws://127.0.0.1:8787` after the Godot arguments.
 const SERVER_URL := "wss://mario-luigi-mmo.rileymusil2006.workers.dev"
 const SEND_RATE := 5.0        # position updates per second while moving
 const PING_SECONDS := 20.0    # keeps idle connections from being dropped
@@ -19,7 +21,7 @@ signal player_left(id: String)
 signal player_arrived(player: Dictionary)  # someone walked in (not the roster on joining)
 signal chat_received(id: String, name: String, text: String, party: bool)
 signal invited(from_id: String, name: String)       # someone wants to team up
-signal invite_declined(name: String)
+signal invite_declined(name: String, reason: String)  # reason "side": good and evil can't team up
 signal party_changed                                # formed, ended, or partner arrived
 signal warp_requested(map_id: String, spawn: String) # your partner took an exit
 signal party_message(d: Dictionary)               # co-op battle traffic from your partner
@@ -41,6 +43,13 @@ var pending_warp := {}  # {map, spawn} to follow your partner once you're free
 ## answered "busy" straight away.
 var in_world := false
 var duel_foe := ""  # foe's id from challenging until the duel ends
+## Duel traffic (duel_act, duel_hit, duel_over) since the duel started, so
+## nothing is lost while the battle scene is still loading. pvp_battle.gd reads it.
+var duel_inbox: Array = []
+## While true, partner messages are also kept in party_inbox: set when you
+## join your partner's battle, so their setup isn't lost while it loads.
+var hold_party := false
+var party_inbox: Array = []
 var _socket: WebSocketPeer
 var _zone := ""
 var _hello := {}
@@ -51,6 +60,7 @@ var _retry_timer := 0.0
 var _retries := 0
 var _last_sent := {}
 var _pending_move := {}
+var _closing: Array = []  # old sockets, polled until their close is sent
 
 
 func server_url() -> String:
@@ -58,6 +68,12 @@ func server_url() -> String:
 		var from_page = JavaScriptBridge.eval("new URLSearchParams(location.search).get('server') || ''", true)
 		if typeof(from_page) == TYPE_STRING and from_page != "":
 			return from_page
+	else:
+		for arg in OS.get_cmdline_user_args():
+			if arg.begins_with("--server="):
+				return arg.trim_prefix("--server=")
+		if OS.get_environment("MLMMO_SERVER") != "":
+			return OS.get_environment("MLMMO_SERVER")
 	return SERVER_URL
 
 
@@ -68,8 +84,13 @@ func is_online() -> bool:
 ## Joins the zone for a map. Staying on the same map (e.g. coming back from a
 ## battle) keeps the existing connection.
 func join_zone(map_id: String, character: String, display_name: String, pos: Vector2) -> void:
-	_hello = {"t": "hello", "name": display_name, "character": character, "x": pos.x, "y": pos.y}
-	if map_id == _zone and _socket != null:
+	var same_look: bool = _hello.get("character") == character and _hello.get("name") == display_name \
+		and _hello.get("side") == Game.player.get("side", "good")
+	_hello = {"t": "hello", "name": display_name, "character": character, "x": pos.x, "y": pos.y,
+		"side": Game.player.get("side", "good")}
+	# Same map and still the same you: keep the connection. A side switch or a
+	# new character on the same map reconnects, so the server sees the change.
+	if map_id == _zone and _socket != null and same_look:
 		return
 	# Taking an exit (not being sent home) pulls your partner along.
 	var spawn: String = Game.player.get("spawn", "start")
@@ -84,10 +105,13 @@ func join_zone(map_id: String, character: String, display_name: String, pos: Vec
 func leave() -> void:
 	if _socket != null:
 		_socket.close()
+		_closing.append(_socket)
 	_socket = null
 	_zone = ""
 	my_id = ""
-	players.clear()
+	if not players.is_empty():
+		players.clear()
+		zone_reset.emit()
 	party_here = false
 	duel_foe = ""
 	_was_open = false
@@ -131,12 +155,14 @@ func send_party(d: Dictionary) -> bool:
 ## Evil only: attack a good player standing next to you.
 func challenge(id: String) -> void:
 	duel_foe = id
+	duel_inbox.clear()
 	_send({"t": "duel", "to": id, "stats": Game.pvp_stats()})
 
 
 ## Answer a challenge: fight (sends your stats) or say you're busy.
 func answer_challenge(ready: bool) -> void:
 	if ready:
+		duel_inbox.clear()
 		_send({"t": "duel_ready", "stats": Game.pvp_stats()})
 	else:
 		duel_foe = ""
@@ -191,6 +217,10 @@ func _send(msg) -> void:
 
 
 func _process(delta: float) -> void:
+	for old in _closing.duplicate():
+		old.poll()
+		if old.get_ready_state() == WebSocketPeer.STATE_CLOSED:
+			_closing.erase(old)
 	if _socket == null:
 		if _zone != "" and _retry_timer > 0.0:
 			_retry_timer -= delta
@@ -208,6 +238,7 @@ func _process(delta: float) -> void:
 				zone_reset.emit()
 				var hello := _hello.duplicate()
 				hello["uid"] = Game.player.get("uid", "")
+				hello["key"] = _net_key()
 				hello["side"] = Game.player.get("side", "good")
 				hello["party"] = party_id
 				hello["safe"] = Game.MAPS.get(_zone, {}).get("safe", true)
@@ -226,8 +257,15 @@ func _process(delta: float) -> void:
 		WebSocketPeer.STATE_CLOSED:
 			if _was_open:
 				players.clear()
+				my_id = ""
 				zone_reset.emit()
-			_schedule_retry()
+				if party_here:
+					party_here = false
+					party_changed.emit()
+			if _zone != "":
+				_schedule_retry()
+			else:
+				_socket = null
 
 
 func _handle(text: String) -> void:
@@ -264,7 +302,7 @@ func _handle(text: String) -> void:
 		"invite":
 			invited.emit(str(msg["from"]), str(msg["name"]))
 		"declined":
-			invite_declined.emit(str(msg["name"]))
+			invite_declined.emit(str(msg["name"]), str(msg.get("reason", "")))
 		"party":
 			party_id = str(msg["id"])
 			party_name = str(msg["name"])
@@ -277,6 +315,8 @@ func _handle(text: String) -> void:
 			warp_requested.emit(pending_warp["map"], pending_warp["spawn"])
 		"pmsg":
 			if typeof(msg.get("d")) == TYPE_DICTIONARY:
+				if hold_party:
+					party_inbox.append(msg["d"])
 				party_message.emit(msg["d"])
 		"challenge":
 			var foe := {"id": str(msg["from"]), "name": str(msg["name"]), "character": str(msg["character"]),
@@ -290,14 +330,25 @@ func _handle(text: String) -> void:
 			var foe: Dictionary = msg["foe"]
 			foe["id"] = str(foe["id"])
 			duel_foe = foe["id"]
+			duel_inbox.clear()
 			duel_started.emit(foe, msg.get("first", false) == true)
 		"duel_act", "duel_hit":
+			duel_inbox.append(msg)
 			duel_message.emit(msg)
 		"duel_over":
 			duel_foe = ""
+			duel_inbox.append(msg)
 			duel_over.emit(str(msg.get("result", "cancel")))
-		"full":
-			_zone = ""  # don't retry into a full zone
+		"full", "replaced":
+			_zone = ""  # don't retry into a full zone, or fight another tab with this save
+
+
+## A secret kept with the save: lets this save take its id back from a stale
+## connection (see the server's hello). Never shown to other players.
+func _net_key() -> String:
+	if str(Game.player.get("net_key", "")).length() < 16:
+		Game.player["net_key"] = Crypto.new().generate_random_bytes(12).hex_encode()
+	return Game.player["net_key"]
 
 
 func _add(p: Dictionary) -> void:
