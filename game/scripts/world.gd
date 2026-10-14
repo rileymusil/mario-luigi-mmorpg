@@ -166,7 +166,7 @@ func _spawn_character(id: String) -> CharacterSprite:
 
 
 func _in_party(id: String) -> bool:
-	for m in Game.player["party"]:
+	for m in Game.player["party"] + Game.bench():
 		if m["id"] == id:
 			return true
 	return false
@@ -639,14 +639,18 @@ func _recruit(n: Dictionary, speaker: String) -> bool:
 		return false
 	var info: Dictionary = Game.PARTNERS[n["id"]]
 	if not Game.can_recruit():
-		await say("Your party is full. Send someone home from the menu (Enter) first.")
+		await say("Your party is full, and so is your home base. Send someone home or swap them out first.")
 		return false
 	if randf() < info["recruit"]:
-		Game.player["party"].append(Game.make_member("partner", n["id"]))
+		var to := Game.add_member(Game.make_member("partner", n["id"]))
 		npcs.erase(n)
-		followers.append(node)
+		if to == "party":
+			followers.append(node)
+		else:
+			node.queue_free()
 		Game.save()
-		await say("%s joined your party!" % info["name"])
+		await say("%s joined your party!" % info["name"] if to == "party" else
+			"%s joined! Your party is full, so %s will wait for you at %s." % [info["name"], info["name"], Game.home_name()])
 		return true
 	await say("Hmm... I'm not sure yet. Ask me again?", speaker, node)
 	return false
@@ -956,26 +960,62 @@ func _use_item(id: String) -> void:
 	await say("%s ate %s. +%d HP" % [names[t], Game.with_article(item["name"]), m["hp"] - before])
 
 
+## The Party page: send someone home, or (at your home base) take someone
+## who is waiting there along.
 func _party_menu() -> void:
-	var party: Array = Game.player["party"]
-	party_screen.open(Game.player, Game.character_name())
-	if party.is_empty():
-		await say("Nobody is with you yet. Good players can ask partners in town; evil players can ask enemies in battle.")
-		party_screen.close()
-		return
-	var names: Array = []
-	for m in party:
-		names.append(m["name"])
-	var i := await party_screen.menu.choose(names, "Send home?", true)
-	if i >= 0:
+	var at_home: bool = map_id == Game.HOME_MAP[Game.player["side"]]
+	while true:
+		var party: Array = Game.player["party"]
+		var waiting: Array = Game.bench_for_side()
+		party_screen.open(Game.player, Game.character_name())
+		if party.is_empty() and (waiting.is_empty() or not at_home):
+			await say(("Nobody is with you yet. Good players can ask partners in town; evil players can ask enemies in battle."
+				if waiting.is_empty() else "%d waiting for you at %s. Go there to take them along." % [waiting.size(), Game.home_name()]))
+			break
+		var names: Array = []
+		for m in party:
+			names.append(m["name"])
+		if at_home and not waiting.is_empty():
+			names.append("Waiting here (%d)" % waiting.size())
+		var title := "Send home?" if waiting.is_empty() or at_home else "%d wait at home" % waiting.size()
+		var i := await party_screen.menu.choose(names, title, true)
+		if i < 0:
+			break
+		if i >= party.size():
+			await _bench_menu(waiting)
+			continue
 		var c := await party_screen.menu.choose(["Send home", "Keep"], party[i]["name"], true)
 		if c == 0:
-			party.remove_at(i)
+			var who: String = party[i]["name"]
+			Game.send_home(i)
 			var f: CharacterSprite = followers[i]
 			followers.remove_at(i)
 			f.queue_free()
 			Game.save()
+			if not at_home:
+				await say("%s heads back to %s to wait for you." % [who, Game.home_name()])
 	party_screen.close()
+
+
+## At your home base: pick someone waiting there to join you.
+func _bench_menu(waiting: Array) -> void:
+	var bench: Array = Game.bench()
+	var names: Array = waiting.map(func(j): return "%s  HP %d" % [bench[j]["name"], bench[j]["max_hp"]])
+	var k := await party_screen.menu.choose(names, "Take along?", true)
+	if k < 0:
+		return
+	var m: Dictionary = bench[waiting[k]]
+	match Game.take_from_bench(waiting[k]):
+		"full":
+			await say("Your party is full. Send someone home first, then take %s along." % m["name"])
+		"boss":
+			await say("%s won't share a party with another boss!" % m["name"])
+		_:
+			var f := _spawn_character(m["id"])
+			f.position = player.position
+			followers.append(f)
+			Game.save()
+			await say("%s joined your party!" % m["name"])
 
 
 ## Towns show this week's good vs evil count of PvP wins (top right).

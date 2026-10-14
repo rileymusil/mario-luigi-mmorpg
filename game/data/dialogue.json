@@ -106,7 +106,7 @@
   "lodge_toad": {
     "branches": [
       {"if": {"side": "evil"}, "say": ["A-are you here to cause trouble? This is a Toad lodge!"]},
-      {"if": {"party_full": true}, "say": ["You've already got a full party! Send someone home from the Enter menu if you want new friends."]},
+      {"if": {"party_full": true}, "say": ["You've got a full party! New friends you meet will wait for you here in town, and you can swap them in from Party in the menu."]},
       {"say": ["We Toads came over from the Mushroom Kingdom to help out.", "A Toad and a Pianta are waiting in the town square. Ask them to join you!"]}
     ]
   },
