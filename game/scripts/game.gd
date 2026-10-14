@@ -11,6 +11,7 @@ const COOP_GUEST_SCENE := "res://scenes/coop_guest.tscn"   # your partner's batt
 const SAVE_PATH := "user://save.json"
 const MAX_LEVEL := 50
 const MAX_PARTY := 2
+const MAX_BENCH := 12  # partners or recruits waiting at your home base
 
 ## Sprite sheets live in res://assets/characters/<id>.png: 3 rows (down,
 ## right, up) of `frames` cells. Built by tools/slice_sprites.py.
@@ -894,8 +895,66 @@ func move_of(kind: String, id: String) -> String:
 	return src.get("move", "rolling_bump")
 
 
+## True if someone new could join: in your party, or waiting at home.
 func can_recruit() -> bool:
-	return player["party"].size() < MAX_PARTY
+	return player["party"].size() < MAX_PARTY or bench().size() < MAX_BENCH
+
+
+## Partners and recruits waiting at your home base (Castle Town for good,
+## Bowser's Castle for evil). Each side only sees its own kind there.
+func bench() -> Array:
+	if typeof(player.get("bench")) != TYPE_ARRAY:
+		player["bench"] = []
+	return player["bench"]
+
+
+## The side a party member fights for: partners are good, enemies and bosses evil.
+static func member_side(m: Dictionary) -> String:
+	return "good" if m.get("kind", "") == "partner" else "evil"
+
+
+## Indexes into bench() of the members your side can take along.
+func bench_for_side() -> Array:
+	var out := []
+	for i in bench().size():
+		if member_side(bench()[i]) == player["side"]:
+			out.append(i)
+	return out
+
+
+## Adds a new member to your party, or to the bench if the party is full.
+## Returns "party" or "bench".
+func add_member(m: Dictionary) -> String:
+	if player["party"].size() < MAX_PARTY:
+		player["party"].append(m)
+		return "party"
+	bench().append(m)
+	return "bench"
+
+
+## Sends party member i home to wait on the bench.
+func send_home(i: int) -> void:
+	bench().append(player["party"][i])
+	player["party"].remove_at(i)
+
+
+## Takes bench member j along (rested: full HP). Returns "" or why not:
+## "full" (party is full), "boss" (one boss per party).
+func take_from_bench(j: int) -> String:
+	var m: Dictionary = bench()[j]
+	if player["party"].size() >= MAX_PARTY:
+		return "full"
+	if m.get("kind", "") == "boss" and has_boss_partner():
+		return "boss"
+	bench().remove_at(j)
+	m["hp"] = m["max_hp"]
+	player["party"].append(m)
+	return ""
+
+
+## The name of your home base.
+func home_name() -> String:
+	return MAPS[HOME_MAP[player["side"]]]["name"]
 
 
 func switch_side() -> void:
@@ -907,6 +966,7 @@ func switch_side() -> void:
 			player["character"] = id
 			break
 	player["side"] = other
+	bench().append_array(player["party"])  # they wait at their own side's home
 	player["party"] = []
 	if Net.party_id != "":
 		Net.leave_party()  # good and evil can't be a party (the server ends it too)
@@ -1071,7 +1131,9 @@ func use_save(data: Variant) -> bool:
 		data.erase("bosses")  # boss wins (see boss_wins); old saves have none
 	if typeof(data.get("party")) != TYPE_ARRAY:
 		data["party"] = []
-	for member in data["party"]:
+	if typeof(data.get("bench")) != TYPE_ARRAY:
+		data["bench"] = []
+	for member in data["party"] + data["bench"]:
 		for key in ["max_hp", "hp", "pow", "def"]:
 			member[key] = int(member[key])
 	if not data.has("uid"):

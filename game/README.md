@@ -90,6 +90,7 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
 
   Beaten enemies drop coins, and sometimes an item. In a partner's co-op battle you can use HP and SP items and Red Peppers on yourself; the rest are greyed out there.
 - **Grow.** XP and levels (cap 50), coins, items. Losing sends you home with a few coins lost.
+- **Home base.** Up to 2 partners (or recruits) follow you. Anyone who joins while your party is full, or whom you send home from *Party*, waits at your home base (Castle Town for good, Bowser's Castle for evil); there, *Party* > *Waiting here* takes them along again, rested. Switching sides sends your party home too.
 - **Gear.** Pants and badges, like Superstar Saga: wear one of each (menu > *Gear*, Z to put on or take off) for extra HP, SP, POW or DEF. The Badge Shop in Castle Town, the Hoohoo Trader and the Koopa Troop shop at Bowser's Castle sell them; data in `Game.GEAR`, pictures from `tools/slice_gear.py`.
 - **Weekly score.** In towns, the top right shows this week's good vs evil count of PvP wins (a duel won, or a foe who quit or timed out). A new week starts every Monday 00:00 UTC.
 - **Switch sides** any time from the menu. **Saves** go to the browser automatically. Pick *Save* in the menu and then *Save online* to set a password for your username: from then on the game also saves to the server, and *Log In* on the title screen picks it up in any browser or on your phone.
