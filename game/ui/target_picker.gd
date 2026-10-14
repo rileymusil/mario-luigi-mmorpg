@@ -45,10 +45,11 @@ func choose(targets: Array, cancellable := true) -> int:
 	_hits.clear()
 	for i in targets.size():
 		var node: CharacterSprite = targets[i]["node"]
+		var screen_pos := node.get_global_transform_with_canvas().origin
 		var h := node.height() * node.scale.y
 		var w := maxf(24.0, h * 0.75)
 		var hit := Control.new()
-		hit.position = node.position - Vector2(w / 2.0, h)
+		hit.position = screen_pos - Vector2(w / 2.0, h)
 		hit.size = Vector2(w, h + 4.0)
 		hit.mouse_filter = Control.MOUSE_FILTER_STOP
 		hit.gui_input.connect(_on_hit_input.bind(i))
@@ -85,7 +86,8 @@ func _refresh() -> void:
 
 func _update_targets() -> void:
 	var node: CharacterSprite = _targets[_index]["node"]
-	var top := node.position + Vector2(0, -node.height() * node.scale.y - 2.0)
+	var screen_pos := node.get_global_transform_with_canvas().origin
+	var top := screen_pos + Vector2(0, -node.height() * node.scale.y - 2.0)
 	var bob := roundf(sin(_time * 7.0) * 1.5)
 	_target_pointer_pos = top + Vector2(0, -7.0 + bob)
 	var view := get_viewport_rect().size
