@@ -657,7 +657,7 @@ func _recruit(n: Dictionary, speaker: String) -> bool:
 ## (default: the item's price times the branch's "markup", default 1),
 ## thanks (said after buying)}. Shops buy anything back at half price.
 func _shop(branch: Dictionary, speaker: String, node: Node2D) -> void:
-	var stock: Array = branch.get("shop", []).filter(func(s): return Game.ITEMS.has(s.get("item", "")))
+	var stock: Array = branch.get("shop", []).filter(func(s): return not Game.goods(s.get("item", "")).is_empty())
 	var markup := float(branch.get("markup", 1.0))
 	menu.max_rows = 5
 	menu.info_width = 190.0
@@ -681,7 +681,7 @@ func _shop(branch: Dictionary, speaker: String, node: Node2D) -> void:
 func _stock_price(s: Dictionary, markup: float) -> int:
 	if s.has("price"):
 		return int(s["price"])
-	return int(ceil(Game.ITEMS[s["item"]]["price"] * int(s.get("count", 1)) * markup))
+	return int(ceil(Game.goods(s["item"])["price"] * int(s.get("count", 1)) * markup))
 
 
 func _shop_buy(stock: Array, markup: float, speaker: String) -> void:
@@ -694,12 +694,15 @@ func _shop_buy(stock: Array, markup: float, speaker: String) -> void:
 		var infos := []
 		var icons := []
 		for s in stock:
-			var item: Dictionary = Game.ITEMS[s["item"]]
+			var item: Dictionary = Game.goods(s["item"])
 			var count := int(s.get("count", 1))
 			var price := _stock_price(s, markup)
 			labels.append("%s%s  %d" % [item["name"], " x%d" % count if count > 1 else "", price])
-			enabled.append(p["coins"] >= price and Game.item_count(s["item"]) + count <= Game.MAX_ITEM)
-			infos.append("%s (You have %d.)" % [item["info"], Game.item_count(s["item"])])
+			enabled.append(p["coins"] >= price and Game.item_count(s["item"]) + count <= Game.max_count(s["item"]))
+			var have := Game.item_count(s["item"])
+			if Game.GEAR.has(s["item"]) and Game.equipped(item["slot"]) == s["item"]:
+				have += 1
+			infos.append("%s (You have %d.)" % [item["info"], have])
 			icons.append(ItemsScreen.icon_of(s["item"]))
 		labels.append("Done")
 		enabled.append(true)
@@ -716,7 +719,8 @@ func _shop_buy(stock: Array, markup: float, speaker: String) -> void:
 		p["coins"] -= _stock_price(s, markup)
 		Game.add_item(s["item"], int(s.get("count", 1)))
 		Game.save()
-		line = DialogueData.fill(s.get("thanks", "Thank you!"))
+		line = DialogueData.fill(s.get("thanks", "Thank you!" if not Game.GEAR.has(s["item"])
+			else "Thank you! Put it on from Gear in the menu."))
 
 
 func _shop_sell(speaker: String, node: Node2D) -> void:
@@ -724,7 +728,7 @@ func _shop_sell(speaker: String, node: Node2D) -> void:
 	var at := 0
 	var line := "What are you selling? I pay half price."
 	while true:
-		var ids := Game.owned_items()
+		var ids := Game.sellable()
 		if ids.is_empty():
 			await say("You don't have anything to sell.", speaker, node)
 			return
@@ -732,7 +736,7 @@ func _shop_sell(speaker: String, node: Node2D) -> void:
 		var infos := []
 		var icons := []
 		for id in ids:
-			labels.append("%s x%d  %d" % [Game.ITEMS[id]["name"], Game.item_count(id), Game.sell_price(id)])
+			labels.append("%s x%d  %d" % [Game.goods(id)["name"], Game.item_count(id), Game.sell_price(id)])
 			infos.append("Sell one for %d coins." % Game.sell_price(id))
 			icons.append(ItemsScreen.icon_of(id))
 		labels.append("Done")
@@ -748,7 +752,7 @@ func _shop_sell(speaker: String, node: Node2D) -> void:
 		Game.add_item(ids[i], -1)
 		p["coins"] += Game.sell_price(ids[i])
 		Game.save()
-		line = "Sold %s for %d coins!" % [Game.with_article(Game.ITEMS[ids[i]]["name"]), Game.sell_price(ids[i])]
+		line = "Sold %s for %d coins!" % [Game.with_article(Game.goods(ids[i])["name"]), Game.sell_price(ids[i])]
 
 
 func _heal_party() -> void:
@@ -766,8 +770,14 @@ func _pause_menu() -> void:
 	var other := "Evil" if p["side"] == "good" else "Good"
 	while true:
 		pause_screen.open(p, Game.character_name(), map_info["name"])
-		var options := ["Items", "Party", "Go %s" % other, "Save", "Quit", "Close"]
+		var options := ["Items", "Gear", "Party", "Go %s" % other, "Save", "Quit", "Close"]
 		var i := await pause_screen.menu.choose(options, "", true)
+		if i == 1:
+			pause_screen.close()
+			await _gear_menu()
+			continue
+		if i > 1:
+			i -= 1  # the options below Gear keep their old numbers
 		match i:
 			0:
 				pause_screen.close()
@@ -867,6 +877,39 @@ func _items_menu() -> void:
 		at = i
 		await _use_item(ids[i])
 	items_screen.close()
+
+
+## The Gear page: everything you carry or wear; picking one puts it on (or
+## takes it off, if you're wearing it).
+func _gear_menu() -> void:
+	var at := 0
+	while true:
+		var ids := Game.owned_gear()
+		if ids.is_empty():
+			await say("You don't have any pants or badges. The Badge Shop in Castle Town sells them.")
+			break
+		var worn := ids.map(func(id): return Game.equipped(Game.GEAR[id]["slot"]) == id)
+		var labels := []
+		for k in ids.size():
+			labels.append("On" if worn[k] else "x%d" % Game.item_count(ids[k]))
+		var bonus := Game.gear_bonus_text()
+		items_screen.set_tab("GEAR")
+		# Your gear's total once you wear some (there's no room for both).
+		items_screen.set_footer("Wearing: " + bonus if bonus != ""
+			else ("A: Wear  B: Back" if TouchControls.active else "Z: Wear  X: Back"))
+		var i := await items_screen.choose_item(ids, [], at, labels)
+		if i < 0:
+			break
+		at = i
+		var g: Dictionary = Game.GEAR[ids[i]]
+		if worn[i]:
+			Game.unequip(g["slot"])
+		else:
+			Game.equip(ids[i])
+		Game.save()
+		_update_hud()
+	items_screen.close()
+	items_screen.set_tab("ITEMS")
 
 
 ## Uses an item outside battle (HP and SP items).
