@@ -12,7 +12,9 @@ extends RefCounted
 ##   {"name": "tree", "shape": "tree", "rect": [x, y, w, h], "base": y, "foot": [x, y, w, h]}
 ## shape "rect" redraws the whole rectangle; "tree" a rounded canopy over the
 ## top of the rectangle plus a trunk strip down to the base line. "foot" is
-## optional. Any other keys (like "fill", used by tools/make_maps.py) are kept.
+## optional. "poly" (with "poly_for") is an outline traced round the prop's art,
+## used instead of the shape while the rect keeps its size. Any other keys (like
+## "fill", used by tools/make_maps.py) are kept.
 
 const HIDDEN_ALPHA := 0.5
 const FADE_SPEED := 6.0
@@ -196,9 +198,19 @@ func remove(p: Prop) -> void:
 	list.erase(p)
 
 
-## The outline drawn for a prop, in map pixels.
+## The outline drawn for a prop, in map pixels: the one traced round its art
+## ("poly", see tools/make_maps.py --outlines) while its rect keeps the size it
+## was traced for, otherwise the default shape below.
 static func outline(p: Prop) -> PackedVector2Array:
 	var r := Rect2(p.rect)
+	var traced: Array = p.extra.get("poly", [])
+	var traced_for: Array = p.extra.get("poly_for", [])
+	if traced.size() >= 3 and traced_for.size() == 2 and Vector2i(int(traced_for[0]), int(traced_for[1])) == p.rect.size:
+		var pts := PackedVector2Array()
+		for v in traced:
+			pts.append(r.position + Vector2(float(v[0]), float(v[1])))
+		if not Geometry2D.triangulate_polygon(pts).is_empty():
+			return pts
 	if p.shape != "tree" or r.size.x < 4 or r.size.y < 4:
 		return PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)])
 	# Canopy: a superellipse over the top of the rectangle (rounder than a box,

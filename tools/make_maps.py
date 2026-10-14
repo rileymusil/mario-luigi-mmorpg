@@ -26,6 +26,7 @@ Usage:
   python3 tools/make_maps.py "<path to Mario&LuigiMMO folder>" [map ids...]   crop art + build masks
   python3 tools/make_maps.py --mask-only [map ids...]                          rebuild masks from the art in the repo
   add --heights to also rebuild <map>_height.png (otherwise an existing one is kept, see "Height layer")
+  python3 tools/make_maps.py --outlines [map ids...]                           trace prop outlines (see "Prop outlines")
 """
 import colorsys
 import json
@@ -168,8 +169,8 @@ MAPS = {
                   ((0, 0, 1452, 1), (0, 1, 1452, 2), False), ((0, 641, 1452, 642), (0, 640, 1452, 641), False),
                   ((0, 642, 1452, 643), (0, 640, 1452, 641), False), ((0, 643, 1452, 644), (0, 640, 1452, 641), False),
                   ((0, 0, 1, 644), (3, 0, 4, 644), False), ((1, 0, 2, 644), (3, 0, 4, 644), False),
-                  ((2, 0, 3, 644), (3, 0, 4, 644), False)] + [((x, 0, x + 1, 644), (1447, 0, 1448, 644), False)
-                                                              for x in range(1448, 1452)],
+                  ((2, 0, 3, 644), (3, 0, 4, 644), False)] + [((x, 0, x + 1, 644), (1446, 0, 1447, 644), False)
+                                                              for x in range(1447, 1452)],
         "seeds": [(320, 560)],
         "fixes": [
             ("walk", (686, 356, 764, 400)),  # bridge over the river
@@ -630,9 +631,147 @@ def build(map_id, cfg, root, heights=False):
             print(map_id, "height: kept %s_height.png (it may have hand edits; pass --heights to rebuild it)" % map_id)
 
 
+# --- Prop outlines ---------------------------------------------------------------
+# A prop is drawn over the characters as a piece of the map picture. Its
+# default outline (map_props.gd) is its rectangle, or a rounded canopy plus a
+# trunk strip for a tree; both take in bits of the ground round the prop
+# (water, sand, grass in the corners), which then cover anyone behind it.
+# --outlines writes "poly" (the outline traced round the prop's art, relative
+# to its rect) and "poly_for" (the rect size it was traced for) into
+# <map>_props.json; map_props.gd draws that outline while the rect keeps its
+# size.
+#
+# The teal Outskirts trees (51x72 props) all share one sprite, but they stand
+# in rows that overlap, so their outline comes from this table: the canopy
+# row by row (first row 1), then the trunk and roots. It was measured by
+# comparing every tree of the Outskirts: pixels that are the same in most
+# of them are the tree.
+TREE_51x72 = [(22, 28), (24, 29), (22, 31), (20, 33), (19, 34), (19, 34), (18, 35), (18, 35), (10, 35), (8, 35)] + \
+    [(7, 35)] * 5 + [(7, 43)] + [(7, 45)] * 5 + [(2, 45)] * 12 + [(2, 47)] * 5 + [(3, 47)] * 6 + [(3, 43)] * 5 + \
+    [(15, 33)] * 22  # rows 1-71
+
+
+# Outlines drawn by hand (relative to the prop's rect), for props whose
+# art has no closed outline to trace: (map, prop name) -> points.
+HAND_OUTLINES = {
+    ("outskirts", "big_tree_n"): [(2, 0), (110, 0), (110, 82), (84, 86), (76, 100), (68, 104), (70, 128), (38, 128),
+                                  (38, 104), (30, 100), (22, 86), (2, 82)],
+    ("outskirts", "platform_ne_long"): [(2, 0), (208, 0), (208, 58), (178, 58), (178, 94), (162, 94), (162, 58),
+                                        (80, 58), (80, 102), (65, 102), (65, 58), (2, 58)],
+    ("outskirts", "platform_ne_1"): [(0, 0), (46, 0), (46, 56), (31, 58), (31, 96), (13, 96), (13, 58), (0, 56)],
+    ("outskirts", "platform_ne_2"): [(0, 0), (80, 0), (80, 58), (48, 58), (48, 96), (32, 96), (32, 58), (0, 58)],
+    ("outskirts", "platform_ne_3"): [(0, 0), (92, 0), (92, 56), (46, 56), (46, 96), (30, 96), (30, 56), (0, 56)],
+}
+
+
+def span_poly(spans, first_row):
+    """A simple polygon round rows of [left, right] pixel spans (each row's
+    span overlapping the next one's)."""
+    right, left = [], []
+    for i, (l, r) in enumerate(spans):
+        y = first_row + i
+        right += [(r + 1, y), (r + 1, y + 1)]
+        left += [(l, y), (l, y + 1)]
+    pts = right + left[::-1]
+    out = []
+    for i, b in enumerate(pts):
+        a, c = pts[i - 1], pts[(i + 1) % len(pts)]
+        if (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]) != 0:
+            out.append(list(b))
+    return out
+
+
+def trace_prop(art, rect, dark=95):
+    """Row spans of the art inside `rect` enclosed by its dark outline: the
+    ground is flooded in from the rect's edges, the prop is the biggest piece
+    left. None when that piece is too small to be the prop (the outline has
+    gaps, or the prop runs off the rect)."""
+    x0, y0, w, h = rect
+    W, H = art.size
+    px = art.load()
+
+    def is_dark(x, y):
+        X, Y = x0 + x, y0 + y
+        if not (0 <= X < W and 0 <= Y < H):
+            return False
+        r, g, b = px[X, Y][:3]
+        return 0.299 * r + 0.587 * g + 0.114 * b < dark
+
+    out = set()
+    q = deque((x, y) for x in range(w) for y in (0, h - 1) if not is_dark(x, y))
+    q.extend((x, y) for y in range(h) for x in (0, w - 1) if not is_dark(x, y))
+    out.update(q)
+    while q:
+        x, y = q.popleft()
+        for n in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+            if 0 <= n[0] < w and 0 <= n[1] < h and n not in out and not is_dark(*n):
+                out.add(n)
+                q.append(n)
+    inside = {(x, y) for x in range(w) for y in range(h)} - out
+    best = set()
+    while inside:
+        comp = {inside.pop()}
+        q = deque(comp)
+        while q:
+            x, y = q.popleft()
+            for n in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                if n in inside:
+                    inside.discard(n)
+                    comp.add(n)
+                    q.append(n)
+        if len(comp) > len(best):
+            best = comp
+    if len(best) < 0.35 * w * h:
+        return None
+    rows = {}
+    for x, y in best:
+        l, r = rows.get(y, (x, x))
+        rows[y] = (min(l, x), max(r, x))
+    ys = sorted(rows)
+    spans = [rows[y] for y in ys]
+    if ys[-1] - ys[0] + 1 != len(ys) or any(a[1] < b[0] or b[1] < a[0] for a, b in zip(spans, spans[1:])):
+        return None
+    return ys[0], spans
+
+
+def write_outlines(map_id):
+    path = os.path.join(OUT, map_id + "_props.json")
+    if not os.path.exists(path):
+        return
+    art = Image.open(os.path.join(OUT, map_id + ".png")).convert("RGB")
+    with open(path) as f:
+        props = json.load(f)["props"]
+    traced = 0
+    for p in props:
+        x, y, w, h = p["rect"]
+        p.pop("poly", None)
+        p.pop("poly_for", None)
+        hand = HAND_OUTLINES.get((map_id, p.get("name")))
+        if hand:
+            p["poly"] = [list(v) for v in hand]
+            p["poly_for"] = [w, h]
+            traced += 1
+            continue
+        if p.get("shape") == "tree" and (w, h) == (51, 72):
+            found = (1, TREE_51x72)
+        else:
+            found = trace_prop(art, p["rect"])
+        if found:
+            p["poly"] = span_poly(found[1], found[0])
+            p["poly_for"] = [w, h]
+            traced += 1
+    with open(path, "w") as f:
+        f.write('{"props": [\n' + ",\n".join(json.dumps(p, separators=(",", ":")) for p in props) + "\n]}\n")
+    print(map_id, "outlines: %d of %d props" % (traced, len(props)))
+
+
 if __name__ == "__main__":
     args = sys.argv[1:]
     rebuild_heights = "--heights" in args
+    if "--outlines" in args:
+        for map_id in [a for a in args if a != "--outlines"] or list(MAPS):
+            write_outlines(map_id)
+        sys.exit()
     args = [a for a in args if a != "--heights"]
     root = None if args and args[0] == "--mask-only" else (args[0] if args else None)
     if not args:
