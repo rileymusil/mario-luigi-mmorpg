@@ -157,6 +157,9 @@ func _foe_turn(f: Dictionary) -> void:
 		message.text = "%s is stunned and can't move!" % f["name"]
 		await _wait(0.8)
 		return
+	if f.get("boss", false):
+		await _boss_turn(f)  # battle.gd; attacks on the partner go to _boss_remote
+		return
 	var target: Dictionary = _alive(allies).pick_random()
 	if await _foe_attack_taken(f, target):  # Vivian's Shade Veil
 		return
@@ -210,6 +213,15 @@ func _charge(f: Dictionary, target: Dictionary, local: bool) -> void:
 	fnode.move_velocity = Vector2.ZERO
 	fnode.facing = Vector2.LEFT
 	await _wait(0.3)
+
+
+## A boss attacking the partner: an ordinary charge they dodge on their screen.
+func _boss_remote(f: Dictionary, target: Dictionary) -> void:
+	await _charge(f, target, false)
+
+
+func _mirror_fx(fx_entry: Array) -> void:
+	_fx.append(fx_entry)
 
 
 # --- Endings and keeping the partner's screen up to date ---------------------------

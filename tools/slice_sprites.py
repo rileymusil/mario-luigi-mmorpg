@@ -132,6 +132,20 @@ NPCS = {
 }
 
 
+# Bosses (the BOSSES table in game.gd). Battle-style sheets: the idle row is
+# used for all three rows, like Vivian. They face left on the sheets (towards
+# the heroes in battle). Dimentio stays out of the game on purpose.
+_BOSS = "Boss Enemies/Game Boy Advance - Mario & Luigi_ Superstar Saga - Bosses - "
+BOSSES = {
+    "popple": {"sheet": _BOSS + "Popple.png", "rows": [(0, 35, 145, 72)] * 3, "side_faces_left": True},
+    "tolstar": {"sheet": _BOSS + "Tolstar.png", "rows": [(0, 33, 545, 88)] * 3, "side_faces_left": True,
+                "bg": (255, 255, 255), "flood": True},
+    "dragohoho": {"sheet": _BOSS + "Dragohoho.png", "rows": [(0, 41, 530, 105)] * 3, "side_faces_left": True},
+    "wart": {"sheet": "Boss Enemies/Custom _ Edited - Mario Customs - Wart - Wart (Mario & Luigi_ Superstar Saga-Style).png",
+             "rows": [(205, 91, 715, 159)] * 3, "side_faces_left": True, "bg": (255, 255, 255), "flood": True},
+}
+
+
 def bands(mask):
     out, start = [], None
     for i, v in enumerate(mask):
@@ -222,7 +236,7 @@ def build(name, cfg, root):
 
 if __name__ == "__main__":
     root = sys.argv[1]
-    for name, cfg in {**CHARACTERS, **NPCS}.items():
+    for name, cfg in {**CHARACTERS, **NPCS, **BOSSES}.items():
         if len(sys.argv) > 2 and name not in sys.argv[2:]:
             continue
         build(name, cfg, root)

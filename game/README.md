@@ -68,6 +68,16 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
   | Buzzy Beetle | Shell Spin | Tackle; Excellent lowers DEF by 1. |
   | Dry Bones | Bone Toss | Throw. |
   - Pick a command block over whoever's turn it is (arrows and Z, point and click, or tap it), then a target (X, B, a right click or a tap on nobody goes back). Timed-press hints name the A button when you play by touch. Each map has its own battle background.
+- **Bosses.** Four bosses stand in the world; talk to one (X) and pick *Fight!* (the line says the suggested level). They have lots of HP, no running away, and three attacks, each with its own timed press: **jump** (Z, A on touch) over a dash or out from under a slam or something falling, and **hammer back** (Z just before it hits) anything thrown at you, which sends it into the boss. At half HP a boss changes phase: it gets stronger and faster and its third attack joins in. A beaten boss stays beaten in your save; talk to it again for a rematch (half the XP and coins, a smaller item).
+
+  | Boss | Where | Attacks (phase 2 last) | First win |
+  |---|---|---|---|
+  | Popple | Beanbean Outskirts, between the statues in the north-east | Sack Snatch (dash, swipes coins you get back if you win), Bob-omb Toss (hammer back), Hammer Leap (slam) | 40 XP, 40 coins, 2 Super Mushrooms |
+  | Tolstar | Stardust Fields, on the big star | Spike Ball (hammer back), Belly Flop (slam), Star Fall (jump each) | 70 XP, 60 coins, 2 Super Syrups |
+  | Dragohoho | Hoohoo Village, up by the mountain path | Fire Breath (hammer back, can burn), Horn Charge (dash), Hoho Rockfall (jump each) | 110 XP, 80 coins, an Ultra Mushroom |
+  | Wart | Bowser's Castle, at the castle door | Bubble Spray (hammer back), Royal Stomp (slam), Bubble Storm (jump each) | 160 XP, 120 coins, a 1-Up Mushroom |
+
+  Evil players can ask a boss they just beat to join (and *Ask to join* works on bosses in battle, rarely). Each party can have one boss. In a co-op battle the boss attacks your partner with ordinary charges they dodge on their own screen; the beaten flag and item go to whoever started the fight.
 - **Items.** Use them from *Items* in the pause menu (Enter) or the *Items* block in battle (it takes that turn; partners have one too):
 
   | Item | Does | Price |
@@ -84,7 +94,7 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
 
 ## Project layout
 - `scenes/title.tscn` (main scene), `scenes/world.tscn` (any map), `scenes/battle.tscn`.
-- `scripts/game.gd` (autoload `Game`): all data tables (characters, specials, battle moves of partners and recruits, partners, enemies, maps with exits, spawns, enemies and NPCs), the save, and scene changes. Most tuning happens here.
+- `scripts/game.gd` (autoload `Game`): all data tables (characters, specials, battle moves of partners and recruits, partners, enemies, bosses and their attacks (`BOSSES`, `BOSS_ATTACKS`), maps with exits, spawns, enemies and NPCs), the save, and scene changes. Most tuning happens here.
 - `scripts/world.gd`: map loading, walking on the walk mask, doors and exits, followers, enemies, talking (choices, shops, heals), pause menu.
 - `data/dialogue.json` and `scripts/dialogue_data.gd`: what NPCs say (see *Dialogue* below).
 - `scripts/map_props.gd`: trees, buildings and other tall things you can walk behind (props), the walk mask loader. `scripts/map_editor.gd`: the debug-only map editor (F2).

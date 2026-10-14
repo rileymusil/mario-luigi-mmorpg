@@ -16,6 +16,7 @@ const LAND_LATE := 0.08
 const LAND_EXCELLENT := 0.06
 const ALLY_SPOTS := [Vector2(125, 176), Vector2(62, 146), Vector2(52, 192)]
 const ENEMY_SPOTS := [Vector2(280, 168), Vector2(320, 145)]
+const BOSS_SPOT := Vector2(296, 172)
 const SCALE := 1.5
 
 const BACKGROUNDS := "res://assets/battle/backgrounds/%s.png"
@@ -34,6 +35,7 @@ const BADGES := {
 	"jump_green": preload("res://assets/battle/prompt_jump_green.png"),
 	"burst_red": preload("res://assets/battle/prompt_burst_red.png"),
 	"hammer_green": preload("res://assets/battle/prompt_hammer_green.png"),
+	"hammer_red": preload("res://assets/battle/prompt_hammer_red.png"),
 }
 const ICON_HEART := preload("res://assets/ui/icon_heart.png")
 const ICON_BEAN := preload("res://assets/ui/icon_bean.png")
@@ -195,17 +197,21 @@ func _add_ally(info: Dictionary) -> void:
 
 
 func _add_foe(type: String) -> void:
-	var e: Dictionary = Game.ENEMIES[type]
+	var e: Dictionary = Game.foe_info(type)
+	var boss := Game.BOSSES.has(type)
 	var node := CharacterSprite.new()
 	node.character_id = type
 	node.facing = Vector2.LEFT
 	node.scale = Vector2(SCALE, SCALE)
-	node.position = ENEMY_SPOTS[foes.size()]
+	node.position = BOSS_SPOT if boss and foes.is_empty() else ENEMY_SPOTS[foes.size()]
 	stage.add_child(node)
 	var count := foes.filter(func(f): return f["type"] == type).size()
 	foes.append({"name": e["name"] + (" B" if count > 0 else ""), "type": type, "node": node, "ally": false,
 		"hp": e["hp"], "max_hp": e["hp"], "pow": e["pow"], "def": e["def"], "burn": 0, "stun": false,
 		"home": node.position})
+	if boss:
+		# A rematch (beaten before) pays half the XP and coins.
+		foes.back().merge({"boss": true, "phase": 1, "speed": 1.0, "stolen": 0, "rematch": Game.boss_wins(type) > 0})
 
 
 func _hp(a: Dictionary) -> int:
@@ -233,6 +239,10 @@ func _is_player(a: Dictionary) -> bool:
 func _run_battle() -> void:
 	message.text = "%s appeared!" % " and ".join(foes.map(func(f): return f["name"]))
 	await _wait(1.0)
+	for f in foes:
+		if f.get("boss", false):
+			message.text = Game.BOSSES[f["type"]]["battle_line"]
+			await _wait(1.4)
 	if Game.pending_battle.get("first_strike", false):
 		message.text = "First strike!"
 		for f in foes:
@@ -273,7 +283,7 @@ func _commands_for(a: Dictionary) -> Array:
 		return [
 			{"id": "attack", "label": move["name"], "icon": "hammer", "info": move["info"]},
 			_items_command(),
-			{"id": "run", "label": "Run", "icon": "run", "info": "Try to escape."},
+			_run_command(),
 		]
 	var sp: Dictionary = Game.SPECIALS[Game.CHARACTERS[p["character"]]["special"]]
 	return [
@@ -283,8 +293,19 @@ func _commands_for(a: Dictionary) -> Array:
 		_items_command(),
 		{"id": "ask", "label": "Ask to join", "icon": "hand", "enabled": p["side"] == "evil" and Game.can_recruit(),
 			"info": "Evil only: ask an enemy to join your party." if p["side"] == "good" else "Weaker enemies say yes more often."},
-		{"id": "run", "label": "Run", "icon": "run", "info": "Try to escape."},
+		_run_command(),
 	]
+
+
+## No running from a boss.
+func _run_command() -> Dictionary:
+	if _boss_fight():
+		return {"id": "run", "label": "Run", "icon": "run", "enabled": false, "info": "You can't run from a boss!"}
+	return {"id": "run", "label": "Run", "icon": "run", "info": "Try to escape."}
+
+
+func _boss_fight() -> bool:
+	return foes.any(func(f): return f.get("boss", false))
 
 
 func _ally_turn(a: Dictionary) -> String:
@@ -602,13 +623,19 @@ func _special(a: Dictionary, target: Dictionary) -> void:
 
 
 func _ask(target: Dictionary) -> void:
-	var e: Dictionary = Game.ENEMIES[target["type"]]
+	var e: Dictionary = Game.foe_info(target["type"])
+	var boss: bool = target.get("boss", false)
 	var hurt: float = 1.0 - float(target["hp"]) / target["max_hp"]
 	var chance := minf(0.95, e["recruit"] * (1.0 + hurt * 1.5))
 	message.text = "You ask %s to join you..." % target["name"]
 	await _wait(1.0)
+	if boss and Game.has_boss_partner():
+		message.text = "%s won't share a party with another boss!" % target["name"]
+		await _wait(1.0)
+		return
 	if randf() < chance:
-		Game.player["party"].append(Game.make_member("enemy", target["type"]))
+		Game.player["party"].append(Game.make_member("boss" if boss else "enemy", target["type"]))
+		target["joined"] = true
 		message.text = "%s joined your party!" % target["name"]
 		_show_rating("Lucky!")
 		xp_earned += e["xp"] / 2
@@ -625,6 +652,7 @@ func _ask(target: Dictionary) -> void:
 
 func _damage(target: Dictionary, amount: int) -> int:
 	var dmg := maxi(1, amount - int(target["def"]))
+	var was_up := _hp(target) > 0
 	_set_hp(target, _hp(target) - dmg)
 	_flash(target["node"])
 	var node: CharacterSprite = target["node"]
@@ -634,10 +662,11 @@ func _damage(target: Dictionary, amount: int) -> int:
 	rtw.tween_property(node, "position:x", node.position.x, 0.07)
 	_shake(2.5, 0.12)
 	_popup(target["node"].position + Vector2(0, -50), str(dmg))
-	if not target["ally"] and target["hp"] <= 0:
-		var e: Dictionary = Game.ENEMIES[target["type"]]
-		xp_earned += e["xp"]
-		coins_earned += e["coins"]
+	if not target["ally"] and target["hp"] <= 0 and was_up:  # rewards once, not per extra hit
+		var e: Dictionary = Game.foe_info(target["type"])
+		var share := 2 if target.get("rematch", false) else 1
+		xp_earned += e["xp"] / share
+		coins_earned += e["coins"] / share
 		var t := create_tween()
 		t.tween_interval(0.3)
 		t.tween_property(target["node"], "modulate:a", 0.0, 0.4)
@@ -773,7 +802,7 @@ func _steal(target: Dictionary) -> String:
 		target["robbed"] = true
 		Game.add_item("mushroom")
 		return "Stole a Mushroom from %s!" % target["name"]
-	var coins: int = Game.ENEMIES[target["type"]]["coins"]
+	var coins: int = mini(int(Game.foe_info(target["type"])["coins"]), 10)
 	p["coins"] += coins
 	return "Stole %d coins from %s!" % [coins, target["name"]]
 
@@ -1029,6 +1058,9 @@ func _foe_turn(f: Dictionary) -> void:
 		await _wait(0.8)
 		_refresh()
 		return
+	if f.get("boss", false):
+		await _boss_turn(f)
+		return
 	var target: Dictionary = _alive(allies).pick_random()
 	if await _foe_attack_taken(f, target):
 		return
@@ -1069,6 +1101,316 @@ func _foe_turn(f: Dictionary) -> void:
 	await _wait(0.3)
 
 
+# --- Bosses ----------------------------------------------------------------------
+# Bosses (Game.BOSSES) attack with patterns from Game.BOSS_ATTACKS, each with
+# its own timed press: jump over a dash or a slam, hammer thrown things back
+# just before they hit, jump each thing that falls. Below half HP they change
+# phase: stronger, faster, and a third attack joins in.
+
+const BOSS_TINT := Color(1.0, 0.8, 0.8)
+const HAMMER_EARLY := 0.22   # how long before a hit {a} still hammers it back
+const HAMMER_LATE := 0.05
+const HAMMER_BEST := 0.1     # this close is an Excellent counter
+
+
+func _boss_turn(f: Dictionary) -> void:
+	var b: Dictionary = Game.BOSSES[f["type"]]
+	if f["phase"] == 1 and f["hp"] * 2 <= f["max_hp"]:
+		await _boss_phase(f, b)
+	var pool: Array = b["attacks"].duplicate()
+	if f["phase"] >= 2:
+		pool.append(b["phase2"])
+	# Not the same attack three times running.
+	if pool.size() > 1 and f.get("last_attack", "") == f.get("before_last", ""):
+		pool.erase(f.get("last_attack", ""))
+	var id: String = pool.pick_random()
+	f["before_last"] = f.get("last_attack", "")
+	f["last_attack"] = id
+	var atk: Dictionary = Game.BOSS_ATTACKS[id]
+	var power: int = f["pow"] + int(atk.get("power", 0))
+	message.text = "%s uses %s!" % [f["name"], atk["name"]]
+	await _wait(0.7)
+	if atk["kind"] == "rain":
+		await _boss_rain(f, atk, power)
+		return
+	var target: Dictionary = _alive(allies).pick_random()
+	if await _foe_attack_taken(f, target):  # Vivian's Shade Veil
+		return
+	if target.get("remote", false):
+		await _boss_remote(f, target)
+		return
+	match atk["kind"]:
+		"dash":
+			await _boss_dash(f, target, atk, power)
+		"slam":
+			await _boss_slam(f, target, power)
+		"volley":
+			await _boss_volley(f, target, atk, power)
+
+
+## Half HP: the boss gets stronger and faster, and its third attack joins in.
+func _boss_phase(f: Dictionary, b: Dictionary) -> void:
+	f["phase"] = 2
+	f["pow"] += 2
+	f["speed"] = 0.8
+	message.text = b["phase_line"]
+	var node: CharacterSprite = f["node"]
+	var t := create_tween()
+	for i in 3:
+		t.tween_property(node, "modulate", Color(1.0, 0.45, 0.45), 0.12)
+		t.tween_property(node, "modulate", Color.WHITE, 0.12)
+	t.tween_property(node, "modulate", BOSS_TINT, 0.2)
+	_shake(4.0, 0.4)
+	_show_rating("Phase 2!")
+	await t.finished
+	await _wait(1.0)
+
+
+## In a co-op battle, an attack on the partner (who dodges on their own
+## screen). coop_battle.gd plays it as an ordinary charge.
+func _boss_remote(f: Dictionary, target: Dictionary) -> void:
+	await _boss_dash(f, target, {}, f["pow"])
+
+
+## The boss runs at the target: {a} so they are in the air when it hits.
+func _boss_dash(f: Dictionary, target: Dictionary, atk: Dictionary, power: int) -> void:
+	var node: CharacterSprite = target["node"]
+	var fnode: CharacterSprite = f["node"]
+	_say("%s charges at %s! Press {a} to jump!", [f["name"], target["name"]])
+	var badge := _show_badge(target, "jump")
+	for i in 8:
+		fnode.position.x = f["home"].x + (3.0 if i % 2 == 0 else -3.0)
+		await _wait(0.06)
+	fnode.position = f["home"]
+	var start := fnode.position
+	var contact := Vector2(node.position.x + 12, node.position.y)
+	var t := 0.0
+	var duration: float = randf_range(0.5, 0.8) * f["speed"]
+	while t < duration:
+		await get_tree().process_frame
+		t = minf(t + get_process_delta_time(), duration)
+		fnode.position = start.lerp(contact, t / duration)
+		fnode.move_velocity = Vector2.LEFT * 100
+		if Input.is_action_just_pressed("action"):
+			node.jump()
+	badge.queue_free()
+	if node.jump_height > 8.0:
+		_show_rating("Dodged!")
+		await _slide(fnode, contact + Vector2(-60, 0), 0.25)
+	else:
+		_damage(target, power)
+		var steal: int = mini(int(atk.get("steal", 0)), int(Game.player["coins"]))
+		if steal > 0:
+			Game.player["coins"] -= steal
+			f["stolen"] += steal
+			message.text = "%s swiped %d coins!" % [f["name"], steal]
+		await _slide(fnode, contact + Vector2(24, 0), 0.15)
+	await _wait(0.2)
+	fnode.move_velocity = Vector2.RIGHT * 100
+	await _slide(fnode, f["home"], 0.4)
+	fnode.move_velocity = Vector2.ZERO
+	fnode.facing = Vector2.LEFT
+	await _wait(0.3)
+
+
+## The boss leaps high and comes down on the target: {a} to jump clear just
+## before it lands.
+func _boss_slam(f: Dictionary, target: Dictionary, power: int) -> void:
+	var node: CharacterSprite = target["node"]
+	var fnode: CharacterSprite = f["node"]
+	_say("%s leaps at %s! Press {a} to jump as it lands!", [f["name"], target["name"]])
+	var badge := _show_badge(target, "jump")
+	var squat := create_tween()
+	squat.tween_property(fnode, "scale", Vector2(SCALE * 1.15, SCALE * 0.85), 0.25)
+	squat.tween_property(fnode, "scale", Vector2(SCALE, SCALE), 0.08)
+	await squat.finished
+	var land := Vector2(node.position.x + 6, node.position.y)
+	var duration: float = randf_range(0.75, 1.0) * f["speed"]
+	var t := 0.0
+	var from: Vector2 = fnode.position
+	while t < duration:
+		await get_tree().process_frame
+		t = minf(t + get_process_delta_time(), duration)
+		var k := t / duration
+		fnode.position = from.lerp(land, k) + Vector2(0, -4.0 * 90.0 * k * (1.0 - k))
+		if Input.is_action_just_pressed("action"):
+			node.jump()
+	badge.queue_free()
+	_shake(5.0, 0.2)
+	_burst(land, Color(0.95, 0.85, 0.6), 26.0)
+	if node.jump_height > 8.0:
+		_show_rating("Dodged!")
+	else:
+		_damage(target, power)
+	await _wait(0.35)
+	await _arc(fnode, fnode.position, f["home"], 40.0, 0.45, false)
+	fnode.facing = Vector2.LEFT
+	await _wait(0.3)
+
+
+## Things thrown one after another at the target: {a} just before each one
+## hits swings a hammer that sends it back at the boss.
+func _boss_volley(f: Dictionary, target: Dictionary, atk: Dictionary, power: int) -> void:
+	var count: int = int(atk.get("count", 1)) + (1 if f["phase"] >= 2 else 0)
+	var color: Color = atk.get("color", Color.WHITE)
+	for i in count:
+		if _hp(target) <= 0 or _hp(f) <= 0:
+			break
+		_say("%s! Press {a} just before it hits to hammer it back!", [atk["name"]])
+		var badge := _show_badge(target, "hammer")
+		var from := _middle(f) + Vector2(-14, 0)
+		var to := _middle(target) + Vector2(8, 0)
+		var duration: float = randf_range(0.6, 0.9) * f["speed"]
+		var ball := _circle(6.0, color.darkened(0.55))
+		ball.add_child(_circle(4.5, color))
+		ball.z_index = 10
+		stage.add_child(ball)
+		_mirror_fx(["proj", roundi(from.x), roundi(from.y), roundi(to.x), roundi(to.y), color.to_html(false)])
+		var pressed := INF
+		var t := 0.0
+		while t < duration:
+			await get_tree().process_frame
+			t = minf(t + get_process_delta_time(), duration)
+			var k := t / duration
+			ball.position = from.lerp(to, k) + Vector2(0, -4.0 * 20.0 * k * (1.0 - k))
+			if pressed == INF and Input.is_action_just_pressed("action"):
+				pressed = t - duration
+		if pressed == INF:  # a moment's grace after it reaches you
+			var g := 0.0
+			while g < HAMMER_LATE:
+				await get_tree().process_frame
+				g += get_process_delta_time()
+				if Input.is_action_just_pressed("action"):
+					pressed = g
+					break
+		badge.queue_free()
+		if pressed >= -HAMMER_EARLY and pressed <= HAMMER_LATE:
+			var best := absf(pressed) <= HAMMER_BEST
+			_show_rating("%s  Counter!" % ("Excellent" if best else "Good"))
+			_swing(target)
+			await _arc(ball, ball.position, _middle(f), 30.0, 0.3, false)
+			ball.queue_free()
+			_burst(_middle(f), color, 18.0)
+			_damage(f, int(target["pow"]) + (3 if best else 1))
+		else:
+			ball.queue_free()
+			_burst(to, color, 14.0)
+			_damage(target, power)
+			if randf() < float(atk.get("burn", 0.0)) and _hp(target) > 0:
+				target["burn"] = 2
+				message.text = "%s is burning!" % target["name"]
+		await _wait(0.35)
+
+
+## A quick hammer swing in front of whoever hits something back.
+func _swing(a: Dictionary) -> void:
+	var node: CharacterSprite = a["node"]
+	var t := create_tween()
+	t.tween_property(node, "position:x", a["home"].x + 10.0, 0.06)
+	t.tween_property(node, "position:x", a["home"].x, 0.12)
+
+
+## Something falls on every ally in turn: {a} to jump it (you jump for your
+## partners too). A partner in co-op dodges on their own screen.
+func _boss_rain(f: Dictionary, atk: Dictionary, power: int) -> void:
+	var color: Color = atk.get("color", Color.WHITE)
+	for a in _alive(allies):
+		if _alive(foes).is_empty():
+			return
+		if a.get("remote", false):
+			await _boss_remote(f, a)
+			continue
+		var node: CharacterSprite = a["node"]
+		_say("%s! Press {a} to jump before it lands on %s!", [atk["name"], a["name"]])
+		var badge := _show_badge(a, "jump")
+		var land := node.position + Vector2(0, -6)
+		var from := Vector2(land.x + 30, -20)
+		var rock := _circle(7.0, color.darkened(0.5))
+		rock.add_child(_circle(5.0, color))
+		rock.z_index = 10
+		stage.add_child(rock)
+		_mirror_fx(["proj", roundi(from.x), roundi(from.y), roundi(land.x), roundi(land.y), color.to_html(false)])
+		var duration: float = randf_range(0.7, 1.0) * f["speed"]
+		var t := 0.0
+		while t < duration:
+			await get_tree().process_frame
+			t = minf(t + get_process_delta_time(), duration)
+			rock.position = from.lerp(land, t / duration)
+			if Input.is_action_just_pressed("action"):
+				node.jump()
+		badge.queue_free()
+		rock.queue_free()
+		_burst(land, color, 20.0)
+		if node.jump_height > 8.0:
+			_show_rating("Dodged!")
+		else:
+			_damage(a, power)
+		await _wait(0.4)
+
+
+## Extra effects for a co-op partner's screen (coop_battle.gd sends them).
+func _mirror_fx(_fx_entry: Array) -> void:
+	pass
+
+
+## After beating a boss: its item, the coins it swiped, the win in the save,
+## and an evil player can ask it to join.
+func _boss_won(f: Dictionary) -> void:
+	var id: String = f["type"]
+	var b: Dictionary = Game.BOSSES[id]
+	var first: bool = not f.get("rematch", false)
+	message.text = b["won_line"]
+	await _wait(1.4)
+	if f["stolen"] > 0:
+		Game.player["coins"] += f["stolen"]
+		message.text = "Got back the %d coins %s swiped!" % [f["stolen"], f["name"]]
+		f["stolen"] = 0
+		await _wait(1.0)
+	var reward: Array = b["reward"] if first else b["rematch_reward"]
+	var got := Game.add_item(reward[0], int(reward[1]))
+	if got > 0:
+		var item_name: String = Game.ITEMS[reward[0]]["name"]
+		message.text = "%s dropped %s!" % [f["name"], Game.with_article(item_name) if got == 1 else "%d %ss" % [got, item_name]]
+		await _item_pop(allies[0], reward[0])
+		await _wait(0.9)
+	Game.mark_boss_beaten(id)
+	if first:
+		message.text = "%s is beaten! (You can fight again for smaller rewards.)" % f["name"]
+		_show_rating("Boss beaten!")
+		await _wait(1.6)
+	await _boss_join(f)
+
+
+## Evil players can ask a boss they just beat to join (one boss per party).
+func _boss_join(f: Dictionary) -> void:
+	var p: Dictionary = Game.player
+	if p["side"] != "evil" or not Game.can_recruit() or Game.has_boss_partner() or _hp(f) > 0:
+		return
+	if f.get("joined", false):
+		return
+	var node: CharacterSprite = f["node"]
+	var t := create_tween()
+	t.tween_property(node, "modulate", Color.WHITE, 0.4)
+	await t.finished
+	_say("%s gets back up... Ask %s to join your party?" % [f["name"], f["name"]])
+	menu.max_rows = 0
+	var i := await menu.choose(["Ask to join", "Leave it"], "", true)
+	if i != 0:
+		message.text = ""
+		return
+	message.text = "You ask %s to join you..." % f["name"]
+	await _wait(1.0)
+	if randf() < Game.BOSS_JOIN_CHANCE:
+		p["party"].append(Game.make_member("boss", f["type"]))
+		message.text = "%s joined your party!" % f["name"]
+		_show_rating("Lucky!")
+	else:
+		message.text = "%s refuses! (Beat it again and ask again.)" % f["name"]
+		var fade := create_tween()
+		fade.tween_property(node, "modulate:a", 0.0, 0.4)
+	await _wait(1.4)
+
+
 # --- Endings -------------------------------------------------------------------
 
 func _win() -> void:
@@ -1083,6 +1425,9 @@ func _win() -> void:
 	_refresh()
 	await _wait(1.6)
 	await _show_drops(Game.roll_drops(foes.map(func(f): return f["type"])))
+	for f in foes:
+		if f.get("boss", false):
+			await _boss_won(f)
 	if levels > 0:
 		message.text = "Level up! %s is now level %d!" % [Game.character_name(), p["level"]]
 		_show_rating("LEVEL UP!")
@@ -1439,7 +1784,7 @@ func _light_label() -> Label:
 ## The top of a character's front-facing frame (their head), for the HP boxes.
 func _face(id: String) -> Texture2D:
 	var tex: Texture2D = load("res://assets/characters/%s.png" % id)
-	var info: Dictionary = Game.CHARACTERS.get(id, Game.PARTNERS.get(id, Game.ENEMIES.get(id, {})))
+	var info: Dictionary = Game.CHARACTERS.get(id, Game.PARTNERS.get(id, Game.foe_info(id)))
 	var cell := Vector2i(tex.get_width() / int(info.get("frames", 8)), tex.get_height() / 3)
 	var used := tex.get_image().get_region(Rect2i(Vector2i.ZERO, cell)).get_used_rect()
 	var face := AtlasTexture.new()

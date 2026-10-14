@@ -49,7 +49,7 @@ func open(p: Dictionary, character_name: String) -> void:
 		[["pow", p["pow"]], ["def", p["def"]]])
 	for m in p["party"]:
 		y += CARD_GAP
-		var card := _add_card(Vector2(CARD_X, y), CARD_GREEN, m["name"], "Partner" if m["kind"] == "partner" else "Recruit",
+		var card := _add_card(Vector2(CARD_X, y), CARD_GREEN, m["name"], {"partner": "Partner", "boss": "Boss"}.get(m["kind"], "Recruit"),
 			m["id"], [["heart", "%d/%d" % [m["hp"], m["max_hp"]]]], [["pow", m["pow"]], ["def", m["def"]]])
 		card.gui_input.connect(_on_card_input.bind(_member_cards.size()))
 		_member_cards.append(card)
