@@ -59,8 +59,8 @@ func _my_turn() -> void:
 	var p: Dictionary = Game.player
 	var sp_id: String = Game.CHARACTERS[p["character"]]["special"]
 	var sp: Dictionary = Game.SPECIALS[sp_id]
-	var options := ["Jump", "%s (%d SP)" % [sp["name"], sp["sp"]], "Mushroom (%d)" % p["mushrooms"], "Run"]
-	var enabled := [true, p["sp"] >= sp["sp"], p["mushrooms"] > 0, true]
+	var options := ["Jump", "%s (%d SP)" % [sp["name"], sp["sp"]], "Mushroom (%d)" % Game.item_count("mushroom"), "Run"]
+	var enabled := [true, p["sp"] >= sp["sp"], Game.item_count("mushroom") > 0, true]
 	var infos := [_keys("Stomp! Press {a} as you land for a 2nd hit."), _keys(sp["info"]), "Heal 10 HP.", "Try to escape."]
 	message.text = "Your turn"
 	var choice: String = options[await menu.choose(options, me["name"], false, enabled, infos)]
@@ -80,7 +80,7 @@ func _my_turn() -> void:
 		await _wait(0.8)
 		return
 	if choice.begins_with("Mushroom"):
-		p["mushrooms"] -= 1
+		Game.add_item("mushroom", -1)
 		_heal(me, 10)
 		Net.duel_send({"t": "duel_act", "move": "heal", "hp": _hp(me), "name": "Mushroom"})
 		await _wait(0.8)
