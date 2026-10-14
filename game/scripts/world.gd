@@ -31,6 +31,7 @@ var player: CharacterSprite
 var followers: Array[CharacterSprite] = []
 var enemies: Array = []   # [{node, home, target, pause, key, type}]
 var npcs: Array = []      # [{node, id}]
+var score_box: PanelContainer  # this week's good vs evil score, in towns
 var save_prompt: TextPrompt  # password box for saving online (made when first needed)
 var busy := false         # true while a menu or dialog is open
 var _grace := 1.5         # seconds after arriving before enemies can start a battle
@@ -121,6 +122,8 @@ func _ready() -> void:
 	if MapEditor.available():
 		add_child(MapEditor.new())
 
+	if map_info["safe"]:
+		_show_weekly_score()
 	dialog.visible = false
 	if arriving:
 		_show_area_name()
@@ -932,6 +935,25 @@ func _party_menu() -> void:
 	party_screen.close()
 
 
+## Towns show this week's good vs evil count of PvP wins (top right).
+func _show_weekly_score() -> void:
+	var score: Dictionary = await Cloud.weekly_score()
+	if score.is_empty() or not is_inside_tree():
+		return
+	score_box = PanelContainer.new()
+	score_box.theme_type_variation = &"NavyPanel"
+	score_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var l := Label.new()
+	l.theme_type_variation = &"LightLabel"
+	var days := ceili((float(score["ends_at"]) / 1000.0 - Time.get_unix_time_from_system()) / 86400.0)
+	l.text = "Good %d : %d Evil" % [int(score["good"]), int(score["evil"])]
+	l.tooltip_text = "This week's PvP wins for each side. A new week starts in %d day%s." % [days, "" if days == 1 else "s"]
+	score_box.add_child(l)
+	$HUD.add_child(score_box)
+	$HUD.move_child(score_box, 0)  # under menus and dialogue
+	_update_hud()
+
+
 func _show_area_name() -> void:
 	area_name.show_name(map_info["name"])
 
@@ -964,6 +986,14 @@ func _update_hud() -> void:
 
 	area_name.position.x = roundf(safe.position.x + (safe.size.x - area_name.size.x) / 2.0)
 	area_name.position.y = safe.position.y + 30.0
+
+	if score_box != null:
+		score_box.reset_size()
+		score_box.position = Vector2(safe.end.x - score_box.size.x - 4.0, safe.position.y + 3.0)
+		if score_box.position.x < status.position.x + status.size.x + 2.0:
+			# No room beside the status bar: just under its right end.
+			score_box.position = Vector2(status.position.x + status.size.x - score_box.size.x,
+				status.position.y + status.size.y + 1.0).round()
 
 	# Keep overworld menu anchored to top-right safe edge
 	menu.position = Vector2(safe.end.x - menu.size.x - 4.0, safe.position.y + 24.0)

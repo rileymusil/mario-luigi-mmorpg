@@ -14,6 +14,8 @@ signal _uploaded(ok: bool)
 var _dirty := false
 var _uploading := false
 var _since := UPLOAD_EVERY
+var _score := {}
+var _score_at := -60000
 
 
 ## https:// address of the game server (the same Worker as Net's wss:// one).
@@ -131,6 +133,18 @@ func pull_newer() -> void:
 			_dirty = false
 
 
+## This week's good vs evil PvP wins: {good, evil, ends_at} (empty if the
+## server can't be reached). Asked at most once a minute.
+func weekly_score() -> Dictionary:
+	if Time.get_ticks_msec() - _score_at < 60000 and not _score.is_empty():
+		return _score
+	var res := await call_server("", {}, 6.0, "/score")
+	if res["status"] == 200 and res["body"].has("good"):
+		_score = res["body"]
+		_score_at = Time.get_ticks_msec()
+	return _score
+
+
 ## What an error means to the player.
 static func error_text(code: String) -> String:
 	match code:
@@ -155,14 +169,18 @@ func _error(res: Dictionary) -> String:
 	return str(res["body"].get("error", "error"))
 
 
-## POSTs to /account/<op>. Returns {"status": HTTP status (0: no answer),
-## "body": the reply}.
-func call_server(op: String, body: Dictionary, timeout := 10.0) -> Dictionary:
+## POSTs to /account/<op> (or GETs `path`). Returns {"status": HTTP status
+## (0: no answer), "body": the reply}.
+func call_server(op: String, body: Dictionary, timeout := 10.0, path := "") -> Dictionary:
 	var req := HTTPRequest.new()
 	req.timeout = timeout
 	add_child(req)
-	var err := req.request(base_url() + "/account/" + op, ["Content-Type: application/json"],
-		HTTPClient.METHOD_POST, JSON.stringify(body))
+	var err: int
+	if path != "":
+		err = req.request(base_url() + path)
+	else:
+		err = req.request(base_url() + "/account/" + op, ["Content-Type: application/json"],
+			HTTPClient.METHOD_POST, JSON.stringify(body))
 	if err != OK:
 		req.queue_free()
 		return {"status": 0, "body": {}}

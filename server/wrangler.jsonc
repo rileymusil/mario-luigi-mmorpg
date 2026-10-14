@@ -6,12 +6,14 @@
   "durable_objects": {
     "bindings": [
       { "name": "ZONES", "class_name": "Zone" },
-      { "name": "ACCOUNTS", "class_name": "Account" }
+      { "name": "ACCOUNTS", "class_name": "Account" },
+      { "name": "SCORES", "class_name": "Scores" }
     ]
   },
   // The free plan only allows SQLite-backed Durable Objects.
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["Zone"] },
-    { "tag": "v2", "new_sqlite_classes": ["Account"] }
+    { "tag": "v2", "new_sqlite_classes": ["Account"] },
+    { "tag": "v3", "new_sqlite_classes": ["Scores"] }
   ]
 }

@@ -90,6 +90,7 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
 
   Beaten enemies drop coins, and sometimes an item. In a partner's co-op battle you can use HP and SP items and Red Peppers on yourself; the rest are greyed out there.
 - **Grow.** XP and levels (cap 50), coins, items. Losing sends you home with a few coins lost.
+- **Weekly score.** In towns, the top right shows this week's good vs evil count of PvP wins (a duel won, or a foe who quit or timed out). A new week starts every Monday 00:00 UTC.
 - **Switch sides** any time from the menu. **Saves** go to the browser automatically. Pick *Save* in the menu and then *Save online* to set a password for your username: from then on the game also saves to the server, and *Log In* on the title screen picks it up in any browser or on your phone.
 
 ## Project layout
