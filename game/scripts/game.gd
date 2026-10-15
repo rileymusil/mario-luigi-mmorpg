@@ -1005,7 +1005,7 @@ const MAPS := {
 			{"id": "koops", "pos": Vector2(1120, 430)}, {"id": "bow", "pos": Vector2(980, 470)},
 			{"id": "bean_guard", "pos": Vector2(300, 150), "talk": "palace_guard"},
 			{"id": "bean_guard", "pos": Vector2(382, 150), "talk": "palace_guard"},
-			{"id": "bean_villager", "pos": Vector2(55, 425), "talk": "town_gate", "face": "right"},
+			{"id": "bean_villager", "pos": Vector2(45, 370), "talk": "town_gate", "face": "right"},
 			{"id": "bean_kid", "pos": Vector2(665, 450), "talk": "town_kid"},
 			{"id": "bean_girl", "pos": Vector2(1180, 400), "talk": "town_girl", "face": "left"},
 			{"id": "toadsworth", "pos": Vector2(1330, 575), "talk": "toadsworth", "face": "left"},

@@ -176,6 +176,7 @@ MAPS = {
             ("walk", (686, 356, 764, 400)),  # bridge over the river
             ("walk", (0, 398, 60, 452)), ("walk", (1392, 398, 1452, 452)),  # west and east gates
             ("walk", (312, 256, 368, 278)), ("walk", (312, 420, 368, 438)),  # central promenade stairs
+            ("walk", (60, 386, 220, 414)),  # sidewalk behind house_sw
             ("block", (578, 0, 676, 136)), ("block", (776, 0, 872, 150)),  # stairs up to the castle
             ("block", (208, 0, 482, 118)),  # palace windows
         ],
