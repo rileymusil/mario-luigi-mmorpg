@@ -256,24 +256,41 @@ func paint_feet(img: Image) -> void:
 			img.fill_rect(p.foot, Color.BLACK)
 
 
-## Fades props that are drawn over `who` (feet above their base line).
-func update_fade(who: CharacterSprite, delta: float) -> void:
-	var feet := who.position
-	var h := who.height()
-	var body := []  # a few points spread over the sprite
-	for fy in [0.1, 0.5, 0.85]:
-		for fx in [-0.25, 0.0, 0.25]:
-			body.append(feet + Vector2(fx * h, -fy * h))
+## Fades props that are drawn over characters (feet above their base line).
+## Accepts a single CharacterSprite or an Array of CharacterSprites.
+func update_fade(actors, delta: float) -> void:
+	var list_to_check: Array = []
+	if actors is Array:
+		list_to_check = actors
+	elif actors != null:
+		list_to_check = [actors]
+
 	for p in list:
 		if p.node == null:
 			continue
 		var hides := false
-		if feet.y < p.base and feet.x > p.rect.position.x - 12 and feet.x < p.rect.end.x + 12 \
-				and feet.y > p.rect.position.y - 4 and feet.y - who.height() < p.rect.end.y:
-			for q in body:
-				if Geometry2D.is_point_in_polygon(q, p.polygon):
-					hides = true
-					break
+		for who in list_to_check:
+			if who == null or not is_instance_valid(who):
+				continue
+			var feet: Vector2 = who.position
+			var h: float = who.height()
+			if feet.y < p.base and feet.x > p.rect.position.x - 14 and feet.x < p.rect.end.x + 14 \
+					and feet.y >= p.rect.position.y - 14 and feet.y - h < p.rect.end.y:
+				var char_box := Rect2(feet.x - 10.0, feet.y - h, 20.0, h)
+				if Rect2(p.rect).intersects(char_box):
+					if p.shape != "tree":
+						hides = true
+					else:
+						for fy in [0.0, 0.25, 0.5, 0.85]:
+							for fx in [-0.3, 0.0, 0.3]:
+								var q := feet + Vector2(fx * h, -fy * h)
+								if Geometry2D.is_point_in_polygon(q, p.polygon):
+									hides = true
+									break
+							if hides:
+								break
+			if hides:
+				break
 		var target := HIDDEN_ALPHA if hides else 1.0
 		p.node.modulate.a = move_toward(p.node.modulate.a, target, FADE_SPEED * delta)
 
