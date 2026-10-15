@@ -1674,11 +1674,7 @@ func go_to_map(map_id: String, spawn: String) -> void:
 	player["spawn"] = spawn
 	player["position"] = null
 	save()
-	var tree := get_tree()
-	if tree and not BattleTransition.is_playing():
-		BattleTransition.out_of_battle(tree, func(): tree.change_scene_to_file(WORLD_SCENE))
-	else:
-		get_tree().call_deferred("change_scene_to_file", WORLD_SCENE)
+	get_tree().call_deferred("change_scene_to_file", WORLD_SCENE)
 
 
 func start_battle(enemies: Array, defeated_key: String, overworld_position: Vector2) -> void:

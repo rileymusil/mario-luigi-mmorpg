@@ -274,8 +274,7 @@ func update_fade(actors, delta: float) -> void:
 				continue
 			var feet: Vector2 = who.position
 			var h: float = who.height()
-			if feet.y < p.base and feet.x > p.rect.position.x - 14 and feet.x < p.rect.end.x + 14 \
-					and feet.y >= p.rect.position.y - 14 and feet.y - h < p.rect.end.y:
+			if feet.y < p.base and feet.x > p.rect.position.x - 14 and feet.x < p.rect.end.x + 14 and feet.y >= p.rect.position.y - 14 and feet.y - h < p.rect.end.y:
 				var char_box := Rect2(feet.x - 10.0, feet.y - h, 20.0, h)
 				if Rect2(p.rect).intersects(char_box):
 					if p.shape != "tree":

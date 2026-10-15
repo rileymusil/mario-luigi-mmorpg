@@ -369,7 +369,7 @@ func _process(delta: float) -> void:
 	if online and online.players:
 		for op in online.players.values():
 			if op.has("node") and op["node"] != null:
-			fade_actors.append(op["node"])
+				fade_actors.append(op["node"])
 	props.update_fade(fade_actors, delta)
 	online.tick(delta, busy or editing)
 	if busy or editing:
