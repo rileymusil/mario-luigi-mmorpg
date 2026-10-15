@@ -978,14 +978,14 @@ const _TOWER_5 := ["lava_piranha", "beldam", "cortez", "macho_grubba"]
 const MAPS := {
 	"castle_town": {
 		"name": "Beanbean Castle Town", "battle_bg": "castle_town", "safe": true,
-		"spawns": {"start": Vector2(320, 560), "east_gate": Vector2(1350, 409), "west_gate": Vector2(70, 409),
+		"spawns": {"start": Vector2(339, 560), "east_gate": Vector2(1350, 409), "west_gate": Vector2(70, 409),
 			"palace": Vector2(340, 135), "house_nw": Vector2(100, 272), "shop_badge": Vector2(500, 310),
 			"house_sw": Vector2(147, 562), "house_s": Vector2(579, 547), "cafe": Vector2(902, 540),
 			"house_ne_w": Vector2(1016, 205), "house_ne_e": Vector2(1146, 205), "shop_mushroom": Vector2(1096, 392),
 			"house_se": Vector2(1303, 562)},
 		"exits": [
 			{"rect": Rect2(1430, 380, 22, 60), "to": "outskirts", "spawn": "south_path"},
-			{"rect": Rect2(0, 380, 22, 60), "to": "outskirts", "spawn": "south_path"},
+			{"rect": Rect2(0, 380, 22, 60), "to": "outskirts", "spawn": "west_path"},
 			{"rect": Rect2(320, 116, 40, 12), "to": "castle_hall", "spawn": "entrance", "door": true},
 			{"rect": Rect2(84, 258, 32, 12), "to": "house_nw", "spawn": "door", "door": true},
 			{"rect": Rect2(484, 296, 32, 12), "to": "shop_badge", "spawn": "door", "door": true},
@@ -999,25 +999,26 @@ const MAPS := {
 		],
 		"enemies": [],
 		"npcs": [
-			{"id": "toad", "pos": Vector2(435, 311)}, {"id": "pianta", "pos": Vector2(560, 330)},
+			{"id": "toad", "pos": Vector2(450, 380)}, {"id": "pianta", "pos": Vector2(560, 330)},
 			{"id": "bombette", "pos": Vector2(150, 290)}, {"id": "goombella", "pos": Vector2(640, 220)},
 			{"id": "bobbery", "pos": Vector2(1000, 230)}, {"id": "peasley", "pos": Vector2(1180, 215)},
 			{"id": "koops", "pos": Vector2(1120, 430)}, {"id": "bow", "pos": Vector2(980, 470)},
 			{"id": "bean_guard", "pos": Vector2(300, 150), "talk": "palace_guard"},
 			{"id": "bean_guard", "pos": Vector2(382, 150), "talk": "palace_guard"},
-			{"id": "bean_villager", "pos": Vector2(90, 420), "talk": "town_gate", "face": "right"},
-			{"id": "bean_kid", "pos": Vector2(640, 450), "talk": "town_kid"},
+			{"id": "bean_villager", "pos": Vector2(55, 425), "talk": "town_gate", "face": "right"},
+			{"id": "bean_kid", "pos": Vector2(665, 450), "talk": "town_kid"},
 			{"id": "bean_girl", "pos": Vector2(1180, 400), "talk": "town_girl", "face": "left"},
-			{"id": "toadsworth", "pos": Vector2(1330, 420), "talk": "toadsworth", "face": "left"},
+			{"id": "toadsworth", "pos": Vector2(1330, 575), "talk": "toadsworth", "face": "left"},
 			{"id": "bean_villager", "pos": Vector2(250, 300), "talk": "town_gossip"},
 		],
 	},
 	"outskirts": {
 		"name": "Beanbean Outskirts", "battle_bg": "outskirts", "safe": false,
-		"spawns": {"south_path": Vector2(800, 615), "east_bridge": Vector2(1420, 65), "east_path": Vector2(1425, 405),
+		"spawns": {"south_path": Vector2(800, 615), "west_path": Vector2(30, 270), "east_bridge": Vector2(1420, 65), "east_path": Vector2(1425, 405),
 			"pier": Vector2(381, 612)},
 		"exits": [
 			{"rect": Rect2(760, 630, 90, 7), "to": "castle_town", "spawn": "east_gate"},
+			{"rect": Rect2(0, 245, 16, 50), "to": "castle_town", "spawn": "west_gate"},
 			{"rect": Rect2(1455, 30, 10, 70), "to": "bowser_castle", "spawn": "bridge"},
 			{"rect": Rect2(1452, 380, 13, 50), "to": "outskirts_east", "spawn": "west"},
 			{"rect": Rect2(362, 630, 38, 7), "to": "outskirts_pier", "spawn": "north"},
@@ -1673,7 +1674,11 @@ func go_to_map(map_id: String, spawn: String) -> void:
 	player["spawn"] = spawn
 	player["position"] = null
 	save()
-	get_tree().call_deferred("change_scene_to_file", WORLD_SCENE)
+	var tree := get_tree()
+	if tree and not BattleTransition.is_playing():
+		BattleTransition.out_of_battle(tree, func(): tree.change_scene_to_file(WORLD_SCENE))
+	else:
+		get_tree().call_deferred("change_scene_to_file", WORLD_SCENE)
 
 
 func start_battle(enemies: Array, defeated_key: String, overworld_position: Vector2) -> void:

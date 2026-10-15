@@ -171,16 +171,20 @@ MAPS = {
                   ((0, 0, 1, 644), (3, 0, 4, 644), False), ((1, 0, 2, 644), (3, 0, 4, 644), False),
                   ((2, 0, 3, 644), (3, 0, 4, 644), False)] + [((x, 0, x + 1, 644), (1446, 0, 1447, 644), False)
                                                               for x in range(1447, 1452)],
-        "seeds": [(320, 560)],
+        "seeds": [(339, 560)],
         "fixes": [
             ("walk", (686, 356, 764, 400)),  # bridge over the river
             ("walk", (0, 398, 60, 452)), ("walk", (1392, 398, 1452, 452)),  # west and east gates
+            ("walk", (312, 256, 368, 278)), ("walk", (312, 420, 368, 438)),  # central promenade stairs
             ("block", (578, 0, 676, 136)), ("block", (776, 0, 872, 150)),  # stairs up to the castle
             ("block", (208, 0, 482, 118)),  # palace windows
         ],
         # The cream brick walls under the grass terraces are ledge faces: the
         # low ones can be jumped up, any of them dropped down.
-        "height": {"faces": [("auto", town_wall, (6, 48), None)]},
+        "height": {
+            "faces": [("auto", town_wall, (6, 48), None)],
+            "flat": [(312, 256, 368, 278), (312, 420, 368, 438)],
+        },
     },
     "outskirts": {
         "sheet": "Maps/Game Boy Advance - Mario & Luigi_ Superstar Saga - Maps - Beanbean Outskirts.png",
@@ -435,7 +439,7 @@ def open_behind_props(mask, hard, props):
     hard = hard.load()
     px = mask.load()
     for p in props:
-        if p.get("fill") == "none":
+        if p.get("fill") == "none" or any(k in p.get("name", "") for k in ["house", "shop", "palace", "hut"]):
             continue
         x0, y0, rw, rh = p["rect"]
         base = int(p["base"])

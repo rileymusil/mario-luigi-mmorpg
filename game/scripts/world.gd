@@ -359,7 +359,18 @@ func _process(delta: float) -> void:
 	if player == null:
 		return
 	_update_hud()
-	props.update_fade(player, delta)
+	var fade_actors: Array = [player] + followers
+	for n in npcs:
+		if n.has("node") and n["node"] != null:
+			fade_actors.append(n["node"])
+	for e in enemies:
+		if e.has("node") and e["node"] != null:
+			fade_actors.append(e["node"])
+	if online and online.players:
+		for op in online.players.values():
+			if op.has("node") and op["node"] != null:
+			fade_actors.append(op["node"])
+	props.update_fade(fade_actors, delta)
 	online.tick(delta, busy or editing)
 	if busy or editing:
 		_keys_locked = true
