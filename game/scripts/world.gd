@@ -367,8 +367,8 @@ func _process(delta: float) -> void:
 	for e in enemies:
 		if e.has("node") and e["node"] != null:
 			fade_actors.append(e["node"])
-	if online and online.players:
-		for op in online.players.values():
+	if online and online.others:
+		for op in online.others.values():
 			if op.has("node") and op["node"] != null:
 				fade_actors.append(op["node"])
 	props.update_fade(fade_actors, delta)
@@ -1073,7 +1073,7 @@ func open_trade(peer_id: String, peer_name: String) -> void:
 	trade_screen.open(peer_id, peer_name)
 	await trade_screen.closed
 	busy = false
-	status.refresh()
+	status.refresh(Game.player, Game.character_name())
 
 
 ## Towns show this week's good vs evil count of PvP wins (top right).

@@ -67,6 +67,24 @@ jobs:
             mv /tmp/templates/templates/* "${TPL}/"
           fi
 
+      - name: Import assets
+        # Import first so the check and the export do not run against an empty .godot cache.
+        run: cd "${PROJECT_DIR}" && (~/godot/godot --headless --import || true)
+
+      - name: Check scripts load and the overworld runs
+        # A GDScript error does not fail the export, so a broken game would
+        # still deploy. This loads every script and scene, plays a few seconds
+        # of the overworld, and fails on any script error.
+        run: |
+          set -uo pipefail
+          cd "${PROJECT_DIR}"
+          timeout 300 ~/godot/godot --headless res://tests/check_scripts.tscn 2>&1 | tee /tmp/check.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ] || grep -q "SCRIPT ERROR" /tmp/check.log; then
+            echo "::error::Script errors found (see the log above)."
+            exit 1
+          fi
+
       - name: Export for web
         run: |
           set -euo pipefail
@@ -77,8 +95,6 @@ jobs:
           OUT="${GITHUB_WORKSPACE}/build/web"
           mkdir -p "${OUT}"
           cd "${PROJECT_DIR}"
-          # Import assets first so the export does not run against an empty .godot cache.
-          ~/godot/godot --headless --import || true
           ~/godot/godot --headless --export-release "${EXPORT_PRESET}" "${OUT}/index.html"
           test -f "${OUT}/index.html"
 
