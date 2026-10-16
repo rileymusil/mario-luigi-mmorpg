@@ -293,7 +293,7 @@ export class Zone extends DurableObject<Env> {
       const p = a.player;
       try {
         await presence(this.env).arrive(p.id, p.name, a.zone ?? "");
-        await scores(this.env).report(p.id, p.name, p.side, p.character,
+        await scores(this.env).report(p.name, p.side, p.character,
           Math.max(1, num(msg.level, MAX_LEVEL)), num(msg.bosses, MAX_BOSS_WINS));
       } catch {
         // whispers and leaderboards are extras; playing never fails over them
@@ -649,7 +649,7 @@ export class Zone extends DurableObject<Env> {
     if (!winner) return;
     try {
       await scores(this.env).addWin(winner.side);
-      await scores(this.env).addPvpWin(winner.id, winner.name, winner.side, winner.character);
+      await scores(this.env).addPvpWin(winner.name, winner.side, winner.character);
     } catch {
       // the score is nice to have; a duel never fails over it
     }

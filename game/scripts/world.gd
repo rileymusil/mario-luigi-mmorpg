@@ -21,6 +21,7 @@ const CLIMB_SLACK := 3.0    # a jump this much lower than a ledge still makes it
 const MAX_LEDGE := 80       # tallest ledge face you can drop down (px)
 const FOLLOWER_CLIMB := 22.0  # how high a follower jumps before hopping up after the leader
 const FACINGS := {"down": Vector2.DOWN, "up": Vector2.UP, "left": Vector2.LEFT, "right": Vector2.RIGHT}
+const QUEST_SCROLL := preload("res://assets/ui/quest_scroll.png")  # over a quest giver with news
 
 var map_id := ""
 var map_info: Dictionary
@@ -765,7 +766,7 @@ func _quest_talk(n: Dictionary) -> bool:
 	return true
 
 
-## Shows quest notes in the chat and a "!" over the quest giver when they
+## Shows quest notes in the chat and a scroll over the quest giver when they
 ## have a new step or a reward for you.
 func _update_quests() -> void:
 	while not Game.quest_notes.is_empty():
@@ -778,14 +779,10 @@ func _update_quests() -> void:
 		if not n.has("node") or n["node"] == null:
 			continue
 		var want: bool = news and n["talk"] == giver
-		var mark: Label = n.get("mark")
+		var mark: Sprite2D = n.get("mark")
 		if want and mark == null:
-			mark = Label.new()
-			mark.text = "!"
-			mark.theme_type_variation = &"OutlineLabel"
-			mark.add_theme_color_override("font_color", Color(1, 0.85, 0.1))
-			mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			mark.size = Vector2(12, 14)
+			mark = Sprite2D.new()
+			mark.texture = QUEST_SCROLL
 			mark.z_index = 50
 			n["node"].add_child(mark)
 			n["mark"] = mark
@@ -793,7 +790,7 @@ func _update_quests() -> void:
 			mark.visible = want
 			if want:
 				var top: float = n["node"].height() if n["node"].has_method("height") else 24.0
-				mark.position = Vector2(-6, -top - 14 + sin(Time.get_ticks_msec() / 200.0) * 1.5)
+				mark.position = Vector2(0, -top - 9 + sin(Time.get_ticks_msec() / 200.0) * 1.5).round()
 
 
 ## Puts the choice menu just above (or below) the speech balloon, on screen.
