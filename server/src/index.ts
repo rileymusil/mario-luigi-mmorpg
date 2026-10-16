@@ -148,6 +148,24 @@ interface Player {
   y: number;
 }
 
+interface TradePartner {
+  id: string;
+  name: string;
+  kind?: string;
+  hp?: number;
+  max_hp?: number;
+  sp?: number;
+  max_sp?: number;
+  pow?: number;
+  def?: number;
+}
+
+interface TradeOffer {
+  coins: number;
+  items: Record<string, number>;
+  partner?: TradePartner | null;
+}
+
 // Kept on each socket with serializeAttachment so it survives hibernation.
 interface Attachment {
   player: Player | null; // null until the client says hello
@@ -163,6 +181,10 @@ interface Attachment {
   stats?: Record<string, number>;
   safeUntil?: number; // can't be attacked again before this time
   key?: string; // the save's secret, lets the same save replace a stale connection
+  tradePartner?: string; // id of player currently trading or requested trade
+  trading?: boolean; // true once trade session is active
+  tradeOffer?: TradeOffer;
+  tradeConfirmed?: boolean;
 }
 
 export class Zone extends DurableObject<Env> {
@@ -395,8 +417,142 @@ export class Zone extends DurableObject<Env> {
     } else if (msg.t === "duel_over") {
       const result = ["lost", "fled", "timeout", "cancel"].includes(String(msg.result)) ? String(msg.result) : "cancel";
       await this.recordWin(this.endDuel(ws, a, result, now));
+    } else if (msg.t === "trade_req") {
+      const target = this.socketFor(String(msg.to));
+      const t = target?.deserializeAttachment() as Attachment | undefined;
+      if (!target || !t?.player || target === ws || a.duel || t.duel || a.trading || t.trading || a.tradePartner || t.tradePartner) {
+        ws.serializeAttachment(a);
+        ws.send(JSON.stringify({ t: "trade_declined", name: t?.player?.name ?? "They", reason: "busy" }));
+        return;
+      }
+      a.tradePartner = t.player.id;
+      a.trading = false;
+      t.tradePartner = a.player.id;
+      t.trading = false;
+      ws.serializeAttachment(a);
+      target.serializeAttachment(t);
+      target.send(JSON.stringify({ t: "trade_req", from: a.player.id, name: a.player.name }));
+    } else if (msg.t === "trade_reply") {
+      const target = this.socketFor(String(msg.from));
+      const t = target?.deserializeAttachment() as Attachment | undefined;
+      if (!target || !t?.player || t.tradePartner !== a.player.id) {
+        a.tradePartner = undefined;
+        a.trading = false;
+        ws.serializeAttachment(a);
+        return;
+      }
+      if (msg.accept !== true) {
+        a.tradePartner = undefined;
+        a.trading = false;
+        t.tradePartner = undefined;
+        t.trading = false;
+        ws.serializeAttachment(a);
+        target.serializeAttachment(t);
+        target.send(JSON.stringify({ t: "trade_declined", name: a.player.name, reason: "declined" }));
+        return;
+      }
+      a.trading = true;
+      a.tradeOffer = { coins: 0, items: {}, partner: null };
+      a.tradeConfirmed = false;
+      t.trading = true;
+      t.tradeOffer = { coins: 0, items: {}, partner: null };
+      t.tradeConfirmed = false;
+      ws.serializeAttachment(a);
+      target.serializeAttachment(t);
+      ws.send(JSON.stringify({ t: "trade_start", peer_id: t.player.id, peer_name: t.player.name }));
+      target.send(JSON.stringify({ t: "trade_start", peer_id: a.player.id, peer_name: a.player.name }));
+    } else if (msg.t === "trade_offer") {
+      const partner = a.tradePartner ? this.socketFor(a.tradePartner) : null;
+      const p = partner?.deserializeAttachment() as Attachment | undefined;
+      if (!partner || !p?.player || !a.trading || p.tradePartner !== a.player.id) {
+        ws.serializeAttachment(a);
+        return;
+      }
+      const rawOffer = (typeof msg.offer === "object" && msg.offer !== null) ? (msg.offer as Record<string, unknown>) : {};
+      const cleanCoins = num(rawOffer.coins, 99999);
+      const cleanItems: Record<string, number> = {};
+      if (typeof rawOffer.items === "object" && rawOffer.items !== null && !Array.isArray(rawOffer.items)) {
+        for (const [k, v] of Object.entries(rawOffer.items)) {
+          const itemKey = String(k).slice(0, 32);
+          const count = num(v, 99);
+          if (count > 0) cleanItems[itemKey] = count;
+        }
+      }
+      let cleanPartner: TradePartner | null = null;
+      if (typeof rawOffer.partner === "object" && rawOffer.partner !== null) {
+        const rawP = rawOffer.partner as Record<string, unknown>;
+        cleanPartner = {
+          id: String(rawP.id ?? "").slice(0, 32),
+          name: cleanName(rawP.name),
+          kind: String(rawP.kind ?? "partner").slice(0, 16),
+          hp: num(rawP.hp, 999),
+          max_hp: num(rawP.max_hp, 999),
+          sp: num(rawP.sp, 999),
+          max_sp: num(rawP.max_sp, 999),
+          pow: num(rawP.pow, 999),
+          def: num(rawP.def, 999),
+        };
+      }
+      const cleanOffer: TradeOffer = { coins: cleanCoins, items: cleanItems, partner: cleanPartner };
+      a.tradeOffer = cleanOffer;
+      a.tradeConfirmed = false;
+      p.tradeConfirmed = false;
+      ws.serializeAttachment(a);
+      partner.serializeAttachment(p);
+      partner.send(JSON.stringify({ t: "trade_offer", offer: cleanOffer }));
+    } else if (msg.t === "trade_confirm") {
+      const partner = a.tradePartner ? this.socketFor(a.tradePartner) : null;
+      const p = partner?.deserializeAttachment() as Attachment | undefined;
+      if (!partner || !p?.player || !a.trading || p.tradePartner !== a.player.id) {
+        ws.serializeAttachment(a);
+        return;
+      }
+      a.tradeConfirmed = true;
+      partner.send(JSON.stringify({ t: "trade_confirmed", by: a.player.id }));
+      if (a.tradeConfirmed && p.tradeConfirmed) {
+        const offerA = a.tradeOffer ?? { coins: 0, items: {}, partner: null };
+        const offerB = p.tradeOffer ?? { coins: 0, items: {}, partner: null };
+        ws.send(JSON.stringify({ t: "trade_done", your_give: offerA, your_receive: offerB }));
+        partner.send(JSON.stringify({ t: "trade_done", your_give: offerB, your_receive: offerA }));
+        a.tradePartner = undefined;
+        a.trading = false;
+        a.tradeOffer = undefined;
+        a.tradeConfirmed = false;
+        p.tradePartner = undefined;
+        p.trading = false;
+        p.tradeOffer = undefined;
+        p.tradeConfirmed = false;
+      }
+      ws.serializeAttachment(a);
+      partner.serializeAttachment(p);
+    } else if (msg.t === "trade_cancel") {
+      this.cancelTrade(ws, a);
     } else {
       ws.serializeAttachment(a);
+    }
+  }
+
+  private cancelTrade(ws: WebSocket | null, a: Attachment, reason = "cancel"): void {
+    const partnerId = a.tradePartner;
+    a.tradePartner = undefined;
+    a.trading = false;
+    a.tradeOffer = undefined;
+    a.tradeConfirmed = false;
+    ws?.serializeAttachment(a);
+
+    if (!partnerId) return;
+    const partnerWs = this.socketFor(partnerId);
+    if (!partnerWs) return;
+    const p = partnerWs.deserializeAttachment() as Attachment;
+    if (p.tradePartner === a.player?.id) {
+      p.tradePartner = undefined;
+      p.trading = false;
+      p.tradeOffer = undefined;
+      p.tradeConfirmed = false;
+      partnerWs.serializeAttachment(p);
+      try {
+        partnerWs.send(JSON.stringify({ t: "trade_cancelled", reason }));
+      } catch {}
     }
   }
 
@@ -449,6 +605,9 @@ export class Zone extends DurableObject<Env> {
   private async leave(ws: WebSocket): Promise<void> {
     const a = ws.deserializeAttachment() as Attachment | null;
     if (!a?.player) return;
+    if (a.trading || a.tradePartner) {
+      this.cancelTrade(ws, a, "left");
+    }
     const id = a.player.id;
     const won = a.duel ? this.endDuel(null, a, "left", Date.now()) : null;
     a.player = null;

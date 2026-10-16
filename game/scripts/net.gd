@@ -29,6 +29,13 @@ signal challenged(foe: Dictionary)                  # an evil player attacks you
 signal duel_started(foe: Dictionary, first: bool)   # foe: Player + {stats}; first: you move first
 signal duel_message(msg: Dictionary)                # duel_act / duel_hit from your foe
 signal duel_over(result: String)                    # your foe ended the duel: lost, fled, timeout, left, busy, refused...
+signal trade_requested(from_id: String, name: String) # someone asked to trade
+signal trade_declined(name: String, reason: String)   # peer declined or busy
+signal trade_started(peer_id: String, peer_name: String) # trade session active
+signal trade_offer_updated(offer: Dictionary)         # peer updated coins, items, or partner
+signal trade_confirmed_by(by_id: String)              # peer confirmed offer
+signal trade_completed(your_give: Dictionary, your_receive: Dictionary) # trade completed!
+signal trade_cancelled(reason: String)                # trade was cancelled
 signal zone_reset                          # connection (re)opened: forget everyone
 
 var my_id := ""
@@ -39,6 +46,10 @@ var party_id := ""
 var party_name := ""
 var party_here := false
 var pending_warp := {}  # {map, spawn} to follow your partner once you're free
+## Trade: active trade partner id, name, and trading status
+var trading_peer_id := ""
+var trading_peer_name := ""
+var is_trading := false
 ## True while the overworld is up and can take a duel; otherwise a challenge is
 ## answered "busy" straight away.
 var in_world := false
@@ -114,6 +125,9 @@ func leave() -> void:
 		zone_reset.emit()
 	party_here = false
 	duel_foe = ""
+	trading_peer_id = ""
+	trading_peer_name = ""
+	is_trading = false
 	_was_open = false
 
 
@@ -179,6 +193,35 @@ func end_duel(result: String) -> void:
 	if duel_foe != "":
 		_send({"t": "duel_over", "result": result})
 	duel_foe = ""
+
+
+# --- Online Trading -----------------------------------------------------------
+
+func request_trade(id: String) -> void:
+	trading_peer_id = id
+	_send({"t": "trade_req", "to": id})
+
+
+func reply_trade(from_id: String, accept: bool) -> void:
+	if not accept and trading_peer_id == from_id:
+		trading_peer_id = ""
+		is_trading = false
+	_send({"t": "trade_reply", "from": from_id, "accept": accept})
+
+
+func send_trade_offer(coins: int, items: Dictionary, partner) -> void:
+	_send({"t": "trade_offer", "offer": {"coins": coins, "items": items, "partner": partner}})
+
+
+func confirm_trade() -> void:
+	_send({"t": "trade_confirm"})
+
+
+func cancel_trade() -> void:
+	_send({"t": "trade_cancel"})
+	trading_peer_id = ""
+	trading_peer_name = ""
+	is_trading = false
 
 
 func leave_party() -> void:
@@ -339,6 +382,33 @@ func _handle(text: String) -> void:
 			duel_foe = ""
 			duel_inbox.append(msg)
 			duel_over.emit(str(msg.get("result", "cancel")))
+		"trade_req":
+			trade_requested.emit(str(msg.get("from", "")), str(msg.get("name", "Someone")))
+		"trade_declined":
+			trading_peer_id = ""
+			is_trading = false
+			trade_declined.emit(str(msg.get("name", "They")), str(msg.get("reason", "declined")))
+		"trade_start":
+			trading_peer_id = str(msg.get("peer_id", ""))
+			trading_peer_name = str(msg.get("peer_name", "Peer"))
+			is_trading = true
+			trade_started.emit(trading_peer_id, trading_peer_name)
+		"trade_offer":
+			trade_offer_updated.emit(msg.get("offer", {}))
+		"trade_confirmed":
+			trade_confirmed_by.emit(str(msg.get("by", "")))
+		"trade_done":
+			var give: Dictionary = msg.get("your_give", {})
+			var recv: Dictionary = msg.get("your_receive", {})
+			trading_peer_id = ""
+			trading_peer_name = ""
+			is_trading = false
+			trade_completed.emit(give, recv)
+		"trade_cancelled":
+			trading_peer_id = ""
+			trading_peer_name = ""
+			is_trading = false
+			trade_cancelled.emit(str(msg.get("reason", "cancelled")))
 		"full", "replaced":
 			_zone = ""  # don't retry into a full zone, or fight another tab with this save
 

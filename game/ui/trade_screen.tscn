@@ -1,0 +1,196 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://ui/trade_screen.gd" id="1_trade"]
+[ext_resource type="Texture2D" path="res://assets/ui/coin.png" id="2_coin"]
+[ext_resource type="Script" path="res://scripts/choice_menu.gd" id="3_menu"]
+
+[node name="TradeScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_trade")
+
+[node name="Dim" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0.08, 0.55)
+
+[node name="Panel" type="PanelContainer" parent="."]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 8.0
+offset_right = 372.0
+offset_bottom = 208.0
+theme_type_variation = &"NavyPanel"
+
+[node name="VBox" type="VBoxContainer" parent="Panel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Header" type="HBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+alignment = 1
+
+[node name="Title" type="Label" parent="Panel/VBox/Header"]
+layout_mode = 2
+theme_type_variation = &"OutlineLabel"
+text = "ONLINE TRADING POST"
+horizontal_alignment = 1
+
+[node name="Columns" type="HBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="LeftCol" type="VBoxContainer" parent="Panel/VBox/Columns"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
+
+[node name="Header" type="Label" parent="Panel/VBox/Columns/LeftCol"]
+layout_mode = 2
+theme_type_variation = &"GoldLabel"
+text = "YOUR OFFER"
+horizontal_alignment = 1
+
+[node name="CoinsBox" type="HBoxContainer" parent="Panel/VBox/Columns/LeftCol"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="Icon" type="TextureRect" parent="Panel/VBox/Columns/LeftCol/CoinsBox"]
+layout_mode = 2
+texture = ExtResource("2_coin")
+stretch_mode = 3
+
+[node name="Label" type="Label" parent="Panel/VBox/Columns/LeftCol/CoinsBox"]
+layout_mode = 2
+theme_type_variation = &"LightLabel"
+text = "0 / 20"
+
+[node name="Buttons" type="HBoxContainer" parent="Panel/VBox/Columns/LeftCol/CoinsBox"]
+layout_mode = 2
+size_flags_horizontal = 10
+theme_override_constants/separation = 2
+
+[node name="Minus10" type="Button" parent="Panel/VBox/Columns/LeftCol/CoinsBox/Buttons"]
+layout_mode = 2
+text = "-10"
+
+[node name="Minus1" type="Button" parent="Panel/VBox/Columns/LeftCol/CoinsBox/Buttons"]
+layout_mode = 2
+text = "-1"
+
+[node name="Plus1" type="Button" parent="Panel/VBox/Columns/LeftCol/CoinsBox/Buttons"]
+layout_mode = 2
+text = "+1"
+
+[node name="Plus10" type="Button" parent="Panel/VBox/Columns/LeftCol/CoinsBox/Buttons"]
+layout_mode = 2
+text = "+10"
+
+[node name="Max" type="Button" parent="Panel/VBox/Columns/LeftCol/CoinsBox/Buttons"]
+layout_mode = 2
+text = "Max"
+
+[node name="Zero" type="Button" parent="Panel/VBox/Columns/LeftCol/CoinsBox/Buttons"]
+layout_mode = 2
+text = "0"
+
+[node name="ItemsScroll" type="ScrollContainer" parent="Panel/VBox/Columns/LeftCol"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="ItemsBox" type="VBoxContainer" parent="Panel/VBox/Columns/LeftCol/ItemsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="PartnerCard" type="PanelContainer" parent="Panel/VBox/Columns/LeftCol"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+theme_type_variation = &"FlatPanel"
+
+[node name="ConfirmBtn" type="Button" parent="Panel/VBox/Columns/LeftCol"]
+layout_mode = 2
+text = "CONFIRM OFFER"
+
+[node name="RightCol" type="VBoxContainer" parent="Panel/VBox/Columns"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
+
+[node name="Header" type="Label" parent="Panel/VBox/Columns/RightCol"]
+layout_mode = 2
+theme_type_variation = &"GoldLabel"
+text = "PEER'S OFFER"
+horizontal_alignment = 1
+
+[node name="CoinsBox" type="HBoxContainer" parent="Panel/VBox/Columns/RightCol"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="Icon" type="TextureRect" parent="Panel/VBox/Columns/RightCol/CoinsBox"]
+layout_mode = 2
+texture = ExtResource("2_coin")
+stretch_mode = 3
+
+[node name="Label" type="Label" parent="Panel/VBox/Columns/RightCol/CoinsBox"]
+layout_mode = 2
+theme_type_variation = &"LightLabel"
+text = "0 Coins"
+
+[node name="ItemsScroll" type="ScrollContainer" parent="Panel/VBox/Columns/RightCol"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="ItemsBox" type="VBoxContainer" parent="Panel/VBox/Columns/RightCol/ItemsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="PartnerCard" type="PanelContainer" parent="Panel/VBox/Columns/RightCol"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+theme_type_variation = &"FlatPanel"
+
+[node name="PeerStatus" type="Label" parent="Panel/VBox/Columns/RightCol"]
+layout_mode = 2
+theme_type_variation = &"LightLabel"
+text = "Deciding on offer..."
+horizontal_alignment = 1
+
+[node name="Footer" type="HBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Info" type="Label" parent="Panel/VBox/Footer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"LightLabel"
+text = "Add items, coins, or a partner, then confirm."
+
+[node name="CancelBtn" type="Button" parent="Panel/VBox/Footer"]
+layout_mode = 2
+text = "Cancel Trade"
+
+[node name="SubMenu" type="PanelContainer" parent="."]
+visible = false
+layout_mode = 0
+offset_left = 60.0
+offset_top = 20.0
+offset_right = 240.0
+offset_bottom = 120.0
+script = ExtResource("3_menu")

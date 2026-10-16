@@ -29,6 +29,8 @@ static var _followed := false  # arrived by following, so step aside from the pa
 var _challenge := {}  # an evil player attacked you: start once you're free
 var _challenge_age := 0.0
 var _waiting := 0.0  # seconds left waiting for the player you attacked
+var _trade_requests: Array = []  # [{from, name}] waiting for you to answer
+var _waiting_trade := 0.0  # seconds left waiting for peer to answer your trade request
 ## Optional: maps a reported position onto ground walkable on this map.
 var snap := Callable()
 
@@ -54,6 +56,10 @@ func setup(world: Node, spawn_character: Callable, local_player: CharacterSprite
 	Net.party_message.connect(_on_party_message)
 	Net.duel_started.connect(_on_duel_started)
 	Net.duel_over.connect(_on_duel_over)
+	Net.trade_requested.connect(_on_trade_requested)
+	Net.trade_declined.connect(_on_trade_declined)
+	Net.trade_started.connect(_on_trade_started)
+	Net.trade_completed.connect(_on_trade_completed)
 	add_name_tag(_player, Game.username())
 	Net.player_joined.connect(_on_player_joined)
 	Net.player_moved.connect(_on_player_moved)
@@ -80,6 +86,11 @@ func tick(delta: float, busy: bool) -> void:
 		if _waiting <= 0.0:
 			Net.end_duel("cancel")
 			chat.system("They didn't answer.")
+	if _waiting_trade > 0.0:
+		_waiting_trade -= delta
+		if _waiting_trade <= 0.0:
+			Net.cancel_trade()
+			chat.system("Trade request timed out.")
 	if not _challenge.is_empty():
 		_challenge_age += delta
 		if not busy:
@@ -92,6 +103,8 @@ func tick(delta: float, busy: bool) -> void:
 		return
 	if not Net.pending_warp.is_empty():
 		_follow_partner()
+	elif not _trade_requests.is_empty():
+		_answer_trade(_trade_requests.pop_front())
 	elif not _invites.is_empty():
 		_answer_invite(_invites.pop_front())
 	elif chat.wants_to_open():
@@ -134,13 +147,14 @@ func _nearest_other() -> String:
 func _interact(id: String) -> void:
 	var who: String = Net.players[id]["name"]
 	var same_side: bool = Net.players[id].get("side", "good") == Game.player["side"]
-	var options := ["Team up", "Cancel"]
-	var enabled := [Net.party_id == "" and same_side, true]
-	var infos := ["Travel together." if same_side else "Good and evil can't team up.", ""]
+	var can_trade: bool = not Net.is_trading and Net.duel_foe == "" and _waiting_trade <= 0.0
+	var options := ["Trade", "Team up", "Cancel"]
+	var enabled := [can_trade, Net.party_id == "" and same_side, true]
+	var infos := ["Exchange items, coins, and partners.", "Travel together." if same_side else "Good and evil can't team up.", ""]
 	if id == Net.party_id:
-		options = ["Leave party", "Cancel"]
-		enabled = [true, true]
-		infos = ["Go separate ways.", ""]
+		options = ["Trade", "Leave party", "Cancel"]
+		enabled = [can_trade, true, true]
+		infos = ["Exchange items, coins, and partners.", "Go separate ways.", ""]
 	elif Game.player["side"] == "evil" and Net.players[id].get("side", "good") == "good":
 		var town: bool = Game.MAPS[_map_id].get("safe", true)
 		options.insert(0, "Battle!")
@@ -152,6 +166,10 @@ func _interact(id: String) -> void:
 	if i < 0 or options[i] == "Cancel" or not Net.players.has(id):
 		return
 	match options[i]:
+		"Trade":
+			Net.request_trade(id)
+			_waiting_trade = 15.0
+			chat.system("Sent trade request to %s..." % who)
 		"Battle!":
 			Net.challenge(id)
 			_waiting = CHALLENGE_WAIT
@@ -162,6 +180,36 @@ func _interact(id: String) -> void:
 		"Leave party":
 			chat.system("You left the party with %s." % who)
 			Net.leave_party()
+
+
+func _on_trade_requested(from_id: String, who: String) -> void:
+	_trade_requests.append({"from": from_id, "name": who})
+
+
+func _on_trade_declined(who: String, reason: String) -> void:
+	_waiting_trade = 0.0
+	chat.system("%s is busy right now." % who if reason == "busy" else "%s declined the trade." % who)
+
+
+func _on_trade_started(peer_id: String, peer_name: String) -> void:
+	_waiting_trade = 0.0
+	_world.open_trade(peer_id, peer_name)
+
+
+func _on_trade_completed(give: Dictionary, recv: Dictionary) -> void:
+	Game.apply_trade(give, recv)
+	chat.system("Trade completed! Inventory, coins, and partners updated.")
+
+
+func _answer_trade(req: Dictionary) -> void:
+	if Net.is_trading or not Net.players.has(req["from"]):
+		Net.reply_trade(req["from"], false)
+		return
+	_world.busy = true
+	var i: int = await _world.menu.choose(["Accept Trade", "Decline"], "%s wants to trade" % req["name"], true, [],
+		["Exchange items, coins, and partners.", ""])
+	_world.busy = false
+	Net.reply_trade(req["from"], i == 0)
 
 
 func _answer_invite(inv: Dictionary) -> void:

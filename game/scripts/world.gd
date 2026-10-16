@@ -60,6 +60,7 @@ var online: OnlinePlayers # other players on this map, see online_players.gd
 @onready var pause_screen: PauseScreen = $HUD/PauseScreen
 @onready var party_screen: PartyScreen = $HUD/PartyScreen
 @onready var items_screen: ItemsScreen = $HUD/ItemsScreen
+@onready var trade_screen: TradeScreen = $HUD/TradeScreen
 @onready var talk_bubble: TextureRect = $HUD/TalkBubble
 
 
@@ -1064,6 +1065,15 @@ func _bench_menu(waiting: Array) -> void:
 			followers.append(f)
 			Game.save()
 			await say("%s joined your party!" % m["name"])
+
+
+## Opens the online trading screen with a peer.
+func open_trade(peer_id: String, peer_name: String) -> void:
+	busy = true
+	trade_screen.open(peer_id, peer_name)
+	await trade_screen.closed
+	busy = false
+	status.refresh()
 
 
 ## Towns show this week's good vs evil count of PvP wins (top right).

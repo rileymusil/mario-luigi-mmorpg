@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scripts/world.gd" id="1_world"]
 [ext_resource type="Script" path="res://scripts/choice_menu.gd" id="2_menu"]
@@ -9,6 +9,7 @@
 [ext_resource type="Script" path="res://ui/area_banner.gd" id="7_banner"]
 [ext_resource type="Texture2D" path="res://assets/ui/emote_exclaim.png" id="8_exclaim"]
 [ext_resource type="PackedScene" path="res://ui/items_screen.tscn" id="9_items"]
+[ext_resource type="PackedScene" path="res://ui/trade_screen.tscn" id="10_trade"]
 
 [node name="World" type="Node2D"]
 script = ExtResource("1_world")
@@ -83,3 +84,5 @@ mouse_filter = 2
 texture = ExtResource("8_exclaim")
 
 [node name="Dialogue" parent="HUD" instance=ExtResource("4_dialogue")]
+
+[node name="TradeScreen" parent="HUD" instance=ExtResource("10_trade")]

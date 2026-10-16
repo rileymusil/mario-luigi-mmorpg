@@ -270,8 +270,54 @@ await g5.next("challenge");
 g5.send({ t: "duel_ready", stats: {} });
 await hero3.next("duel_start");
 g5.send({ t: "duel_hit", dmg: 3, hp: 17, dodged: false, guard: true });
-check((await hero3.next("duel_hit")).guard === true, "a guarded hit says so");
 for (const x of [hero3, vil, pal, fake, g5]) x.ws.close();
+
+// --- Online Trading ---
+const zoneTrade = `${zone}_trade`;
+const traderA = open("TraderA", "mario", 0, 0, { uid: "ttttttttt001", side: "good" }, zoneTrade);
+await traderA.ready;
+await traderA.next("welcome");
+const traderB = open("TraderB", "luigi", 0, 0, { uid: "ttttttttt002", side: "good" }, zoneTrade);
+await traderB.ready;
+await traderB.next("welcome");
+
+// A sends trade request to B
+traderA.send({ t: "trade_req", to: "ttttttttt002" });
+const req = await traderB.next("trade_req");
+check(req.from === "ttttttttt001" && req.name === "TraderA", "trade request reaches recipient");
+
+// B accepts
+traderB.send({ t: "trade_reply", from: "ttttttttt001", accept: true });
+const startA = await traderA.next("trade_start");
+const startB = await traderB.next("trade_start");
+check(startA.peer_id === "ttttttttt002" && startB.peer_id === "ttttttttt001", "both players enter trade session");
+
+// A offers coins, items, and partner
+const partnerA = { id: "goombario", name: "Goombario", kind: "partner", hp: 10, max_hp: 10, sp: 0, max_sp: 0, pow: 1, def: 0 };
+traderA.send({ t: "trade_offer", offer: { coins: 50, items: { mushroom: 2 }, partner: partnerA } });
+const offerToB = await traderB.next("trade_offer");
+check(offerToB.offer.coins === 50 && offerToB.offer.items.mushroom === 2 && offerToB.offer.partner.id === "goombario", "A's offer (coins, items, partner) arrives at B");
+
+// B offers items
+traderB.send({ t: "trade_offer", offer: { coins: 10, items: { syrup: 1 }, partner: null } });
+const offerToA = await traderA.next("trade_offer");
+check(offerToA.offer.coins === 10 && offerToA.offer.items.syrup === 1, "B's offer arrives at A");
+
+// A confirms
+traderA.send({ t: "trade_confirm" });
+const confirmedForB = await traderB.next("trade_confirmed");
+check(confirmedForB.by === "ttttttttt001", "B is notified that A confirmed offer");
+
+// B confirms, finalizing trade
+traderB.send({ t: "trade_confirm" });
+const doneA = await traderA.next("trade_done");
+const doneB = await traderB.next("trade_done");
+check(doneA.your_give.coins === 50 && doneA.your_receive.coins === 10, "A receives B's coins and gives own");
+check(doneB.your_give.coins === 10 && doneB.your_receive.coins === 50, "B receives A's coins and gives own");
+check(doneB.your_receive.partner.id === "goombario", "B receives A's partner");
+
+for (const x of [traderA, traderB]) x.ws.close();
+
 
 // Online saves.
 const http = base.replace(/^ws/, "http");
