@@ -274,23 +274,23 @@ for (const x of [hero3, vil, pal, fake, g5]) x.ws.close();
 
 // --- Online Trading ---
 const zoneTrade = `${zone}_trade`;
-const traderA = open("TraderA", "mario", 0, 0, { uid: "ttttttttt001", side: "good" }, zoneTrade);
+const traderA = open("TraderA", "mario", 0, 0, { uid: "eeeeeeeee001", side: "good" }, zoneTrade);
 await traderA.ready;
 await traderA.next("welcome");
-const traderB = open("TraderB", "luigi", 0, 0, { uid: "ttttttttt002", side: "good" }, zoneTrade);
+const traderB = open("TraderB", "luigi", 0, 0, { uid: "eeeeeeeee002", side: "good" }, zoneTrade);
 await traderB.ready;
 await traderB.next("welcome");
 
 // A sends trade request to B
-traderA.send({ t: "trade_req", to: "ttttttttt002" });
+traderA.send({ t: "trade_req", to: "eeeeeeeee002" });
 const req = await traderB.next("trade_req");
-check(req.from === "ttttttttt001" && req.name === "TraderA", "trade request reaches recipient");
+check(req.from === "eeeeeeeee001" && req.name === "TraderA", "trade request reaches recipient");
 
 // B accepts
-traderB.send({ t: "trade_reply", from: "ttttttttt001", accept: true });
+traderB.send({ t: "trade_reply", from: "eeeeeeeee001", accept: true });
 const startA = await traderA.next("trade_start");
 const startB = await traderB.next("trade_start");
-check(startA.peer_id === "ttttttttt002" && startB.peer_id === "ttttttttt001", "both players enter trade session");
+check(startA.peer_id === "eeeeeeeee002" && startB.peer_id === "eeeeeeeee001", "both players enter trade session");
 
 // A offers coins, items, and partner
 const partnerA = { id: "goombario", name: "Goombario", kind: "partner", hp: 10, max_hp: 10, sp: 0, max_sp: 0, pow: 1, def: 0 };
@@ -306,7 +306,7 @@ check(offerToA.offer.coins === 10 && offerToA.offer.items.syrup === 1, "B's offe
 // A confirms
 traderA.send({ t: "trade_confirm" });
 const confirmedForB = await traderB.next("trade_confirmed");
-check(confirmedForB.by === "ttttttttt001", "B is notified that A confirmed offer");
+check(confirmedForB.by === "eeeeeeeee001", "B is notified that A confirmed offer");
 
 // B confirms, finalizing trade
 traderB.send({ t: "trade_confirm" });
