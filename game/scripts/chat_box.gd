@@ -2,14 +2,19 @@ class_name ChatBox
 extends CanvasLayer
 ## Text chat with the players on your map: a short log in the bottom-left
 ## corner and a text box opened with T (or /, or the Chat button).
-## Commands: /p message (party), /mute name, /unmute name, /who, /help.
-## Muted names are kept in the save (Game.player["muted"]).
+## Commands: /p message (party), /w name message (whisper, any map), /r message
+## (answer the last whisper), /friend name, /unfriend name, /friends,
+## /mute name, /unmute name, /who, /help.
+## Muted names and friends are kept in the save (Game.player["muted"],
+## Game.player["friends"]).
 
 signal message_shown(id: String, text: String)  # for speech bubbles
 
 const MAX_LINES := 6
 const FADE_AFTER := 12.0
-const HELP := "/p: party chat   /who   /mute name   /unmute name   X near someone: team up"
+const HELP := "/p: party chat   /w name: whisper   /r: answer   /friend name   /friends   /who   /mute name"
+const WHISPER_COLOR := Color(1, 0.6, 0.95)
+const MAX_FRIENDS := 50
 
 var _log: VBoxContainer
 var _prompt: TextPrompt
@@ -18,6 +23,8 @@ var _lines: Array = []  # [{label, age}]
 var _open_requested := false
 ## Lines survive map changes (each map makes a new ChatBox): [{text, color, at}]
 static var _history: Array = []
+static var _last_whisper := ""  # who whispered you last, for /r
+var _asked_friends := false  # /friends is waiting for the server's answer
 
 
 func _ready() -> void:
@@ -41,7 +48,12 @@ func _ready() -> void:
 		_add_line(h["text"], h["color"], false)
 		_lines.back()["age"] = now - h["at"]
 	Net.chat_received.connect(_on_chat)
-	Net.player_arrived.connect(func(p): system("%s arrived." % p["name"]))
+	Net.player_arrived.connect(func(p):
+		system("%s arrived." % p["name"] + (" (friend)" if is_friend(p["name"]) else "")))
+	Net.whisper_received.connect(_on_whisper)
+	Net.whisper_sent.connect(func(to, text): _add_line("[To %s] %s" % [to, text], WHISPER_COLOR))
+	Net.whisper_failed.connect(func(to): system("%s isn't online right now." % to))
+	Net.friends_status.connect(_on_friends_status)
 
 
 func is_typing() -> bool:
@@ -56,10 +68,10 @@ func wants_to_open() -> bool:
 
 
 ## Opens the text box and sends what was typed. Await it.
-func type_message() -> void:
+func type_message(initial := "") -> void:
 	_show_all()
 	_button.visible = false
-	var text := await _prompt.ask("", "", 80, "Enter: send   Esc: close   /help")
+	var text := await _prompt.ask("", initial, 100, "Enter: send   Esc: close   /help")
 	_button.visible = true
 	if text == "":
 		return
@@ -118,6 +130,31 @@ func _command(text: String) -> void:
 			Game.player["muted"] = muted
 			Game.save()
 			system("Unmuted %s." % arg)
+		"/w", "/whisper", "/msg", "/tell":
+			var split := split_name(arg)
+			if split[0] == "" or split[1] == "":
+				system("Type /w, their name, then your message.")
+			elif not Net.whisper(split[0], split[1]):
+				system("You're offline, so nobody can hear you.")
+		"/r", "/reply":
+			if _last_whisper == "":
+				system("Nobody has whispered you yet.")
+			elif arg != "" and not Net.whisper(_last_whisper, arg):
+				system("You're offline, so nobody can hear you.")
+		"/friend", "/addfriend":
+			if arg == "":
+				system("Type /friend and their name.")
+			else:
+				system(add_friend(arg))
+		"/unfriend":
+			system(remove_friend(arg) if arg != "" else "Type /unfriend and their name.")
+		"/friends":
+			if friends().is_empty():
+				system("No friends yet. /friend name, or walk up to someone and press X.")
+			elif Net.request_friends(friends()):
+				_asked_friends = true
+			else:
+				system("Friends: " + ", ".join(friends()) + " (you're offline)")
 		"/who":
 			if not Net.is_online():
 				system("You're offline.")
@@ -130,6 +167,86 @@ func _command(text: String) -> void:
 				system("Party: %s%s" % [Net.party_name, "" if Net.party_here else " (on another map)"])
 		_:
 			system(HELP)
+
+
+func _on_whisper(from: String, text: String) -> void:
+	if is_muted(from):
+		return
+	_last_whisper = from
+	_add_line("[From %s] %s" % [from, text], WHISPER_COLOR)
+	_show_all()
+
+
+func _on_friends_status(online: Dictionary) -> void:
+	if not _asked_friends:
+		return  # the pause menu's Friends page asked
+	_asked_friends = false
+	var on: Array = []
+	var off: Array = []
+	for f in friends():
+		var where = online.get(f.to_lower())
+		if where == null:
+			off.append(f)
+		else:
+			on.append("%s (%s)" % [f, Game.MAPS.get(where, {}).get("name", where)])
+	system("Online: " + (", ".join(on) if not on.is_empty() else "nobody") +
+		("   Offline: " + ", ".join(off) if not off.is_empty() else ""))
+
+
+## Splits "Name message" into [name, message]. Names can have spaces, so a
+## name you know (someone here, a friend, your last whisper) is matched
+## first; otherwise the name is the first word.
+static func split_name(arg: String) -> Array:
+	var known: Array = friends().duplicate()
+	if _last_whisper != "":
+		known.append(_last_whisper)
+	for p in Net.players.values():
+		known.append(str(p["name"]))
+	var best := ""
+	for n in known:
+		if arg.to_lower().begins_with(str(n).to_lower() + " ") and str(n).length() > best.length():
+			best = str(n)
+	if best != "":
+		return [best, arg.substr(best.length() + 1).strip_edges()]
+	var parts := arg.split(" ", false, 1)
+	return [parts[0] if parts.size() > 0 else "", parts[1].strip_edges() if parts.size() > 1 else ""]
+
+
+# --- Friends (names kept in the save) ---------------------------------------------
+
+static func friends() -> Array:
+	if typeof(Game.player.get("friends")) != TYPE_ARRAY:
+		Game.player["friends"] = []
+	return Game.player["friends"]
+
+
+static func is_friend(who: String) -> bool:
+	return friends().any(func(f): return str(f).to_lower() == who.to_lower())
+
+
+## Adds a friend; returns what to tell the player.
+static func add_friend(who: String) -> String:
+	who = Game.clean_username(who)
+	if who == "":
+		return "That isn't a name anyone can have."
+	if who.to_lower() == Game.username().to_lower():
+		return "You're already your own best friend!"
+	if is_friend(who):
+		return "%s is already your friend." % who
+	if friends().size() >= MAX_FRIENDS:
+		return "Your friends list is full (%d). /unfriend someone first." % MAX_FRIENDS
+	friends().append(who)
+	Game.save()
+	return "%s is your friend now. /friends shows who's online and where." % who
+
+
+static func remove_friend(who: String) -> String:
+	for f in friends():
+		if str(f).to_lower() == who.strip_edges().to_lower():
+			friends().erase(f)
+			Game.save()
+			return "%s isn't on your friends list anymore." % f
+	return "%s isn't on your friends list." % who
 
 
 func _add_line(text: String, color: Color, remember := true) -> void:

@@ -1856,6 +1856,16 @@ func boss_wins(id: String) -> int:
 	return int(b.get(id, 0)) if typeof(b) == TYPE_DICTIONARY else 0
 
 
+## Every boss win added up (rematches too), for the leaderboard.
+func total_boss_wins() -> int:
+	var total := 0
+	var b = player.get("bosses", {})
+	if typeof(b) == TYPE_DICTIONARY:
+		for id in b:
+			total += int(b[id])
+	return total
+
+
 func mark_boss_beaten(id: String) -> void:
 	if typeof(player.get("bosses")) != TYPE_DICTIONARY:
 		player["bosses"] = {}

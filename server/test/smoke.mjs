@@ -328,6 +328,39 @@ check(expired.reason === "expired", "accepting a withdrawn trade request says it
 for (const x of [traderA, traderB]) x.ws.close();
 
 
+// Whispers and friends: across maps, by name.
+const tag = Date.now() % 100000;
+const wn = `Wendy${tag}`, xn = `Xavi${tag}`;
+const w1 = open(wn, "peach", 0, 0, { uid: "ccccccccccc1", level: 7, bosses: 3 }, `${zone}_w1`);
+await w1.ready;
+await w1.next("welcome");
+const x1 = open(xn, "bowser", 0, 0, { uid: "ccccccccccc2", side: "evil", level: 12 }, `${zone}_w2`);
+await x1.ready;
+await x1.next("welcome");
+await new Promise((res) => setTimeout(res, 200));
+w1.send({ t: "whisper", to: xn.toLowerCase(), text: "psst over here" });
+const wIn = await x1.next("whisper");
+const wOut = await w1.next("whisper");
+check(wIn.from === wn && wIn.text === "psst over here", "a whisper reaches a player on another map");
+check(wOut.sent === true && wOut.to === xn, "the sender is told it got there, with their name as they spell it");
+await new Promise((res) => setTimeout(res, 1100));
+w1.send({ t: "whisper", to: "Nobody Here", text: "hello?" });
+check((await w1.next("whisper_fail")).to === "Nobody Here", "whispering someone offline fails");
+w1.send({ t: "friends", names: [xn, "Nobody Here"] });
+const fr = await w1.next("friends");
+check(fr.online[xn.toLowerCase()] === `${zone}_w2` && fr.online["nobody here"] === null, "friends list shows who's online and where");
+x1.ws.close();
+await new Promise((res) => setTimeout(res, 500));
+w1.send({ t: "friends", names: [xn] });
+check((await w1.next("friends")).online[xn.toLowerCase()] === null, "a friend who left shows offline");
+w1.ws.close();
+
+// Leaderboards.
+const lb = await (await fetch(`${base.replace(/^ws/, "http")}/leaders`)).json();
+check(lb.level.some((l) => l.name === xn && l.level === 12) && lb.bosses.some((l) => l.name === wn && l.bosses === 3),
+  "leaderboards list players by level and boss wins");
+check(Array.isArray(lb.pvp) && lb.level.length <= 10, "leaderboards keep the top 10");
+
 // Online saves.
 const http = base.replace(/^ws/, "http");
 async function post(op, body) {

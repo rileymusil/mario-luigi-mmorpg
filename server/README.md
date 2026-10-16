@@ -13,6 +13,10 @@ online (`src/accounts.ts`, HTTP API described at its top). It keeps a salted
 PBKDF2 password hash, login tokens and the latest save. The Godot side is
 `game/scripts/cloud.gd`.
 
+Who is online and on which map is kept in a third one (`src/presence.ts`), so
+whispers and friends lists work across maps. The weekly good vs evil score
+and the leaderboards (`GET /leaders`) are in `src/scores.ts`.
+
 ## Run it locally
 
 ```sh

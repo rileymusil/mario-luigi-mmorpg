@@ -37,6 +37,7 @@ var enemies: Array = []   # [{node, home, target, pause, key, type}]
 var npcs: Array = []      # [{node, id}]
 var score_box: PanelContainer  # this week's good vs evil score, in towns
 var save_prompt: TextPrompt  # password box for saving online (made when first needed)
+var leaders_screen: LeadersScreen  # pause menu > Leaders (made when first needed)
 var busy := false         # true while a menu or dialog is open
 var _grace := 1.5         # seconds after arriving before enemies can start a battle
 ## The leader's path, followed by the party: x, y, 1 where a jump started,
@@ -972,7 +973,7 @@ func _pause_menu() -> void:
 	var other := "Evil" if p["side"] == "good" else "Good"
 	while true:
 		pause_screen.open(p, Game.character_name(), map_info["name"])
-		var options := ["Items", "Gear", "Party", "Quests", "Go %s" % other, "Save", "Quit", "Close"]
+		var options := ["Items", "Gear", "Party", "Quests", "Friends", "Leaders", "Go %s" % other, "Save", "Quit", "Close"]
 		var i := await pause_screen.menu.choose(options, "", true)
 		var pick: String = options[i] if i >= 0 else "Close"
 		match pick:
@@ -991,6 +992,25 @@ func _pause_menu() -> void:
 			"Quests":
 				pause_screen.close()
 				await say(Quests.summary())
+				continue
+			"Friends":
+				pause_screen.close()
+				var whisper_to := await _friends_menu()
+				if whisper_to != "":
+					busy = false
+					online._type_chat("/w %s " % whisper_to)
+					return
+				continue
+			"Leaders":
+				pause_screen.close()
+				if leaders_screen == null:
+					var layer := CanvasLayer.new()
+					layer.layer = 6  # over the chat log
+					add_child(layer)
+					leaders_screen = LeadersScreen.new()
+					layer.add_child(leaders_screen)
+				await leaders_screen.show_boards()
+				await get_tree().process_frame
 				continue
 			"Save":
 				Game.save()
@@ -1016,6 +1036,63 @@ func _pause_menu() -> void:
 	pause_screen.close()
 	await get_tree().process_frame
 	busy = false
+
+
+## Pause menu > Friends: who's online and where (asked from the server), then
+## pick someone to whisper or unfriend, or add a friend by name. Returns the
+## name to whisper, or "".
+func _friends_menu() -> String:
+	var online := {}
+	if Net.request_friends(ChatBox.friends()):
+		var got: Array = []
+		var on_status := func(o): got.append(o)
+		Net.friends_status.connect(on_status)
+		var waited := 0.0
+		while got.is_empty() and waited < 3.0:
+			await get_tree().process_frame
+			waited += get_process_delta_time()
+		Net.friends_status.disconnect(on_status)
+		if not got.is_empty():
+			online = got[0]
+	var asked := Net.is_online()
+	var cursor := 0
+	while true:
+		var names: Array = ChatBox.friends().duplicate()
+		var labels: Array = []
+		var infos: Array = []
+		for f in names:
+			var where = online.get(str(f).to_lower())
+			labels.append(str(f) + ("  *" if where != null else ""))
+			infos.append(("Online: %s" % Game.MAPS.get(where, {}).get("name", where)) if where != null
+				else ("Offline" if asked else "You're offline, so you can't see who's on."))
+		labels.append_array(["Add friend", "Back"])
+		infos.append_array(["Type their username.", ""])
+		menu.max_rows = 6
+		var home := menu.position
+		menu.position = ((get_viewport_rect().size - Vector2(120, 90)) / 2.0).round()
+		var i := await menu.choose(labels, "Friends (* online)" if not names.is_empty() else "Friends", true, [], infos, [], cursor)
+		menu.max_rows = 0
+		menu.position = home
+		if i < 0 or i == labels.size() - 1:
+			return ""
+		cursor = i
+		if i == names.size():  # Add friend
+			if save_prompt == null:
+				save_prompt = TextPrompt.new()
+				$HUD.add_child(save_prompt)
+			save_prompt.position = ((get_viewport_rect().size - Vector2(160, 40)) / 2.0).round()
+			var who := await save_prompt.ask("Friend's username", "", 16)
+			if who != "":
+				await say(ChatBox.add_friend(who))
+			continue
+		var name: String = names[i]
+		var c := await menu.choose(["Whisper", "Unfriend", "Back"], name, true)
+		if c == 0:
+			return name
+		if c == 1:
+			await say(ChatBox.remove_friend(name))
+			cursor = 0
+	return ""
 
 
 ## After saving: online too if this save is linked, else offers to link it
