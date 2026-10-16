@@ -36,6 +36,7 @@ func _show_controls_hint(touch: bool) -> void:
 func _layout_title() -> void:
 	var vp := get_viewport_rect().size
 	var safe := Game.get_safe_rect()
+	var is_port := safe.size.y > safe.size.x
 	var sky: TextureRect = $Sky
 	sky.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	sky.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -45,9 +46,27 @@ func _layout_title() -> void:
 	var logo: TextureRect = $Logo
 	var mmo: Label = $MMO
 	var logo_total_w := 275.0
-	var logo_start_x := roundf(safe.position.x + (safe.size.x - logo_total_w) / 2.0)
-	logo.position = Vector2(logo_start_x, safe.position.y + 8.0)
-	mmo.position = Vector2(logo_start_x + 219.0, safe.position.y + 12.0)
+	var logo_scale := minf(1.0, (safe.size.x - 16.0) / logo_total_w)
+	logo.scale = Vector2(logo_scale, logo_scale)
+	mmo.scale = Vector2(logo_scale, logo_scale)
+	var scaled_total_w := logo_total_w * logo_scale
+	var logo_start_x := roundf(safe.position.x + (safe.size.x - scaled_total_w) / 2.0)
+
+	var logo_y: float
+	if not preview.visible:
+		menu.position = ((vp - menu.size) / 2.0).round()
+		if is_port:
+			menu.position.y = clampf((safe.position.y + safe.size.y * 0.52), safe.position.y + 110.0, safe.end.y - 110.0)
+			logo_y = clampf(menu.position.y - 65.0 * logo_scale, safe.position.y + 16.0, safe.position.y + 140.0)
+		else:
+			menu.position.y = maxf(safe.position.y + 60.0, menu.position.y)
+			logo_y = safe.position.y + 8.0
+	else:
+		_layout_char_select()
+		logo_y = safe.position.y + (16.0 if is_port else 8.0)
+
+	logo.position = Vector2(logo_start_x, logo_y)
+	mmo.position = Vector2(logo_start_x + 219.0 * logo_scale, logo_y + 4.0 * logo_scale)
 
 	var hint_box: Control = $HintBox
 	hint_box.position.x = roundf(safe.position.x + (safe.size.x - hint_box.size.x) / 2.0)
@@ -55,20 +74,16 @@ func _layout_title() -> void:
 
 	prompt.position = ((vp - prompt.size) / 2.0).round()
 
-	if not preview.visible:
-		menu.position = ((vp - menu.size) / 2.0).round()
-		menu.position.y = maxf(safe.position.y + 60.0, menu.position.y)
-	else:
-		_layout_char_select()
-
 
 func _layout_char_select() -> void:
 	var safe := Game.get_safe_rect()
+	var is_port := safe.size.y > safe.size.x
 	var total_w := 270.0
 	var start_x := roundf(safe.position.x + (safe.size.x - total_w) / 2.0)
-	preview.position = Vector2(start_x + 24.0, safe.position.y + 144.0)
-	menu.position = Vector2(start_x + 64.0, safe.position.y + 50.0)
-	card.position = Vector2(start_x + 180.0, safe.position.y + 50.0)
+	var base_y := roundf(safe.position.y + (safe.size.y * 0.35 if is_port else 50.0))
+	preview.position = Vector2(start_x + 24.0, base_y + 94.0)
+	menu.position = Vector2(start_x + 64.0, base_y)
+	card.position = Vector2(start_x + 180.0, base_y)
 
 
 func _build_card() -> void:
