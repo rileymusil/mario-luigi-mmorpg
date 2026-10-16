@@ -32,7 +32,7 @@ func _ready() -> void:
 	node.character_id = character if Game.CHARACTERS.has(character) else "mario"
 	node.facing = Vector2.LEFT
 	node.scale = Vector2(SCALE, SCALE)
-	node.position = ENEMY_SPOTS[0]
+	node.position = _spot(ENEMY_SPOTS[0])
 	stage.add_child(node)
 	foe = {"name": str(pvp.get("name", "???")), "type": node.character_id, "node": node, "ally": false,
 		"hp": int(stats.get("hp", 1)), "max_hp": maxi(1, int(stats.get("max_hp", 1))), "pow": int(stats.get("pow", 1)),

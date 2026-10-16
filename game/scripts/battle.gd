@@ -17,6 +17,13 @@ const LAND_EXCELLENT := 0.06
 const ALLY_SPOTS := [Vector2(125, 176), Vector2(62, 146), Vector2(52, 192)]
 const ENEMY_SPOTS := [Vector2(280, 168), Vector2(320, 145), Vector2(250, 140)]  # the 3rd: a boss's helper
 const BOSS_SPOT := Vector2(296, 172)
+## Phones held upright: the battle is drawn PORTRAIT_WIDTH game pixels wide
+## instead of 384 (so everything is bigger; Game._process reads
+## portrait_width), and the two sides stand PORTRAIT_SQUEEZE closer together
+## so they still fit (see _spot).
+const PORTRAIT_WIDTH := 288
+const PORTRAIT_SQUEEZE := 0.75
+var portrait_width := PORTRAIT_WIDTH
 const SCALE := 1.5
 
 const BACKGROUNDS := "res://assets/battle/backgrounds/%s.png"
@@ -189,11 +196,19 @@ func _add_ally(info: Dictionary) -> void:
 	node.character_id = info["id"]
 	node.facing = Vector2.RIGHT
 	node.scale = Vector2(SCALE, SCALE)
-	node.position = ALLY_SPOTS[allies.size()]
+	node.position = _spot(ALLY_SPOTS[allies.size()])
 	stage.add_child(node)
 	var m: Dictionary = info["member"]
 	allies.append({"name": info["name"], "node": node, "member": m, "ally": true, "home": node.position,
 		"pow": m["pow"], "def": m["def"]})
+
+
+## Where someone stands: a spot from ALLY_SPOTS / ENEMY_SPOTS, pulled in
+## towards the middle on a phone held upright.
+func _spot(p: Vector2) -> Vector2:
+	if not Game.is_portrait():
+		return p
+	return Vector2(roundf(192.0 + (p.x - 192.0) * PORTRAIT_SQUEEZE), p.y)
 
 
 func _add_foe(type: String) -> void:
@@ -203,7 +218,7 @@ func _add_foe(type: String) -> void:
 	node.character_id = type
 	node.facing = Vector2.LEFT
 	node.scale = Vector2(SCALE, SCALE)
-	node.position = BOSS_SPOT if boss and foes.is_empty() else ENEMY_SPOTS[foes.size()]
+	node.position = _spot(BOSS_SPOT if boss and foes.is_empty() else ENEMY_SPOTS[foes.size()])
 	stage.add_child(node)
 	if boss or Game.BOSS_MINIONS.has(type):
 		node.scale = Vector2.ONE * node.battle_scale(SCALE)  # the biggest bosses would fill the screen
@@ -1786,7 +1801,7 @@ func _process(delta: float) -> void:
 	_place_badges()
 	foe_box.visible = foe_list.get_child_count() > 0
 	foe_box.reset_size()
-	foe_box.position.x = 376.0 - foe_box.size.x
+	foe_box.position.x = Game.get_safe_rect().end.x - 8.0 - foe_box.size.x
 	for f in foes:
 		if not f.has("marks"):
 			f["marks"] = _status_marks(f["node"])
@@ -1821,7 +1836,14 @@ func _wait(seconds: float) -> void:
 ## change (they are empty when the layout first runs, so their height was 0).
 func _place_party_bar() -> void:
 	var safe := Game.get_safe_rect()
-	party_bar.reset_size()
+	# Narrow screens (a phone held upright): drop the hearts so the boxes fit.
+	for squeeze in [false, true]:
+		for a in allies:
+			if a.has("heart"):
+				a["heart"].visible = not squeeze
+		party_bar.reset_size()
+		if party_bar.get_combined_minimum_size().x <= safe.size.x - 4.0:
+			break
 	party_bar.position.x = roundf(safe.position.x + (safe.size.x - party_bar.size.x) / 2.0)
 	party_bar.position.y = safe.end.y - party_bar.size.y - 2.0
 
@@ -1843,7 +1865,8 @@ func _build_party_bar() -> void:
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		panel.add_child(row)
 		row.add_child(_icon(_face(a["node"].character_id)))
-		row.add_child(_icon(ICON_HEART))
+		a["heart"] = _icon(ICON_HEART)
+		row.add_child(a["heart"])
 		a["hp_label"] = _light_label()
 		row.add_child(a["hp_label"])
 		if _is_player(a) or a.get("you", false):

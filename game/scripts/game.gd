@@ -1330,7 +1330,8 @@ func _ready() -> void:
 ## in portrait it would be scaled to the phone's width and come out tiny.
 ## Instead the base width shrinks to PORTRAIT_WIDTH game pixels there, so
 ## everything is drawn bigger and the extra height shows more map. Battles
-## keep the full 384 width (their stage is laid out for it).
+## say their own width (battle.gd portrait_width): narrower than 384, with
+## the two sides standing closer together.
 const LANDSCAPE_BASE := Vector2i(384, 216)
 const PORTRAIT_WIDTH := 256
 
@@ -1340,8 +1341,12 @@ func _process(_delta: float) -> void:
 	var win := DisplayServer.window_get_size()
 	var base := LANDSCAPE_BASE
 	var scene := get_tree().current_scene
-	if win.y > win.x and not (scene != null and scene.is_in_group(&"battles")):
-		base = Vector2i(PORTRAIT_WIDTH, LANDSCAPE_BASE.y)
+	if win.y > win.x:
+		var width := PORTRAIT_WIDTH
+		if scene != null and scene.is_in_group(&"battles"):
+			var w = scene.get("portrait_width")  # battle.gd: narrower than 384, a bit bigger
+			width = int(w) if w != null else LANDSCAPE_BASE.x
+		base = Vector2i(width, LANDSCAPE_BASE.y)
 	if root.content_scale_size != base:
 		root.content_scale_size = base
 
@@ -1764,7 +1769,13 @@ func go_to_map(map_id: String, spawn: String) -> void:
 	player["spawn"] = spawn
 	player["position"] = null
 	save()
-	get_tree().call_deferred("change_scene_to_file", WORLD_SCENE)
+	# A quick fade to black and back (the same one battles end with). While
+	# another transition plays (losing a battle sends you home) it just swaps.
+	var tree := get_tree()
+	if not BattleTransition.is_playing():
+		BattleTransition.out_of_battle(tree, func(): tree.change_scene_to_file(WORLD_SCENE))
+	else:
+		tree.call_deferred("change_scene_to_file", WORLD_SCENE)
 
 
 func start_battle(enemies: Array, defeated_key: String, overworld_position: Vector2) -> void:

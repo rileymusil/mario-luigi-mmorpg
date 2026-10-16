@@ -3,9 +3,10 @@
 // 00:00 UTC to the next Monday. Zones add wins; the game reads them with
 //   GET /score -> {week, good, evil, ends_at}   (ends_at: ms since 1970)
 //
-// It also keeps the leaderboards: each player's level and boss wins (sent by
-// their game when they join a map; saves live in the game, so these are
-// trusted like the save is) and PvP wins (counted here when a duel ends).
+// It also keeps the leaderboards, one entry per username: the best level and
+// boss wins any save with that name has had (sent by the game when it joins
+// a map; saves live in the game, so these are trusted like the save is) and
+// PvP wins (counted here when a duel ends).
 //   GET /leaders -> {level: [Leader], pvp: [Leader], bosses: [Leader]}
 //   Leader = {name, side, character, level, pvp, bosses}, best first, top 10
 
@@ -39,27 +40,38 @@ export class Scores extends DurableObject {
   constructor(ctx: DurableObjectState, env: unknown) {
     super(ctx, env as never);
     this.sql = ctx.storage.sql;
+    // One row per username (in lower case): several saves with the same name
+    // count as one player, with their best level and boss wins and every PvP win.
     this.sql.exec(
-      "CREATE TABLE IF NOT EXISTS leaders (uid TEXT PRIMARY KEY, name TEXT, side TEXT, character TEXT, " +
+      "CREATE TABLE IF NOT EXISTS board (name_lc TEXT PRIMARY KEY, name TEXT, side TEXT, character TEXT, " +
         "level INTEGER DEFAULT 0, pvp INTEGER DEFAULT 0, bosses INTEGER DEFAULT 0, at INTEGER)",
     );
+    // The first version kept a row per save ("leaders"); fold it in once.
+    const old = this.sql.exec("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'leaders'").toArray();
+    if (old.length) {
+      this.sql.exec(
+        "INSERT OR IGNORE INTO board (name_lc, name, side, character, level, pvp, bosses, at) " +
+          "SELECT lower(name), name, side, character, MAX(level), SUM(pvp), MAX(bosses), MAX(at) FROM leaders GROUP BY lower(name)",
+      );
+      this.sql.exec("DROP TABLE leaders");
+    }
   }
 
   // A player joined a map: their name, look, level and boss wins.
-  async report(uid: string, name: string, side: string, character: string, level: number, bosses: number): Promise<void> {
+  async report(name: string, side: string, character: string, level: number, bosses: number): Promise<void> {
     this.sql.exec(
-      "INSERT INTO leaders (uid, name, side, character, level, bosses, at) VALUES (?, ?, ?, ?, ?, ?, ?) " +
-        "ON CONFLICT(uid) DO UPDATE SET name = excluded.name, side = excluded.side, character = excluded.character, " +
-        "level = excluded.level, bosses = excluded.bosses, at = excluded.at",
-      uid, name, side, character, level, bosses, Date.now(),
+      "INSERT INTO board (name_lc, name, side, character, level, bosses, at) VALUES (?, ?, ?, ?, ?, ?, ?) " +
+        "ON CONFLICT(name_lc) DO UPDATE SET name = excluded.name, side = excluded.side, character = excluded.character, " +
+        "level = MAX(level, excluded.level), bosses = MAX(bosses, excluded.bosses), at = excluded.at",
+      name.toLowerCase(), name, side, character, level, bosses, Date.now(),
     );
   }
 
-  async addPvpWin(uid: string, name: string, side: string, character: string): Promise<void> {
+  async addPvpWin(name: string, side: string, character: string): Promise<void> {
     this.sql.exec(
-      "INSERT INTO leaders (uid, name, side, character, pvp, at) VALUES (?, ?, ?, ?, 1, ?) " +
-        "ON CONFLICT(uid) DO UPDATE SET pvp = pvp + 1, name = excluded.name, at = excluded.at",
-      uid, name, side, character, Date.now(),
+      "INSERT INTO board (name_lc, name, side, character, pvp, at) VALUES (?, ?, ?, ?, 1, ?) " +
+        "ON CONFLICT(name_lc) DO UPDATE SET pvp = pvp + 1, at = excluded.at",
+      name.toLowerCase(), name, side, character, Date.now(),
     );
   }
 
@@ -67,7 +79,7 @@ export class Scores extends DurableObject {
     const top = (order: string, min: string) =>
       this.sql
         .exec(
-          `SELECT name, side, character, level, pvp, bosses FROM leaders WHERE ${min} > 0 ORDER BY ${order} LIMIT ${TOP}`,
+          `SELECT name, side, character, level, pvp, bosses FROM board WHERE ${min} > 0 ORDER BY ${order} LIMIT ${TOP}`,
         )
         .toArray() as unknown as Leader[];
     return {

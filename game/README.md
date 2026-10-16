@@ -47,7 +47,7 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
 
     The enemy box lists burn, stun and lowered DEF next to each enemy.
   - *Enemy turns*: press Z so whoever is attacked is in the air when it hits.
-- **Quests.** Each side has a short questline (scripts/quests.gd). Good players get it from Toadsworth in Castle Town, evil players from the Border Bro at Bowser's Castle; a yellow "!" floats over them when they have a new step or a reward. Steps: beat enemies in the Outskirts, get a partner or recruit, carry a message to Hoohoo Village or Stardust Fields, then beat a boss. Go back to the giver after each step for coins, XP and items (a badge at the end). Progress shows in the chat, and *Quests* in the pause menu says what to do next.
+- **Quests.** Each side has a short questline (scripts/quests.gd). Good players get it from Toadsworth in Castle Town, evil players from the Border Bro at Bowser's Castle; a scroll floats over them when they have a new step or a reward. Steps: beat enemies in the Outskirts, get a partner or recruit, carry a message to Hoohoo Village or Stardust Fields, then beat a boss. Go back to the giver after each step for coins, XP and items (a badge at the end). Progress shows in the chat, and *Quests* in the pause menu says what to do next.
 - **Recruit.** Good players talk to partners (X) and ask them to join: Toad, the Pianta, Bombette, Goombella, Bobbery, Prince Peasley, Koops and Bow in Castle Town, Yoshi Kid and Yoshi in the Outskirts. Evil players use *Ask to join* in battle on any enemy; hurt enemies say yes more often and stronger ones less. Up to 2 follow you and fight on their own turn with their own timed move:
 
   | Partner / recruit | Move | Kind |

@@ -46,7 +46,7 @@ func _add_guest(info: Dictionary) -> void:
 	node.character_id = character if Game.CHARACTERS.has(character) else "mario"
 	node.facing = Vector2.RIGHT
 	node.scale = Vector2(SCALE, SCALE)
-	node.position = ALLY_SPOTS[allies.size()] if allies.size() < ALLY_SPOTS.size() else EXTRA_SPOT
+	node.position = _spot(ALLY_SPOTS[allies.size()] if allies.size() < ALLY_SPOTS.size() else EXTRA_SPOT)
 	stage.add_child(node)
 	var member := {"name": str(info.get("name", "Partner")), "max_hp": maxi(1, int(info.get("max_hp", 10))),
 		"hp": maxi(1, int(info.get("hp", 10))), "pow": int(info.get("pow", 1)), "def": int(info.get("def", 0))}

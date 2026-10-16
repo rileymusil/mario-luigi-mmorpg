@@ -23,6 +23,9 @@ var _local_foe := -1    # the foe charging at you while you dodge
 
 
 func _ready() -> void:
+	# The host's positions arrive as they are (not pulled in, see battle.gd
+	# _spot), so the guest's screen stays wide enough for a landscape host.
+	portrait_width = 320
 	_setup_presentation(Game.player.get("map", ""))  # backdrop, HP boxes (battle.gd)
 	message.text = "Joining %s's battle..." % Net.party_name
 	Net.party_message.connect(_on_party_message)
