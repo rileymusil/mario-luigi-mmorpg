@@ -12,11 +12,15 @@ extends PanelContainer
 
 
 var _prev_hp := -1
+## Portrait phones: no character name, so the bar fits a 256 px wide screen.
+var compact := false
 var _prev_coins := -1
 
 
 func refresh(p: Dictionary, character_name: String) -> void:
 	name_label.text = character_name
+	name_label.visible = not compact
+	$Row/Gap.visible = not compact
 	level.value = p["level"]
 	var new_hp: int = p["hp"]
 	hp.text = "%d/%d" % [new_hp, p["max_hp"]]

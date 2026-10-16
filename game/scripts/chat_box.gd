@@ -170,9 +170,11 @@ func _process(delta: float) -> void:
 	if touch:
 		var menu: Control = TouchControls.menu_button
 		_button.position = Vector2(menu.position.x + menu.size.x - _button.size.x, menu.position.y + menu.size.y + 3.0)
+	elif Game.is_portrait():  # above the hint bar, which is as wide as the screen
+		_button.position = Vector2(safe.end.x - _button.size.x - 4.0, safe.end.y - _button.size.y - 22.0)
 	else:
 		_button.position = Vector2(safe.end.x - _button.size.x - 6.0, safe.end.y - _button.size.y - 4.0)
-	_button.visible = not is_typing() and (touch or not TouchControls.active)
+	_button.visible = not is_typing() and (touch or not TouchControls.active) and not _text_box_open()
 
 	# Keep the log's bottom edge just above the text box or hint bar
 	var base_bottom := (_prompt.position.y - 2.0) if is_typing() else (safe.end.y - 24.0)
@@ -183,3 +185,11 @@ func _process(delta: float) -> void:
 		line["age"] += delta
 		var a: float = 1.0 if is_typing() else clampf((FADE_AFTER + 1.0 - line["age"]), 0.0, 1.0)
 		line["label"].modulate.a = a
+
+
+## A speech balloon or text box is up (they cover the bottom of the screen).
+func _text_box_open() -> bool:
+	for n in get_tree().get_nodes_in_group(&"touch_blockers"):
+		if n is CanvasItem and n.is_visible_in_tree():
+			return true
+	return false

@@ -1116,6 +1116,7 @@ func _update_hud() -> void:
 	var safe := Game.get_safe_rect()
 	var vp := get_viewport_rect().size
 	var p: Dictionary = Game.player
+	status.compact = Game.is_portrait()
 	status.refresh(p, Game.character_name())
 	status.position = Vector2(safe.position.x + 4.0, safe.position.y + 3.0)
 
@@ -1126,7 +1127,7 @@ func _update_hud() -> void:
 		hint.text = "B or tap: Talk" if TouchControls.active else "X: Talk"
 	else:
 		hint.text = ("A: Jump   B: Talk" if TouchControls.active else "Z: Jump   X: Talk   Enter: Menu") \
-			+ ("" if map_info["safe"] else "   Jump on foes first!")
+			+ ("" if map_info["safe"] or Game.is_portrait() else "   Jump on foes first!")
 	var hint_box: Control = hint.get_parent()
 	hint_box.visible = hint.text != ""
 	hint_box.reset_size()
