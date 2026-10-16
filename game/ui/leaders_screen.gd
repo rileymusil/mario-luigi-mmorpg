@@ -1,8 +1,9 @@
 class_name LeadersScreen
 extends Control
 ## The leaderboards (pause menu > Leaders): the top 10 players by level, PvP
-## wins and boss wins, from the server (Cloud.leaders). Left/Right or the
-## arrow buttons switch boards; X, Enter or Close shuts it.
+## wins and boss wins, and the bounties, from the server (Cloud.leaders).
+## Left/Right or the arrow buttons switch boards; X, Enter or Close shuts it.
+## Also shows any other list in pages (the achievements, see show_pages).
 ##     await leaders_screen.show_boards()
 
 signal closed
@@ -11,6 +12,8 @@ const BOARDS := [
 	{"key": "level", "title": "Top levels", "value": "Lv %d"},
 	{"key": "pvp", "title": "PvP wins", "value": "%d wins"},
 	{"key": "bosses", "title": "Bosses beaten", "value": "%d bosses"},
+	{"key": "bounties", "field": "bounty", "title": "Bounties", "value": "%d coins",
+		"note": "Beat them in a duel to collect.", "empty": "No bounties right now."},
 ]
 const ROWS := 10
 const GOOD_COLOR := Color(0.55, 0.8, 1)
@@ -18,6 +21,7 @@ const EVIL_COLOR := Color(1, 0.55, 0.5)
 
 var _board := 0
 var _data: Dictionary = {}
+var _pages: Array = []
 var _panel: PanelContainer
 var _title: Label
 var _rows: Array[Label] = []
@@ -96,11 +100,24 @@ func show_boards() -> void:
 	visible = true
 	_board = 0
 	_data = {}
-	_draw_board("Loading...")
+	_pages = _leader_pages("Loading...")
+	_draw_board()
 	_data = await Cloud.leaders()
 	if not _open:
 		return
-	_draw_board("" if not _data.is_empty() else "Couldn't reach the server. Try again in a bit.")
+	_pages = _leader_pages("" if not _data.is_empty() else "Couldn't reach the server. Try again in a bit.")
+	_draw_board()
+	await closed
+
+
+## Shows your own pages (the achievements list) the same way and waits until
+## they're closed. Each page: {title, rows: [[text, value, color]], note}.
+func show_pages(pages: Array) -> void:
+	_open = true
+	visible = true
+	_board = 0
+	_pages = pages
+	_draw_board()
 	await closed
 
 
@@ -113,34 +130,49 @@ func close() -> void:
 
 
 func _switch(step: int) -> void:
-	_board = posmod(_board + step, BOARDS.size())
-	_draw_board("" if not _data.is_empty() else _note.text)
+	_board = posmod(_board + step, maxi(1, _pages.size()))
+	_draw_board()
 
 
-func _draw_board(note: String) -> void:
-	var b: Dictionary = BOARDS[_board]
-	_title.text = "%s  (%d/%d)" % [b["title"], _board + 1, BOARDS.size()]
-	var list: Array = _data.get(b["key"], []) if typeof(_data.get(b["key"])) == TYPE_ARRAY else []
+## The server's boards as pages; `note` replaces the usual footer when set.
+func _leader_pages(note: String) -> Array:
+	var pages: Array = []
 	var me := Game.username().to_lower()
-	for i in ROWS:
-		if i < list.size():
+	for b in BOARDS:
+		var list: Array = _data.get(b["key"], []) if typeof(_data.get(b["key"])) == TYPE_ARRAY else []
+		var rows: Array = []
+		for i in mini(ROWS, list.size()):
 			var e: Dictionary = list[i]
 			var who := str(e.get("name", "?"))
-			var side := str(e.get("side", "good"))
 			var character: String = Game.CHARACTERS.get(str(e.get("character", "")), {}).get("name", "")
-			_rows[i].text = "%d. %s" % [i + 1, who] + (" (%s)" % character if character != "" else "")
-			_values[i].text = b["value"] % int(e.get(b["key"], 0))
-			var color := GOOD_COLOR if side == "good" else EVIL_COLOR
+			var color := GOOD_COLOR if str(e.get("side", "good")) == "good" else EVIL_COLOR
 			if who.to_lower() == me:
 				color = Color(1, 0.9, 0.3)
-			_rows[i].add_theme_color_override("font_color", color)
-			_values[i].add_theme_color_override("font_color", color)
+			rows.append(["%d. %s" % [i + 1, who] + (" (%s)" % character if character != "" else ""),
+				b["value"] % int(e.get(b.get("field", b["key"]), 0)), color])
+		var page_note := note
+		if page_note == "":
+			page_note = b.get("empty", "Nobody yet. Be the first!") if rows.is_empty() else b.get("note", "Blue: good   Red: evil   Yellow: you")
+		pages.append({"title": b["title"], "rows": rows, "note": page_note})
+	return pages
+
+
+func _draw_board() -> void:
+	if _pages.is_empty():
+		return
+	var page: Dictionary = _pages[_board]
+	_title.text = "%s  (%d/%d)" % [page["title"], _board + 1, _pages.size()] if _pages.size() > 1 else str(page["title"])
+	var rows: Array = page.get("rows", [])
+	for i in ROWS:
+		if i < rows.size():
+			_rows[i].text = str(rows[i][0])
+			_values[i].text = str(rows[i][1])
+			_rows[i].add_theme_color_override("font_color", rows[i][2])
+			_values[i].add_theme_color_override("font_color", rows[i][2])
 		else:
 			_rows[i].text = ""
 			_values[i].text = ""
-	if note == "" and list.is_empty():
-		note = "Nobody yet. Be the first!"
-	_note.text = note if note != "" else "Blue: good   Red: evil   Yellow: you"
+	_note.text = str(page.get("note", ""))
 	_center.call_deferred()
 
 

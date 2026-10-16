@@ -41,6 +41,7 @@ signal whisper_received(from_name: String, text: String)
 signal whisper_sent(to_name: String, text: String)    # it got there; to_name as they spell it
 signal whisper_failed(to_name: String)                 # nobody by that name is online
 signal friends_status(online: Dictionary)              # lower-case name -> map id, or null when offline
+signal bounty_won(name: String, coins: int)            # you beat someone with a bounty (already paid, see Game.collect_bounty)
 
 var my_id := ""
 var players := {}  # id -> {id, name, character, side, x, y}: everyone else in your zone
@@ -414,6 +415,9 @@ func _handle(text: String) -> void:
 			duel_foe = ""
 			duel_inbox.append(msg)
 			duel_over.emit(str(msg.get("result", "cancel")))
+		"bounty":
+			Game.collect_bounty(str(msg.get("name", "someone")), int(msg.get("coins", 0)))
+			bounty_won.emit(str(msg.get("name", "")), int(msg.get("coins", 0)))
 		"trade_req":
 			trade_requested.emit(str(msg.get("from", "")), str(msg.get("name", "Someone")))
 		"trade_declined":

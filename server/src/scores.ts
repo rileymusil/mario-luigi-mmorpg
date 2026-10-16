@@ -7,8 +7,13 @@
 // boss wins any save with that name has had (sent by the game when it joins
 // a map; saves live in the game, so these are trusted like the save is) and
 // PvP wins (counted here when a duel ends).
-//   GET /leaders -> {level: [Leader], pvp: [Leader], bosses: [Leader]}
-//   Leader = {name, side, character, level, pvp, bosses}, best first, top 10
+//   GET /leaders -> {level: [Leader], pvp: [Leader], bosses: [Leader], bounties: [Leader]}
+//   Leader = {name, side, character, level, pvp, bosses, bounty}, best first, top 10
+//
+// Bounties: an evil player who wins 2+ duels in a row has a price on their
+// head (BOUNTY_PER_WIN a win in the streak), and so does a strong good hero
+// (level 10+: BOUNTY_PER_LEVEL a level, plus their streak). Whoever from the
+// other side beats them in a duel collects it; the loser's streak resets.
 
 import { DurableObject } from "cloudflare:workers";
 
@@ -30,9 +35,22 @@ export interface Leader {
   level: number;
   pvp: number;
   bosses: number;
+  bounty?: number;
 }
 
 const TOP = 10;
+export const BOUNTY_PER_WIN = 20;
+export const BOUNTY_PER_LEVEL = 5;
+export const BOUNTY_HERO_LEVEL = 10;
+const MAX_STREAK = 10;
+
+// The price on a player's head.
+export function bountyOf(side: string, level: number, streak: number): number {
+  const s = Math.min(streak, MAX_STREAK);
+  let coins = s >= 2 ? s * BOUNTY_PER_WIN : 0;
+  if (side === "good" && level >= BOUNTY_HERO_LEVEL) coins += level * BOUNTY_PER_LEVEL;
+  return coins;
+}
 
 export class Scores extends DurableObject {
   private sql: SqlStorage;
@@ -55,6 +73,17 @@ export class Scores extends DurableObject {
       );
       this.sql.exec("DROP TABLE leaders");
     }
+    // Duels won in a row since the last loss (for bounties).
+    try {
+      this.sql.exec("ALTER TABLE board ADD COLUMN streak INTEGER DEFAULT 0");
+    } catch {
+      // already there
+    }
+  }
+
+  private bountyFor(name: string): number {
+    const row = this.sql.exec("SELECT side, level, streak FROM board WHERE name_lc = ?", name.toLowerCase()).toArray()[0];
+    return row ? bountyOf(String(row.side), Number(row.level), Number(row.streak)) : 0;
   }
 
   // A player joined a map: their name, look, level and boss wins.
@@ -67,15 +96,24 @@ export class Scores extends DurableObject {
     );
   }
 
-  async addPvpWin(name: string, side: string, character: string): Promise<void> {
+  // A duel ended: counts the win, grows the winner's streak, ends the loser's
+  // and returns the bounty the winner collects (0 if none, or same side).
+  async addPvpWin(name: string, side: string, character: string, loser = "", loserSide = ""): Promise<number> {
+    const prize = loser && loserSide && loserSide !== side ? this.bountyFor(loser) : 0;
     this.sql.exec(
-      "INSERT INTO board (name_lc, name, side, character, pvp, at) VALUES (?, ?, ?, ?, 1, ?) " +
-        "ON CONFLICT(name_lc) DO UPDATE SET pvp = pvp + 1, at = excluded.at",
+      "INSERT INTO board (name_lc, name, side, character, pvp, streak, at) VALUES (?, ?, ?, ?, 1, 1, ?) " +
+        "ON CONFLICT(name_lc) DO UPDATE SET pvp = pvp + 1, streak = streak + 1, at = excluded.at",
       name.toLowerCase(), name, side, character, Date.now(),
     );
+    if (loser) this.sql.exec("UPDATE board SET streak = 0 WHERE name_lc = ?", loser.toLowerCase());
+    return prize;
   }
 
-  async leaders(): Promise<{ level: Leader[]; pvp: Leader[]; bosses: Leader[] }> {
+  async bounty(name: string): Promise<number> {
+    return this.bountyFor(name);
+  }
+
+  async leaders(): Promise<{ level: Leader[]; pvp: Leader[]; bosses: Leader[]; bounties: Leader[] }> {
     const top = (order: string, min: string) =>
       this.sql
         .exec(
@@ -86,6 +124,20 @@ export class Scores extends DurableObject {
       level: top("level DESC, bosses DESC, at ASC", "level"),
       pvp: top("pvp DESC, level DESC, at ASC", "pvp"),
       bosses: top("bosses DESC, level DESC, at ASC", "bosses"),
+      bounties: this.sql
+        .exec(
+          "SELECT name, side, character, level, pvp, bosses, streak FROM board " +
+            "WHERE streak >= 2 OR (side = 'good' AND level >= ?)",
+          BOUNTY_HERO_LEVEL,
+        )
+        .toArray()
+        .map((r) => ({
+          name: String(r.name), side: String(r.side), character: String(r.character), level: Number(r.level),
+          pvp: Number(r.pvp), bosses: Number(r.bosses), bounty: bountyOf(String(r.side), Number(r.level), Number(r.streak)),
+        }))
+        .filter((l) => l.bounty > 0)
+        .sort((x, y) => y.bounty - x.bounty)
+        .slice(0, TOP),
     };
   }
 

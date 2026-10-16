@@ -1654,6 +1654,7 @@ func bench_for_side() -> Array:
 ## Returns "party" or "bench".
 func add_member(m: Dictionary) -> String:
 	var to := "party"
+	player["recruited"] = int(player.get("recruited", 0)) + 1  # for the achievements
 	if player["party"].size() < MAX_PARTY:
 		player["party"].append(m)
 	else:
@@ -1691,12 +1692,25 @@ func all_tradeable_partners() -> Array:
 ## Applies a finished online trade. `give` and `recv` are the two offers
 ## ({coins, items, partner}) as the server confirmed them; `give_slot` is
 ## ["party" or "bench", index] of the partner you gave, or [].
+## You beat someone with a price on their head in a duel (the server says so,
+## see Net "bounty"): adds the coins and a note for the chat.
+func collect_bounty(who: String, coins: int) -> void:
+	if player.is_empty() or coins <= 0:
+		return
+	coins = mini(coins, 1000)
+	player["coins"] = clampi(int(player.get("coins", 0)) + coins, 0, 99999)
+	player["bounties"] = int(player.get("bounties", 0)) + 1
+	quest_notes.append("Bounty collected on %s: %d coins!" % [who, coins])
+	save()
+
+
 ## What you receive is checked here: unknown items or characters are dropped
 ## and a partner's stats are capped at what it could reach at level 50, so a
 ## tampered client can't hand you anything impossible.
 ## A traded partner fights for the side that receives it: trading is the only
 ## way for good players to get enemies and bosses, and for evil to get partners.
 func apply_trade(give: Dictionary, recv: Dictionary, give_slot: Array = []) -> void:
+	player["trades"] = int(player.get("trades", 0)) + 1  # for the achievements
 	var give_coins: int = clampi(int(give.get("coins", 0)), 0, int(player.get("coins", 0)))
 	var recv_coins: int = clampi(int(recv.get("coins", 0)), 0, 99999)
 	player["coins"] = clampi(int(player.get("coins", 0)) - give_coins + recv_coins, 0, 99999)

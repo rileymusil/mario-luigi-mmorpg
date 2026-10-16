@@ -39,6 +39,8 @@ var npcs: Array = []      # [{node, id}]
 var score_box: PanelContainer  # this week's good vs evil score, in towns
 var save_prompt: TextPrompt  # password box for saving online (made when first needed)
 var leaders_screen: LeadersScreen  # pause menu > Leaders (made when first needed)
+var _quest_news: Array = []  # talk ids that show the quest scroll (Quests.news_talk_ids)
+var _quest_news_timer := 0.0
 var busy := false         # true while a menu or dialog is open
 var _grace := 1.5         # seconds after arriving before enemies can start a battle
 ## The leader's path, followed by the party: x, y, 1 where a jump started,
@@ -132,6 +134,7 @@ func _ready() -> void:
 		add_child(MapEditor.new())
 
 	Quests.check()
+	Achievements.visit(map_id)
 	if map_info["safe"]:
 		_show_weekly_score()
 	dialog.visible = false
@@ -752,8 +755,22 @@ func _quest_talk(n: Dictionary) -> bool:
 				await say("Quest: %s Already done! Talk to me again." % Quests.current()["text"])
 			else:
 				await say("Quest: %s" % Quests.current()["text"])
-		"remind":
+		"remind", "daily_wait":
 			await say(pages[0], speaker, node)
+		"daily_offer":
+			await say(pages[0], speaker, node)
+			dialog.open(pages[1], speaker, node)
+			_place_menu.call_deferred()
+			var c := await menu.choose(["Sure!", "Not now"], "", true)
+			dialog.close()
+			if c == 0:
+				Quests.daily_accept(n["talk"])
+				await say("Daily quest: %s" % pages[1])
+		"daily_reward":
+			await say(pages[0], speaker, node)
+			for line in Quests.daily_claim(n["talk"]):
+				await say(line)
+			_update_hud()
 		"talk":
 			for page in pages:
 				await say(page, speaker, node)
@@ -773,12 +790,16 @@ func _update_quests() -> void:
 		var note: String = Game.quest_notes.pop_front()
 		if online and online.chat:
 			online.chat.system(note)
-	var news := Quests.giver_has_news()
-	var giver: String = Quests.line()["giver"]
+	_quest_news_timer -= get_process_delta_time()
+	if _quest_news_timer <= 0.0:
+		_quest_news_timer = 0.5
+		_quest_news = Quests.news_talk_ids()
+		if not busy:
+			Achievements.check()
 	for n in npcs:
 		if not n.has("node") or n["node"] == null:
 			continue
-		var want: bool = news and n["talk"] == giver
+		var want: bool = n["talk"] in _quest_news
 		var mark: Sprite2D = n.get("mark")
 		if want and mark == null:
 			mark = Sprite2D.new()
@@ -989,8 +1010,16 @@ func _pause_menu() -> void:
 				await _party_menu()
 				continue
 			"Quests":
+				var q := await pause_screen.menu.choose(["Story", "Daily", "Achievements", "Back"], "", true)
 				pause_screen.close()
-				await say(Quests.summary())
+				match q:
+					0:
+						await say(Quests.summary())
+					1:
+						await say(Quests.daily_summary())
+					2:
+						await _list_screen().show_pages(Achievements.pages())
+						await get_tree().process_frame
 				continue
 			"Friends":
 				pause_screen.close()
@@ -1002,13 +1031,7 @@ func _pause_menu() -> void:
 				continue
 			"Leaders":
 				pause_screen.close()
-				if leaders_screen == null:
-					var layer := CanvasLayer.new()
-					layer.layer = 6  # over the chat log
-					add_child(layer)
-					leaders_screen = LeadersScreen.new()
-					layer.add_child(leaders_screen)
-				await leaders_screen.show_boards()
+				await _list_screen().show_boards()
 				await get_tree().process_frame
 				continue
 			"Save":
@@ -1035,6 +1058,17 @@ func _pause_menu() -> void:
 	pause_screen.close()
 	await get_tree().process_frame
 	busy = false
+
+
+## The leaderboards screen (also shows the achievements), made when first needed.
+func _list_screen() -> LeadersScreen:
+	if leaders_screen == null:
+		var layer := CanvasLayer.new()
+		layer.layer = 6  # over the chat log
+		add_child(layer)
+		leaders_screen = LeadersScreen.new()
+		layer.add_child(leaders_screen)
+	return leaders_screen
 
 
 ## Pause menu > Friends: who's online and where (asked from the server), then

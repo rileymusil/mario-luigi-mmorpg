@@ -132,6 +132,7 @@ static func summary() -> String:
 
 ## A battle was won: `types` are the enemies beaten, on `map`.
 static func on_defeat(types: Array, map: String) -> void:
+	_daily_defeat(types, map)
 	var step := current()
 	if step.is_empty() or step["goal"] != "defeat" or state().get("done", false):
 		return
@@ -186,12 +187,14 @@ static func _note(text: String) -> void:
 ##   {"kind": "reward", "pages": [...]}  the giver hands over the reward
 ##   {"kind": "remind", "pages": [...]}  the giver reminds you what to do
 ##   {"kind": "talk", "pages": [...]}    a talk step's NPC (finishes the step)
+##   {"kind": "daily_offer" / "daily_reward" / "daily_wait", "pages": [...]}
+##                                       a daily giver (see daily_event)
 ## {} means talk as usual.
 static func talk_event(talk_id: String) -> Dictionary:
 	var l := line()
 	var s := state()
 	if s.get("finished", false):
-		return {}
+		return daily_event(talk_id)
 	var step := current()
 	if talk_id == l["giver"]:
 		if s["step"] < 0:
@@ -205,7 +208,7 @@ static func talk_event(talk_id: String) -> Dictionary:
 		return {"kind": "remind", "pages": ["Remember: %s" % step["text"]]}
 	if not step.is_empty() and step["goal"] == "talk" and step["talk"] == talk_id and not s.get("done", false):
 		return {"kind": "talk", "pages": step["say"]}
-	return {}
+	return daily_event(talk_id)
 
 
 ## Starts the line's first step (you accepted it).
@@ -253,3 +256,181 @@ static func claim() -> Array:
 	else:
 		check()  # the next step may already be done (you have a partner, say)
 	return out
+
+
+# --- Daily side quests ---------------------------------------------------------------
+# One giver in each area (a talk id) hands out one small task a day, the same
+# task for everyone that day (picked from the giver's list by the UTC date).
+# Talk to them to take it, do it, then talk to them again for the reward;
+# they have a new one the next day. Either side can do any of them.
+# Task goals: "defeat" (count, on `map`, of `enemy` if given) and "bring"
+# (have `count` of `item`; handed over when you claim).
+# Saved as player["daily"][giver] = {"day", "task", "count", "taken", "done", "claimed"}.
+
+const DAILY := {
+	"town_gossip": {"name": "the gossip in Castle Town", "map": "castle_town", "reward": {"coins": 30, "xp": 15},
+		"tasks": [
+			{"goal": "defeat", "count": 5, "map": "outskirts", "text": "Beat 5 enemies in the Beanbean Outskirts."},
+			{"goal": "defeat", "count": 2, "map": "outskirts", "enemy": "goomba", "text": "Beat 2 Goombas in the Outskirts."},
+			{"goal": "bring", "count": 2, "item": "mushroom", "text": "Bring 2 Mushrooms."},
+		]},
+	"koopa_guard": {"name": "the Koopa guards at Bowser's Castle", "map": "bowser_castle", "reward": {"coins": 30, "xp": 15},
+		"tasks": [
+			{"goal": "defeat", "count": 6, "map": "outskirts", "text": "Beat 6 enemies in the Beanbean Outskirts."},
+			{"goal": "defeat", "count": 2, "map": "outskirts", "enemy": "shy_guy", "text": "Beat 2 Shy Guys in the Outskirts."},
+			{"goal": "bring", "count": 1, "item": "syrup", "text": "Bring a Syrup for the guards."},
+		]},
+	"meadow_bean": {"name": "the Beanish in the east meadow", "map": "outskirts_east", "reward": {"coins": 40, "xp": 20},
+		"tasks": [
+			{"goal": "defeat", "count": 4, "map": "outskirts_east", "text": "Beat 4 enemies in the east meadow."},
+			{"goal": "bring", "count": 1, "item": "refreshing_herb", "text": "Bring a Refreshing Herb."},
+		]},
+	"woods_kid": {"name": "the kid in the woods", "map": "outskirts_woods", "reward": {"coins": 40, "xp": 20},
+		"tasks": [
+			{"goal": "defeat", "count": 4, "map": "outskirts_woods", "text": "Beat 4 enemies in the woods."},
+			{"goal": "bring", "count": 3, "item": "mushroom", "text": "Bring 3 Mushrooms."},
+		]},
+	"stardust_traveler": {"name": "the traveler in Stardust Fields", "map": "stardust_fields", "reward": {"coins": 50, "xp": 30},
+		"tasks": [
+			{"goal": "defeat", "count": 5, "map": "stardust_fields", "text": "Beat 5 enemies in Stardust Fields."},
+			{"goal": "defeat", "count": 2, "map": "stardust_fields", "enemy": "buzzy_beetle", "text": "Beat 2 Buzzy Beetles in Stardust Fields."},
+			{"goal": "defeat", "count": 2, "map": "stardust_fields", "enemy": "dry_bones", "text": "Beat 2 Dry Bones in Stardust Fields."},
+		]},
+	"hoohoo_mountain": {"name": "the Hoohooros by the mountain", "map": "hoohoo_village", "reward": {"coins": 60, "xp": 35},
+		"tasks": [
+			{"goal": "defeat", "count": 8, "text": "Beat 8 enemies anywhere."},
+			{"goal": "bring", "count": 1, "item": "super_mushroom", "text": "Bring a Super Mushroom."},
+		]},
+}
+
+
+## Today's date (UTC), e.g. "2026-10-16": dailies change at midnight UTC.
+static func today() -> String:
+	var d := Time.get_date_dict_from_system(true)
+	return "%04d-%02d-%02d" % [d["year"], d["month"], d["day"]]
+
+
+## Today's task index for `giver` (the same for everyone).
+static func daily_task_index(giver: String, day := "") -> int:
+	if day == "":
+		day = today()
+	return absi(("%s:%s" % [day, giver]).hash()) % DAILY[giver]["tasks"].size()
+
+
+## Your state for `giver` today (a fresh one on a new day).
+static func daily_state(giver: String) -> Dictionary:
+	var p: Dictionary = Game.player
+	if typeof(p.get("daily")) != TYPE_DICTIONARY:
+		p["daily"] = {}
+	var s = p["daily"].get(giver)
+	if typeof(s) != TYPE_DICTIONARY or s.get("day", "") != today():
+		s = {"day": today(), "task": daily_task_index(giver), "count": 0, "taken": false, "done": false, "claimed": false}
+		p["daily"][giver] = s
+	s["count"] = int(s.get("count", 0))
+	s["task"] = int(s.get("task", 0))
+	return s
+
+
+static func daily_task(giver: String) -> Dictionary:
+	var tasks: Array = DAILY[giver]["tasks"]
+	return tasks[clampi(daily_state(giver)["task"], 0, tasks.size() - 1)]
+
+
+## Dailies taken today and not handed in yet: [[giver, task, state]].
+static func active_dailies() -> Array:
+	var out: Array = []
+	for giver in DAILY:
+		var s := daily_state(giver)
+		if s["taken"] and not s["claimed"]:
+			out.append([giver, daily_task(giver), s])
+	return out
+
+
+static func _daily_defeat(types: Array, map: String) -> void:
+	for d in active_dailies():
+		var task: Dictionary = d[1]
+		var s: Dictionary = d[2]
+		if s["done"] or task["goal"] != "defeat" or (task.has("map") and task["map"] != map):
+			continue
+		var n := types.filter(func(t): return not Game.BOSSES.has(str(t)) and (not task.has("enemy") or str(t) == task["enemy"])).size()
+		if n == 0:
+			continue
+		s["count"] = mini(s["count"] + n, task["count"])
+		if s["count"] >= task["count"]:
+			s["done"] = true
+			_note("Daily quest done! Go back to %s." % DAILY[d[0]]["name"])
+		else:
+			_note("Daily: %d/%d. %s" % [s["count"], task["count"], task["text"]])
+
+
+## What talking to a daily giver does (see talk_event), or {}.
+static func daily_event(talk_id: String) -> Dictionary:
+	if not DAILY.has(talk_id):
+		return {}
+	var s := daily_state(talk_id)
+	var task := daily_task(talk_id)
+	if s["claimed"]:
+		return {"kind": "daily_wait", "pages": ["Thanks again for today! Come back tomorrow, I'll have something new."]}
+	if not s["taken"]:
+		return {"kind": "daily_offer", "pages": ["Got a minute? I could use some help today.", "%s" % task["text"]]}
+	if task["goal"] == "bring":
+		if Game.item_count(task["item"]) >= task["count"]:
+			return {"kind": "daily_reward", "pages": ["You brought it! Thank you!"]}
+		return {"kind": "remind", "pages": ["Still need it: %s (You have %d.)" % [task["text"], Game.item_count(task["item"])]]}
+	if s["done"]:
+		return {"kind": "daily_reward", "pages": ["You did it! Thank you!"]}
+	return {"kind": "remind", "pages": ["Today's job: %s (%d/%d)" % [task["text"], s["count"], task["count"]]]}
+
+
+static func daily_accept(giver: String) -> void:
+	daily_state(giver)["taken"] = true
+
+
+## Hands over a daily's reward (and the items it asked for). Returns lines to show.
+static func daily_claim(giver: String) -> Array:
+	var s := daily_state(giver)
+	var task := daily_task(giver)
+	if task["goal"] == "bring":
+		if Game.item_count(task["item"]) < task["count"]:
+			return []
+		Game.add_item(task["item"], -int(task["count"]))
+	elif not s["done"]:
+		return []
+	s["done"] = true
+	s["claimed"] = true
+	Game.player["dailies_done"] = int(Game.player.get("dailies_done", 0)) + 1
+	var r: Dictionary = DAILY[giver]["reward"]
+	Game.player["coins"] = int(Game.player["coins"]) + int(r["coins"])
+	var levels := Game.gain_xp(int(r["xp"]))
+	var out: Array = ["Got %d coins and %d XP!" % [r["coins"], r["xp"]]]
+	if levels > 0:
+		out.append("Level up! %s is now level %d!" % [Game.character_name(), Game.player["level"]])
+	return out
+
+
+## Talk ids that should show the quest scroll: the story giver with news, and
+## daily givers with a task to take or a reward to hand over.
+static func news_talk_ids() -> Array:
+	var out: Array = []
+	if giver_has_news():
+		out.append(line()["giver"])
+	for giver in DAILY:
+		var s := daily_state(giver)
+		if not s["taken"] or (not s["claimed"] and daily_event(giver).get("kind") == "daily_reward"):
+			out.append(giver)
+	return out
+
+
+## The daily lines for the Quests page.
+static func daily_summary() -> String:
+	var lines: Array = []
+	for d in active_dailies():
+		var task: Dictionary = d[1]
+		var s: Dictionary = d[2]
+		var progress := ""
+		if task["goal"] == "defeat":
+			progress = " (%d/%d)" % [s["count"], task["count"]]
+		lines.append("%s%s%s" % [task["text"], progress, " Done!" if daily_event(d[0]).get("kind") == "daily_reward" else ""])
+	if lines.is_empty():
+		return "No daily quests taken. Look for the scroll over people in each area: they have a new one every day."
+	return "Daily quests: " + "  ".join(lines)
