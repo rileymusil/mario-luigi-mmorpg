@@ -371,6 +371,42 @@ const mine = lb2.level.filter((l) => l.name.toLowerCase() === wn.toLowerCase());
 check(mine.length === 1 && mine[0].level === 9 && lb2.bosses.find((l) => l.name.toLowerCase() === wn.toLowerCase()).bosses === 3,
   "one leaderboard entry per username, with its best level and boss wins");
 
+// Bounties: a strong good hero has one; so does an evil player on a winning streak.
+const bz = `${zone}_bounty`;
+const hunter = `Hunter${tag}`, braveName = `Brave${tag}`;
+const bh = open(hunter, "bowser", 0, 0, { uid: "ddddddddddd1", side: "evil", level: 5 }, bz);
+const bg1 = open(braveName, "mario", 0, 0, { uid: "ddddddddddd2", side: "good", level: 20 }, bz);
+const bg2 = open(`Second${tag}`, "luigi", 0, 0, { uid: "ddddddddddd3", side: "good", level: 3 }, bz);
+const bg3 = open(`Third${tag}`, "peach", 0, 0, { uid: "ddddddddddd4", side: "good", level: 4 }, bz);
+for (const x of [bh, bg1, bg2, bg3]) {
+  await x.ready;
+  await x.next("welcome");
+}
+await new Promise((res) => setTimeout(res, 300));
+async function duel(evil, good, goodUid, loser) {
+  evil.send({ t: "duel", to: goodUid, stats: {} });
+  await good.next("challenge");
+  good.send({ t: "duel_ready", stats: {} });
+  await evil.next("duel_start");
+  await good.next("duel_start");
+  loser.send({ t: "duel_over", result: "lost" });
+  await (loser === evil ? good : evil).next("duel_over");
+}
+await duel(bh, bg1, "ddddddddddd2", bg1);
+const paid = await bh.next("bounty");
+check(paid.name === braveName && paid.coins === 100, "beating a level 20 hero pays their bounty");
+await duel(bh, bg2, "ddddddddddd3", bg2);
+await new Promise((res) => setTimeout(res, 300));
+check(!bh.inbox.some((m) => m.t === "bounty"), "a weak hero has no bounty");
+const lb3 = await (await fetch(`${base.replace(/^ws/, "http")}/leaders`)).json();
+check(lb3.bounties.some((l) => l.name === hunter && l.bounty === 40), "an evil player on a 2-win streak shows on the bounty board");
+await duel(bh, bg3, "ddddddddddd4", bh);
+const won = await bg3.next("bounty");
+check(won.name === hunter && won.coins === 40, "the hero who ends the streak collects the bounty");
+const lb4 = await (await fetch(`${base.replace(/^ws/, "http")}/leaders`)).json();
+check(!lb4.bounties.some((l) => l.name === hunter), "a broken streak takes the bounty down");
+for (const x of [bh, bg1, bg2, bg3]) x.ws.close();
+
 // Online saves.
 const http = base.replace(/^ws/, "http");
 async function post(op, body) {

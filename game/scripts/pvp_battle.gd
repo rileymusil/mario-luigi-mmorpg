@@ -391,6 +391,7 @@ func _duel_won(coins_dropped: bool) -> void:
 	var coins: int = Game.pvp_drop(int(foe["stats"].get("coins", 0))) if coins_dropped else 0
 	var xp: int = 4 + 2 * int(foe["stats"].get("level", 1))
 	p["coins"] += coins
+	p["pvp_wins"] = int(p.get("pvp_wins", 0)) + 1  # for the achievements
 	p["wins"] += 1
 	p["pvp_wins"] = int(p.get("pvp_wins", 0)) + 1
 	p["hp"] = maxi(1, p["hp"])

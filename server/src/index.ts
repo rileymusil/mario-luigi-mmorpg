@@ -50,6 +50,7 @@
 //     {t:"duel_start", foe:Player+{stats}, first}  both sides, first = you move first
 //     {t:"duel_act", ...} / {t:"duel_hit", ...}    your foe's move / its result
 //     {t:"duel_over", result}              your foe ended the duel (or "left", "busy", "refused")
+//     {t:"bounty", name, coins}            you beat someone with a price on their head: add the coins
 //     {t:"leave", id}
 //     {t:"full"}                            zone is full; the socket is closed
 //     {t:"replaced"}                        the same save connected again; this socket is closed
@@ -166,6 +167,12 @@ interface Player {
   side: "good" | "evil";
   x: number;
   y: number;
+}
+
+interface DuelResult {
+  winner: Player;
+  loser: Player;
+  winnerWs: WebSocket | null;
 }
 
 interface TradePartner {
@@ -622,8 +629,9 @@ export class Zone extends DurableObject<Env> {
   }
 
   // Ends the duel `a` is in and tells the foe how it ended. Returns the
-  // winner for the weekly score and the PvP leaderboard, or null when nobody won.
-  private endDuel(ws: WebSocket | null, a: Attachment, result: string, now: number): Player | null {
+  // winner and loser for the weekly score, the PvP leaderboard and bounties,
+  // or null when nobody won.
+  private endDuel(ws: WebSocket | null, a: Attachment, result: string, now: number): DuelResult | null {
     const foe = a.duel ? this.socketFor(a.duel) : null;
     const fought = a.dueling;
     a.duel = undefined;
@@ -640,16 +648,18 @@ export class Zone extends DurableObject<Env> {
     foe.send(JSON.stringify({ t: "duel_over", result }));
     if (!fought || !a.player || !f.player) return null;
     // "lost" / "left": `a` lost; "timeout": `a` waited out a foe who stopped answering.
-    if (result === "lost" || result === "left") return { ...f.player };
-    if (result === "timeout") return { ...a.player };
+    if (result === "lost" || result === "left") return { winner: { ...f.player }, loser: { ...a.player }, winnerWs: foe };
+    if (result === "timeout") return { winner: { ...a.player }, loser: { ...f.player }, winnerWs: ws };
     return null;
   }
 
-  private async recordWin(winner: Player | null): Promise<void> {
-    if (!winner) return;
+  private async recordWin(won: DuelResult | null): Promise<void> {
+    if (!won) return;
+    const { winner, loser } = won;
     try {
       await scores(this.env).addWin(winner.side);
-      await scores(this.env).addPvpWin(winner.name, winner.side, winner.character);
+      const coins = await scores(this.env).addPvpWin(winner.name, winner.side, winner.character, loser.name, loser.side);
+      if (coins > 0) won.winnerWs?.send(JSON.stringify({ t: "bounty", name: loser.name, coins }));
     } catch {
       // the score is nice to have; a duel never fails over it
     }
