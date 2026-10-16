@@ -26,6 +26,11 @@ var jump_height := 0.0
 
 var _jump_velocity := 0.0
 var _anim_time := 0.0
+## Keeps the walk cycle going through a frame or two without movement:
+## followers step along the leader's trail in uneven hops, and other players'
+## positions arrive in bursts, so their velocity drops to zero now and then.
+const WALK_HOLD := 0.15
+var _walk_hold := 0.0
 var _frames := 8
 var _sprite: Sprite2D
 var _squash := Vector2.ONE
@@ -131,6 +136,10 @@ func set_air(h: float) -> void:
 func _process(delta: float) -> void:
 	if move_velocity.length() > 1.0:
 		facing = move_velocity.normalized()
+		_walk_hold = WALK_HOLD
+	else:
+		_walk_hold -= delta
+	if _walk_hold > 0.0:
 		_anim_time += delta
 	else:
 		_anim_time = 0.0

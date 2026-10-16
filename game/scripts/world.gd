@@ -7,6 +7,9 @@ extends Node2D
 
 const PLAYER_SPEED := 80.0
 const FOLLOW_GAP := 18.0
+const ENEMY_SPEED := 28.0  # px/s while wandering
+const ENEMY_ROAM := 48.0   # how far from home an enemy wanders
+const NPC_SPEED := 22.0    # px/s for NPCs walking their paths
 const TOUCH_DISTANCE := 14.0
 const TALK_DISTANCE := 26.0
 const BOSS_REACH := 40.0     # bosses are big: you can talk to them from further off
@@ -106,7 +109,8 @@ func _ready() -> void:
 			continue
 		var node := _spawn_character(e["type"])
 		node.position = nearest_walkable(e["pos"])
-		enemies.append({"node": node, "home": node.position, "target": node.position, "pause": randf(), "key": key, "type": e["type"]})
+		enemies.append({"node": node, "home": node.position, "target": node.position, "pause": randf(), "key": key,
+			"type": e["type"], "level": level_at(node.position), "stuck": 0.0})
 	for n in map_info["npcs"]:
 		if _in_party(n["id"]):
 			continue
@@ -114,7 +118,8 @@ func _ready() -> void:
 		node.position = n["pos"] if n.get("fixed", false) else nearest_walkable(n["pos"])
 		node.facing = FACINGS.get(n.get("face", "down"), Vector2.DOWN)
 		npcs.append({"node": node, "id": n["id"], "talk": n.get("talk", n["id"]),
-			"reach": n.get("reach", TALK_DISTANCE), "face": node.facing})
+			"reach": n.get("reach", TALK_DISTANCE), "face": node.facing,
+			"path": n.get("path", []), "leg": 0, "step": 1, "wait": randf_range(0.5, 2.0), "stuck": 0.0})
 
 	online = OnlinePlayers.new()
 	add_child(online)
@@ -395,6 +400,7 @@ func _process(delta: float) -> void:
 	camera.position = target_cam
 
 	_update_followers(delta)
+	_update_npcs(delta)
 	_update_enemies(delta)
 
 	if not keys_ready():
@@ -514,15 +520,71 @@ func _update_enemies(delta: float) -> void:
 			node.move_velocity = Vector2.ZERO
 		else:
 			var to: Vector2 = e["target"] - node.position
-			var moved := _try_move(node, to.limit_length(28.0 * delta), false)
+			var step := to.limit_length(ENEMY_SPEED * delta)
+			var moved := _try_move(node, step, false)
 			node.move_velocity = moved / maxf(delta, 0.0001)
-			if to.length() < 1.0 or moved.length() < 0.01:
+			# Sliding along an edge or barely moving counts as blocked: after
+			# a moment, stop and pick somewhere else instead of grinding there.
+			e["stuck"] = e["stuck"] + delta if moved.length() < step.length() * 0.6 else 0.0
+			if to.length() < 1.0 or e["stuck"] > 0.2:
 				e["pause"] = randf_range(0.5, 1.8)
-				e["target"] = e["home"] + Vector2(randf_range(-1, 1), randf_range(-1, 1)) * 48.0
+				e["stuck"] = 0.0
+				e["target"] = _enemy_target(e)
 		if _grace <= 0.0 and node.position.distance_to(player.position) < TOUCH_DISTANCE \
 				and level_at(node.position) == level_at(player.position):
 			_start_battle(e)
 			return
+
+
+## NPCs with a "path" (map data) stroll back and forth along it, resting at
+## each point, and stand still while you're close enough to talk to them.
+func _update_npcs(delta: float) -> void:
+	for n in npcs:
+		if n.get("path", []).is_empty():
+			continue
+		var node: CharacterSprite = n["node"]
+		if node.position.distance_to(player.position) < n["reach"] + 10.0:
+			node.move_velocity = Vector2.ZERO
+			continue
+		if n["wait"] > 0.0:
+			n["wait"] -= delta
+			node.move_velocity = Vector2.ZERO
+			continue
+		var path: Array = n["path"]
+		var to: Vector2 = path[n["leg"]] - node.position
+		var step := to.limit_length(NPC_SPEED * delta)
+		var moved := _try_move(node, step, false)
+		node.move_velocity = moved / maxf(delta, 0.0001)
+		n["stuck"] = n["stuck"] + delta if moved.length() < step.length() * 0.6 else 0.0
+		if to.length() < 1.0 or n["stuck"] > 0.5:
+			n["stuck"] = 0.0
+			n["wait"] = randf_range(1.0, 3.0)
+			# Back and forth: 0, 1, 2, 1, 0, 1...
+			if n["leg"] + n["step"] < 0 or n["leg"] + n["step"] >= path.size():
+				n["step"] = -n["step"]
+			n["leg"] = clampi(n["leg"] + n["step"], 0, path.size() - 1)
+
+
+## Somewhere near an enemy's home it can walk to in a straight line on its own
+## ground level (no walls, water or ledges in between), or home itself.
+func _enemy_target(e: Dictionary) -> Vector2:
+	var from: Vector2 = e["node"].position
+	for _try in 10:
+		var p: Vector2 = e["home"] + Vector2(randf_range(-1, 1), randf_range(-1, 1)) * ENEMY_ROAM
+		if from.distance_to(p) > 8.0 and _clear_walk(from, p, e["level"]):
+			return p
+	return e["home"]
+
+
+## True if every point on the straight line from `a` to `b` is ground someone
+## can stand on at `level`.
+func _clear_walk(a: Vector2, b: Vector2, level: int) -> bool:
+	var n := maxi(1, int(a.distance_to(b) / 3.0))
+	for i in range(1, n + 1):
+		var p := a.lerp(b, float(i) / n)
+		if not can_stand(p) or level_at(p) != level:
+			return false
+	return true
 
 
 func _start_battle(e: Dictionary) -> void:

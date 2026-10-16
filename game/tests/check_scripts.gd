@@ -19,14 +19,18 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	# Play a little: load the overworld with a new save and hold right.
-	Game.new_player("mario", "CI")
-	Game.player["map"] = "castle_town"
-	var world: Node = load(Game.WORLD_SCENE).instantiate()
-	get_tree().root.add_child.call_deferred(world)
-	Input.action_press("move_right")
-	await get_tree().create_timer(2.0).timeout
-	Input.action_release("move_right")
-	print("check_scripts: overworld ran")
+	# A town (walking NPCs) and a field (wandering enemies).
+	for map_id in ["castle_town", "outskirts"]:
+		Game.new_player("mario", "CI")
+		Game.player["map"] = map_id
+		var world: Node = load(Game.WORLD_SCENE).instantiate()
+		get_tree().root.add_child.call_deferred(world)
+		Input.action_press("move_right")
+		await get_tree().create_timer(3.0).timeout
+		Input.action_release("move_right")
+		world.queue_free()
+		await get_tree().process_frame
+		print("check_scripts: overworld ran on ", map_id)
 	get_tree().quit(0)
 
 
