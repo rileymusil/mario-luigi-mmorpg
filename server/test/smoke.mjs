@@ -316,6 +316,15 @@ check(doneA.your_give.coins === 50 && doneA.your_receive.coins === 10, "A receiv
 check(doneB.your_give.coins === 10 && doneB.your_receive.coins === 50, "B receives A's coins and gives own");
 check(doneB.your_receive.partner.id === "goombario", "B receives A's partner");
 
+// A asks again, then gives up before B answers: B's late "accept" is told it expired.
+traderA.send({ t: "trade_req", to: "eeeeeeeee002" });
+await traderB.next("trade_req");
+traderA.send({ t: "trade_cancel" });
+await traderB.next("trade_cancelled");
+traderB.send({ t: "trade_reply", from: "eeeeeeeee001", accept: true });
+const expired = await traderB.next("trade_cancelled");
+check(expired.reason === "expired", "accepting a withdrawn trade request says it expired");
+
 for (const x of [traderA, traderB]) x.ws.close();
 
 
