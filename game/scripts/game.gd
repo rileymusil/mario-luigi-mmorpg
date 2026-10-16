@@ -1001,15 +1001,19 @@ const MAPS := {
 		"npcs": [
 			{"id": "toad", "pos": Vector2(450, 380)}, {"id": "pianta", "pos": Vector2(560, 330)},
 			{"id": "bombette", "pos": Vector2(150, 290)}, {"id": "goombella", "pos": Vector2(640, 220)},
-			{"id": "bobbery", "pos": Vector2(1000, 230)}, {"id": "peasley", "pos": Vector2(1180, 215)},
-			{"id": "koops", "pos": Vector2(1120, 430)}, {"id": "bow", "pos": Vector2(980, 470)},
+			{"id": "bobbery", "pos": Vector2(1000, 230)}, {"id": "peasley", "pos": Vector2(1180, 215), "path": [Vector2(1180, 215), Vector2(1110, 215), Vector2(1255, 215)]},
+			{"id": "koops", "pos": Vector2(1120, 430),
+				"path": [Vector2(1120, 430), Vector2(1045, 430), Vector2(1120, 430), Vector2(1120, 515)]}, {"id": "bow", "pos": Vector2(980, 470)},
 			{"id": "bean_guard", "pos": Vector2(300, 150), "talk": "palace_guard"},
 			{"id": "bean_guard", "pos": Vector2(382, 150), "talk": "palace_guard"},
 			{"id": "bean_villager", "pos": Vector2(45, 370), "talk": "town_gate", "face": "right"},
-			{"id": "bean_kid", "pos": Vector2(665, 450), "talk": "town_kid"},
-			{"id": "bean_girl", "pos": Vector2(1180, 400), "talk": "town_girl", "face": "left"},
-			{"id": "toadsworth", "pos": Vector2(1330, 575), "talk": "toadsworth", "face": "left"},
-			{"id": "bean_villager", "pos": Vector2(250, 300), "talk": "town_gossip"},
+			{"id": "bean_kid", "pos": Vector2(665, 450), "talk": "town_kid", "path": [Vector2(665, 450), Vector2(665, 400), Vector2(665, 515)]},
+			{"id": "bean_girl", "pos": Vector2(1180, 400), "talk": "town_girl", "face": "left",
+				"path": [Vector2(1180, 400), Vector2(1120, 400), Vector2(1240, 400)]},
+			{"id": "toadsworth", "pos": Vector2(1330, 575), "talk": "toadsworth", "face": "left",
+				"path": [Vector2(1330, 575), Vector2(1250, 575)]},
+			{"id": "bean_villager", "pos": Vector2(250, 300), "talk": "town_gossip",
+				"path": [Vector2(250, 300), Vector2(200, 300), Vector2(330, 300)]},
 		],
 	},
 	"outskirts": {
@@ -1035,7 +1039,7 @@ const MAPS := {
 			{"type": "koopa", "pos": Vector2(380, 270)}, {"type": "beanie", "pos": Vector2(120, 215)},
 			{"type": "galoomba", "pos": Vector2(100, 560)}, {"type": "shy_guy", "pos": Vector2(380, 590)},
 		],
-		"npcs": [{"id": "yoshi_kid", "pos": Vector2(765, 285)}, {"id": "yoshi", "pos": Vector2(1380, 180)}],
+		"npcs": [{"id": "yoshi_kid", "pos": Vector2(765, 285), "path": [Vector2(765, 285), Vector2(765, 190)]}, {"id": "yoshi", "pos": Vector2(1380, 180)}],
 	},
 	"bowser_castle": {
 		"name": "Bowser's Castle", "battle_bg": "bowser_castle", "safe": true,
@@ -1129,7 +1133,8 @@ const MAPS := {
 		"npcs": [
 			{"id": "bean_guard", "pos": Vector2(175, 135), "talk": "castle_guard"},
 			{"id": "bean_guard", "pos": Vector2(275, 135), "talk": "castle_guard"},
-			{"id": "lady_lima", "pos": Vector2(330, 240), "talk": "lady_lima", "face": "left"},
+			{"id": "lady_lima", "pos": Vector2(330, 240), "talk": "lady_lima", "face": "left",
+				"path": [Vector2(330, 240), Vector2(245, 240)]},
 		],
 	},
 	"throne_room": {
@@ -1177,10 +1182,11 @@ const MAPS := {
 		],
 		"enemies": [],
 		"npcs": [
-			{"id": "hoohoo_villager", "pos": Vector2(90, 115), "talk": "hoohoo_greeter"},
+			{"id": "hoohoo_villager", "pos": Vector2(90, 115), "talk": "hoohoo_greeter", "path": [Vector2(90, 115), Vector2(165, 115)]},
 			{"id": "hoohoo_villager_b", "pos": Vector2(345, 110), "talk": "hoohoo_deck"},
 			{"id": "hoohoo_villager_b", "pos": Vector2(685, 215), "talk": "hoohoo_mountain", "face": "left"},
-			{"id": "hoohoo_villager", "pos": Vector2(300, 400), "talk": "hoohoo_cave", "face": "left"},
+			{"id": "hoohoo_villager", "pos": Vector2(300, 400), "talk": "hoohoo_cave", "face": "left",
+				"path": [Vector2(300, 400), Vector2(230, 400), Vector2(380, 400)]},
 		],
 	},
 	"hoohoo_hut_w": {
@@ -1236,7 +1242,8 @@ const MAPS := {
 		"enemies": [],
 		"npcs": [
 			{"id": "shopkeeper", "pos": Vector2(350, 468), "talk": "pier_shop", "fixed": true, "reach": 56.0},
-			{"id": "bean_elder", "pos": Vector2(100, 470), "talk": "pier_rest", "face": "right"},
+			{"id": "bean_elder", "pos": Vector2(100, 470), "talk": "pier_rest", "face": "right",
+				"path": [Vector2(100, 470), Vector2(195, 470)]},
 		],
 	},
 	# The Boss Tower, through the castle door in Bowser's Castle (tools/make_tower.py

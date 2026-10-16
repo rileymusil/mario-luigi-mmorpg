@@ -85,6 +85,12 @@ jobs:
             exit 1
           fi
 
+      - name: Map check (stuck spots, unreachable exits, NPCs and enemies)
+        run: |
+          cd "${PROJECT_DIR}"
+          timeout 600 ~/godot/godot --headless res://tests/map_check.tscn 2>&1 | grep -E "map_check|PROBLEM|SCRIPT ERROR" | tee /tmp/map.log
+          ! grep -qE "PROBLEM|SCRIPT ERROR" /tmp/map.log && grep -q "map_check: 0 problem" /tmp/map.log
+
       - name: Export for web
         run: |
           set -euo pipefail
