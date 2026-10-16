@@ -40,15 +40,13 @@ const CHARACTERS := {
 		"special": "grodus_bolt"},
 	"koopa_bros": {"name": "Koopa Bros.", "side": "evil", "frames": 5, "hp": 22, "sp": 12, "pow": 5, "def": 3,
 		"special": "bros_tower"},
-	"bowser_jr": {"name": "Bowser Jr.", "side": "evil", "frames": 1, "hp": 22, "sp": 12, "pow": 5, "def": 2,
-		"special": "goop_paint"},
 	"shadow_mario": {"name": "Shadow Mario", "side": "evil", "frames": 1, "hp": 20, "sp": 12, "pow": 5, "def": 2,
 		"special": "shadow_drain"},
 }
 
 ## Characters that were taken out of the game, and who old saves with them
 ## play as now (see load_save).
-const REMOVED_CHARACTERS := {"dimentio": "bowser", "mimi": "bowser", "vivian": "mario"}
+const REMOVED_CHARACTERS := {"dimentio": "bowser", "mimi": "bowser", "vivian": "mario", "bowser_jr": "bowser"}
 
 ## Signature moves (battle.gd _special), each a timed press. {a} in an info
 ## line names the A button: Z on keys, A on touch (battle.gd _keys).
@@ -67,7 +65,6 @@ const SPECIALS := {
 	"wicked_whirl": {"name": "Wicked Whirl", "sp": 5, "info": "Hits every enemy. Excellent stuns all."},
 	"star_spin": {"name": "Star Spin", "sp": 5, "info": "Hits one enemy, heals the party a bit."},
 	"pickaxe_pound": {"name": "Pickaxe Pound", "sp": 4, "info": "Heavy hit that ignores defense."},
-	"goop_paint": {"name": "Goop Paint", "sp": 4, "info": "Goopy hit. Great timing stuns."},
 	"shadow_drain": {"name": "Shadow Drain", "sp": 5, "info": "Steals HP from an enemy."},
 }
 
@@ -1313,6 +1310,7 @@ const HOME_MAP := {"good": "castle_town", "evil": "bowser_castle"}
 var player := {}          # the saved player, see new_player()
 var pending_battle := {}  # set by the world right before a battle starts
 var defeated := {}        # "map:index" -> time it was beaten (enemies respawn)
+var quest_notes: Array = []  # quest progress lines for the world to show (see Quests)
 const RESPAWN_SECONDS := 45.0
 
 
@@ -1650,11 +1648,14 @@ func bench_for_side() -> Array:
 ## Adds a new member to your party, or to the bench if the party is full.
 ## Returns "party" or "bench".
 func add_member(m: Dictionary) -> String:
+	var to := "party"
 	if player["party"].size() < MAX_PARTY:
 		player["party"].append(m)
-		return "party"
-	bench().append(m)
-	return "bench"
+	else:
+		bench().append(m)
+		to = "bench"
+	Quests.check()
+	return to
 
 
 ## Sends party member i home to wait on the bench.
@@ -1810,6 +1811,8 @@ func end_battle(result: String) -> void:
 	player.erase("in_duel")
 	if result == "won":
 		defeated[pending_battle["key"]] = Time.get_ticks_msec() / 1000.0
+		if pending_battle.has("enemies"):
+			Quests.on_defeat(pending_battle["enemies"], str(player.get("map", "")))
 	if result == "lost":
 		# Back to your home town with a few coins lost; items and levels stay.
 		player["coins"] = int(player["coins"] * 0.9)
@@ -1857,6 +1860,7 @@ func mark_boss_beaten(id: String) -> void:
 	if typeof(player.get("bosses")) != TYPE_DICTIONARY:
 		player["bosses"] = {}
 	player["bosses"][id] = boss_wins(id) + 1
+	Quests.on_boss()
 
 
 ## True if a boss is already in your party (each party can have one).

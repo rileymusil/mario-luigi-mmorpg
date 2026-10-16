@@ -555,7 +555,7 @@ func _special(a: Dictionary, target: Dictionary) -> void:
 	match id:
 		"fire_jump":
 			await _jump_attack(a, target, 3)
-		"thunderhand", "goop_paint":
+		"thunderhand":
 			var result := await _timing_bar(1.2)
 			await _walk(a["node"], target["node"].position + Vector2(-22, 0), 220.0)
 			_damage(target, a["pow"] + 2 + (2 if result == "Excellent" else 0))

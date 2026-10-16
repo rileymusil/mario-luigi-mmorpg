@@ -422,6 +422,7 @@ func _finish(d: Dictionary) -> void:
 			p["wins"] += 1
 			p["hp"] = clampi(int(d.get("hp", p["hp"])), 1, p["max_hp"])
 			var levels := Game.gain_xp(xp)
+			Quests.on_defeat(foes.map(func(f): return f["type"]), str(p.get("map", "")))
 			if me_index >= 0:  # your box shows your HP and SP after the win
 				allies[me_index]["member"]["hp"] = p["hp"]
 				allies[me_index]["member"]["max_hp"] = p["max_hp"]
