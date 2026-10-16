@@ -21,9 +21,9 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
 **Phones and tablets.** Hold the phone sideways. The on-screen controls show on touch screens (or after your first touch) and hide when you press a key; several fingers work at once, so you can walk and jump together. Only the buttons that make sense show: none on the title screen (tap the menus), A and B in battle, all of them while walking around, and none while someone is talking. On Android, the corners button next to MENU goes full screen and keeps the game sideways; on iPhone, use Share > Add to Home Screen to play full screen. Typing (your username, or chat with the Chat button under MENU) opens the browser's own text box, so the phone's keyboard comes up.
 
 ## What you can do
-- **Pick a side and a character** (seven good, six evil; the card on the right shows stats and the signature move).
+- **Pick a side and a character** (seven good, five evil; the card on the right shows stats and the signature move).
   Good: Mario, Luigi, Princess Peach, Professor E. Gadd, Waluigi, Rosalina, Toadette.
-  Evil: Bowser, Rookie Bowser, Grodus, the Koopa Bros., Bowser Jr., Shadow Mario.
+  Evil: Bowser, Rookie Bowser, Grodus, the Koopa Bros., Shadow Mario.
   Good players start in Beanbean Castle Town, evil players at Bowser's Castle.
 - **Explore** maps built from the Superstar Saga map art (see *Maps* below): Castle Town with ten buildings you can walk into, Beanbean Outskirts, Stardust Fields, Hoohoo Village and Bowser's Castle. Walk up into a door to go in; walk down onto the door mat to go back out.
 - **Jump up ledges.** Hedges, flat tree tops, plateaus and low walls are raised ground: walking into them stops you, so jump (Z) while walking into them to get up. Low steps take an ordinary jump; tall cliffs can't be climbed, only dropped down (walk off any ledge to drop). Your party jumps up and drops down behind you. In the Outskirts, the hedge west of the start and the flat tree tops beyond it are the way to the west islands; in Stardust Fields, the pink plateaus are a jump up from the violet ground; Castle Town's low terrace walls and the step by Hoohoo Village's mountain door can be hopped up.
@@ -43,10 +43,11 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
     | Grodus | Grodus Bolt | Lightning on every enemy; lowers their DEF for the battle (1 on Good, 2 on Excellent). |
     | Koopa Bros. | Bros. Tower | The other three brothers jump onto the stack, Z as each lands (a miss knocks him off); then the tower spins into the enemy. More brothers, more damage. |
     | Waluigi / Rosalina / Toadette | Wicked Whirl / Star Spin / Pickaxe Pound | Hits all and can stun all / hits and heals the party / ignores DEF. |
-    | Bowser Jr. / Shadow Mario | Goop Paint / Shadow Drain | Can stun / steals HP. |
+    | Shadow Mario | Shadow Drain | Steals HP. |
 
     The enemy box lists burn, stun and lowered DEF next to each enemy.
   - *Enemy turns*: press Z so whoever is attacked is in the air when it hits.
+- **Quests.** Each side has a short questline (scripts/quests.gd). Good players get it from Toadsworth in Castle Town, evil players from the Border Bro at Bowser's Castle; a yellow "!" floats over them when they have a new step or a reward. Steps: beat enemies in the Outskirts, get a partner or recruit, carry a message to Hoohoo Village or Stardust Fields, then beat a boss. Go back to the giver after each step for coins, XP and items (a badge at the end). Progress shows in the chat, and *Quests* in the pause menu says what to do next.
 - **Recruit.** Good players talk to partners (X) and ask them to join: Toad, the Pianta, Bombette, Goombella, Bobbery, Prince Peasley, Koops and Bow in Castle Town, Yoshi Kid and Yoshi in the Outskirts. Evil players use *Ask to join* in battle on any enemy; hurt enemies say yes more often and stronger ones less. Up to 2 follow you and fight on their own turn with their own timed move:
 
   | Partner / recruit | Move | Kind |
@@ -133,6 +134,8 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
 - **Grow.** XP and levels (cap 50), coins, items. Losing sends you home with a few coins lost.
 - **Home base.** Up to 2 partners (or recruits) follow you. Anyone who joins while your party is full, or whom you send home from *Party*, waits at your home base (Castle Town for good, Bowser's Castle for evil); there, *Party* > *Waiting here* takes them along again, rested. Switching sides sends your party home too.
 - **Gear.** Pants and badges, like Superstar Saga: wear one of each (menu > *Gear*, Z to put on or take off) for extra HP, SP, POW or DEF. The Badge Shop in Castle Town, the Hoohoo Trader and the Koopa Troop shop at Bowser's Castle sell them; data in `Game.GEAR`, pictures from `tools/slice_gear.py`.
+- **Whispers and friends.** In chat, `/w name message` whispers someone on any map (`/r message` answers the last whisper). Add friends with *Add friend* when you walk up to someone (X), with `/friend name`, or from *Friends* in the pause menu, which shows who is online and on which map and lets you whisper them. `/friends` lists the same in the chat. Friends are kept in your save.
+- **Leaderboards.** *Leaders* in the pause menu shows the top 10 players by level, PvP wins and boss wins (rematches count). Levels and boss wins are sent when you enter a map; PvP wins are counted by the server.
 - **Weekly score.** In towns, the top right (under the status bar when playing by touch) shows this week's good vs evil count of PvP wins (a duel won, or a foe who quit or timed out). A new week starts every Monday 00:00 UTC.
 - **Switch sides** any time from the menu. **Saves** go to the browser automatically. Pick *Save* in the menu and then *Save online* to set a password for your username: from then on the game also saves to the server, and *Log In* on the title screen picks it up in any browser or on your phone.
 

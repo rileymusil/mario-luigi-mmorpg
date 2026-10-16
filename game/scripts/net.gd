@@ -37,6 +37,10 @@ signal trade_confirmed_by(by_id: String)              # peer confirmed offer
 signal trade_completed(your_give: Dictionary, your_receive: Dictionary) # trade completed!
 signal trade_cancelled(reason: String)                # trade was cancelled
 signal zone_reset                          # connection (re)opened: forget everyone
+signal whisper_received(from_name: String, text: String)
+signal whisper_sent(to_name: String, text: String)    # it got there; to_name as they spell it
+signal whisper_failed(to_name: String)                 # nobody by that name is online
+signal friends_status(online: Dictionary)              # lower-case name -> map id, or null when offline
 
 var my_id := ""
 var players := {}  # id -> {id, name, character, side, x, y}: everyone else in your zone
@@ -146,6 +150,22 @@ func send_chat(text: String, to_party := false) -> bool:
 	if not is_online():
 		return false
 	_send({"t": "chat", "text": text, "party": to_party})
+	return true
+
+
+## A private message to the player named `to`, on any map. False when offline.
+func whisper(to: String, text: String) -> bool:
+	if not is_online():
+		return false
+	_send({"t": "whisper", "to": to, "text": text})
+	return true
+
+
+## Asks which of these players are online (answered with friends_status).
+func request_friends(names: Array) -> bool:
+	if not is_online() or names.is_empty():
+		return false
+	_send({"t": "friends", "names": names})
 	return true
 
 
@@ -285,6 +305,8 @@ func _process(delta: float) -> void:
 				hello["side"] = Game.player.get("side", "good")
 				hello["party"] = party_id
 				hello["safe"] = Game.MAPS.get(_zone, {}).get("safe", true)
+				hello["level"] = Game.player.get("level", 1)  # for the leaderboards
+				hello["bosses"] = Game.total_boss_wins()
 				_socket.send_text(JSON.stringify(hello))
 			while _socket.get_available_packet_count() > 0:
 				_handle(_socket.get_packet().get_string_from_utf8())
@@ -342,6 +364,16 @@ func _handle(text: String) -> void:
 					party_changed.emit()
 		"chat":
 			chat_received.emit(str(msg["id"]), str(msg["name"]), str(msg["text"]), msg.get("party", false) == true)
+		"whisper":
+			if msg.get("sent", false) == true:
+				whisper_sent.emit(str(msg.get("to", "")), str(msg.get("text", "")))
+			else:
+				whisper_received.emit(str(msg.get("from", "")), str(msg.get("text", "")))
+		"whisper_fail":
+			whisper_failed.emit(str(msg.get("to", "")))
+		"friends":
+			if typeof(msg.get("online")) == TYPE_DICTIONARY:
+				friends_status.emit(msg["online"])
 		"invite":
 			invited.emit(str(msg["from"]), str(msg["name"]))
 		"declined":

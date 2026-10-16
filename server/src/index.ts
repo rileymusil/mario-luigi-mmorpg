@@ -6,16 +6,20 @@
 //
 // Protocol (JSON text frames):
 //   client -> server
-//     {t:"hello", name, character, x, y, uid?, key?, side?, party?, safe?}
+//     {t:"hello", name, character, x, y, uid?, key?, side?, party?, safe?, level?, bosses?}
 //                                          first message after connecting. uid keeps your
 //                                          id the same across maps; key is a secret kept with
 //                                          the save: a hello with the same uid and key replaces
 //                                          a stale connection (e.g. after a dropped network);
 //                                          party is your partner's uid;
-//                                          safe: this map is a town (no PvP against you).
+//                                          safe: this map is a town (no PvP against you);
+//                                          level, bosses (boss wins): for the leaderboards.
 //     {t:"mv", x, y, vx, vy}               position + velocity, ~5 times a second while moving
 //     {t:"jump"}
 //     {t:"chat", text, party?}             at most one per CHAT_COOLDOWN_MS; party: partner only
+//     {t:"whisper", to, text}              a private message to the player named `to`, on any map
+//                                          (same cooldown as chat)
+//     {t:"friends", names:[...]}           which of these players are online, and where
 //     {t:"invite", to} / {t:"accept", from} / {t:"decline", from} / {t:"leave_party"}
 //                                          good and evil players can't team up: an invite
 //                                          across sides is answered {t:"declined", reason:"side"}
@@ -32,6 +36,10 @@
 //     {t:"mv", id, x, y, vx, vy}
 //     {t:"jump", id}
 //     {t:"chat", id, name, text, party?}   sent to everyone (or the party), sender included
+//     {t:"whisper", from, text}            a whisper for you
+//     {t:"whisper", to, text, sent:true}   your whisper got there (`to` as they spell it)
+//     {t:"whisper_fail", to}               nobody by that name is online
+//     {t:"friends", online:{name: map|null}}  names in lower case
 //     {t:"invite", from, name}             someone wants to team up with you
 //     {t:"declined", name, reason?}        reason "side": they're on the other side
 //     {t:"party", id, name}                you and `id` are a party (also on rejoining a map)
@@ -47,7 +55,9 @@
 //     {t:"replaced"}                        the same save connected again; this socket is closed
 //   Player = {id, name, character, side, x, y}
 // A duel that ends with someone losing, leaving or timing out counts a win
-// for the other side on the weekly score (scores.ts, GET /score).
+// for the other side on the weekly score and for the winner on the PvP
+// leaderboard (scores.ts, GET /score and GET /leaders). Who is on which map
+// (for whispers and friends) is kept in presence.ts.
 // The text "ping" is answered with "pong" without waking the zone.
 
 import { DurableObject } from "cloudflare:workers";
@@ -55,17 +65,23 @@ import { cleanChat } from "./filter";
 import { Account, accountKey, MAX_SAVE_BYTES, NAME } from "./accounts";
 
 import { Scores } from "./scores";
+import { Presence } from "./presence";
 
-export { Account, Scores };
+export { Account, Scores, Presence };
 
 export interface Env {
   ZONES: DurableObjectNamespace<Zone>;
   ACCOUNTS: DurableObjectNamespace<Account>;
   SCORES: DurableObjectNamespace<Scores>;
+  PRESENCE: DurableObjectNamespace<Presence>;
 }
 
 function scores(env: Env) {
   return env.SCORES.get(env.SCORES.idFromName("scores"));
+}
+
+function presence(env: Env) {
+  return env.PRESENCE.get(env.PRESENCE.idFromName("presence"));
 }
 
 const CORS = {
@@ -118,6 +134,9 @@ const MAP_ID = /^[a-z0-9_]{1,32}$/;
 const DUEL_MOVES = new Set(["jump", "special", "heal", "wait"]);
 const DUEL_COOLDOWN_MS = 30000; // after a duel, neither player can be attacked for a while
 const STAT_KEYS = ["hp", "max_hp", "sp", "max_sp", "pow", "def", "level", "coins"];
+const MAX_FRIENDS = 50;
+const MAX_LEVEL = 99;
+const MAX_BOSS_WINS = 99999;
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -134,6 +153,7 @@ export default {
     const acct = url.pathname.match(/^\/account\/(register|login|save|load)$/);
     if (acct) return account(acct[1], request, env);
     if (url.pathname === "/score") return json(200, await scores(env).current());
+    if (url.pathname === "/leaders") return json(200, await scores(env).leaders());
     if (url.pathname === "/") return new Response("Mario & Luigi MMO server is running.\n");
     return new Response("not found", { status: 404 });
   },
@@ -185,6 +205,7 @@ interface Attachment {
   trading?: boolean; // true once trade session is active
   tradeOffer?: TradeOffer;
   tradeConfirmed?: boolean;
+  zone?: string; // this map's id, for presence
 }
 
 export class Zone extends DurableObject<Env> {
@@ -193,11 +214,12 @@ export class Zone extends DurableObject<Env> {
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
   }
 
-  async fetch(_request: Request): Promise<Response> {
+  async fetch(request: Request): Promise<Response> {
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     this.ctx.acceptWebSocket(server);
-    const attachment: Attachment = { player: null, windowStart: Date.now(), count: 0 };
+    const zone = new URL(request.url).pathname.split("/").pop() ?? "";
+    const attachment: Attachment = { player: null, windowStart: Date.now(), count: 0, zone };
     server.serializeAttachment(attachment);
     if (this.players().length >= MAX_PLAYERS_PER_ZONE) {
       server.send(JSON.stringify({ t: "full" }));
@@ -268,6 +290,14 @@ export class Zone extends DurableObject<Env> {
       ws.send(JSON.stringify({ t: "welcome", id: a.player.id, players: this.players(ws) }));
       this.broadcast({ t: "join", player: a.player }, ws);
       this.rejoinParty(ws, a);
+      const p = a.player;
+      try {
+        await presence(this.env).arrive(p.id, p.name, a.zone ?? "");
+        await scores(this.env).report(p.id, p.name, p.side, p.character,
+          Math.max(1, num(msg.level, MAX_LEVEL)), num(msg.bosses, MAX_BOSS_WINS));
+      } catch {
+        // whispers and leaderboards are extras; playing never fails over them
+      }
       return;
     }
 
@@ -301,6 +331,39 @@ export class Zone extends DurableObject<Env> {
         }
       }
       ws.serializeAttachment(a);
+    } else if (msg.t === "whisper") {
+      const text = cleanChat(
+        String(msg.text ?? "").replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, MAX_CHAT_LENGTH),
+      );
+      const to = cleanName(msg.to);
+      if (!text || now - (a.lastChat ?? 0) < CHAT_COOLDOWN_MS) {
+        ws.serializeAttachment(a);
+        return;
+      }
+      a.lastChat = now;
+      ws.serializeAttachment(a);
+      let got: string | null = this.whisper(to, a.player.name, text);
+      if (got === null) {
+        try {
+          const seen = await presence(this.env).find(to);
+          if (seen && seen.zone && seen.zone !== a.zone && ZONE_NAME.test(seen.zone)) {
+            got = await this.env.ZONES.get(this.env.ZONES.idFromName(seen.zone)).whisper(to, a.player.name, text);
+          }
+        } catch {
+          got = null;
+        }
+      }
+      ws.send(JSON.stringify(got === null ? { t: "whisper_fail", to } : { t: "whisper", to: got, text, sent: true }));
+    } else if (msg.t === "friends") {
+      ws.serializeAttachment(a);
+      const names = Array.isArray(msg.names) ? msg.names.slice(0, MAX_FRIENDS).map(cleanName) : [];
+      let online: Record<string, string | null> = {};
+      try {
+        online = await presence(this.env).status(names);
+      } catch {
+        for (const n of names) online[n.toLowerCase()] = null;
+      }
+      ws.send(JSON.stringify({ t: "friends", online }));
     } else if (msg.t === "invite") {
       const target = this.socketFor(String(msg.to));
       const t = target?.deserializeAttachment() as Attachment | undefined;
@@ -559,8 +622,8 @@ export class Zone extends DurableObject<Env> {
   }
 
   // Ends the duel `a` is in and tells the foe how it ended. Returns the
-  // winning side for the weekly score, or null when nobody won.
-  private endDuel(ws: WebSocket | null, a: Attachment, result: string, now: number): "good" | "evil" | null {
+  // winner for the weekly score and the PvP leaderboard, or null when nobody won.
+  private endDuel(ws: WebSocket | null, a: Attachment, result: string, now: number): Player | null {
     const foe = a.duel ? this.socketFor(a.duel) : null;
     const fought = a.dueling;
     a.duel = undefined;
@@ -577,15 +640,16 @@ export class Zone extends DurableObject<Env> {
     foe.send(JSON.stringify({ t: "duel_over", result }));
     if (!fought || !a.player || !f.player) return null;
     // "lost" / "left": `a` lost; "timeout": `a` waited out a foe who stopped answering.
-    if (result === "lost" || result === "left") return f.player.side;
-    if (result === "timeout") return a.player.side;
+    if (result === "lost" || result === "left") return { ...f.player };
+    if (result === "timeout") return { ...a.player };
     return null;
   }
 
-  private async recordWin(side: "good" | "evil" | null): Promise<void> {
-    if (!side) return;
+  private async recordWin(winner: Player | null): Promise<void> {
+    if (!winner) return;
     try {
-      await scores(this.env).addWin(side);
+      await scores(this.env).addWin(winner.side);
+      await scores(this.env).addPvpWin(winner.id, winner.name, winner.side, winner.character);
     } catch {
       // the score is nice to have; a duel never fails over it
     }
@@ -616,6 +680,30 @@ export class Zone extends DurableObject<Env> {
     ws.serializeAttachment(a);
     this.broadcast({ t: "leave", id }, ws);
     await this.recordWin(won);
+    try {
+      await presence(this.env).depart(id, a.zone ?? "");
+    } catch {
+      // see hello
+    }
+  }
+
+  // Delivers a whisper to the player named `to` on this map. Returns their
+  // name as they spell it, or null if nobody here has that name. Also
+  // called by other zones (RPC) for a whisper from another map.
+  whisper(to: string, from: string, text: string): string | null {
+    const want = to.toLowerCase();
+    for (const ws of this.ctx.getWebSockets()) {
+      const a = ws.deserializeAttachment() as Attachment | null;
+      if (a?.player && a.player.name.toLowerCase() === want) {
+        try {
+          ws.send(JSON.stringify({ t: "whisper", from, text }));
+          return a.player.name;
+        } catch {
+          // closing; try anyone else with the name
+        }
+      }
+    }
+    return null;
   }
 
   private socketFor(id: string): WebSocket | null {

@@ -128,9 +128,9 @@ func tick(delta: float, busy: bool) -> void:
 		node.move_velocity = velocity
 
 
-func _type_chat() -> void:
+func _type_chat(initial := "") -> void:
 	_world.busy = true
-	await chat.type_message()
+	await chat.type_message(initial)
 	_world.busy = false
 
 
@@ -162,6 +162,11 @@ func _interact(id: String) -> void:
 		options.insert(0, "Battle!")
 		enabled.insert(0, not town and _waiting <= 0.0)
 		infos.insert(0, "No fighting in town." if town else "Take them down!")
+	var friend := ChatBox.is_friend(who)
+	options.insert(options.size() - 1, "Unfriend" if friend else "Add friend")
+	enabled.insert(enabled.size() - 1, true)
+	infos.insert(infos.size() - 1, "Take them off your friends list." if friend
+		else "See when they're online and where, and whisper them from any map.")
 	_world.busy = true
 	var i: int = await _world.menu.choose(options, who, true, enabled, infos)
 	_world.busy = false
@@ -182,6 +187,10 @@ func _interact(id: String) -> void:
 		"Leave party":
 			chat.system("You left the party with %s." % who)
 			Net.leave_party()
+		"Add friend":
+			chat.system(ChatBox.add_friend(who))
+		"Unfriend":
+			chat.system(ChatBox.remove_friend(who))
 
 
 func _on_trade_requested(from_id: String, who: String) -> void:

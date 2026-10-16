@@ -37,6 +37,7 @@ var enemies: Array = []   # [{node, home, target, pause, key, type}]
 var npcs: Array = []      # [{node, id}]
 var score_box: PanelContainer  # this week's good vs evil score, in towns
 var save_prompt: TextPrompt  # password box for saving online (made when first needed)
+var leaders_screen: LeadersScreen  # pause menu > Leaders (made when first needed)
 var busy := false         # true while a menu or dialog is open
 var _grace := 1.5         # seconds after arriving before enemies can start a battle
 ## The leader's path, followed by the party: x, y, 1 where a jump started,
@@ -129,6 +130,7 @@ func _ready() -> void:
 	if MapEditor.available():
 		add_child(MapEditor.new())
 
+	Quests.check()
 	if map_info["safe"]:
 		_show_weekly_score()
 	dialog.visible = false
@@ -378,6 +380,7 @@ func _process(delta: float) -> void:
 				fade_actors.append(op["node"])
 	props.update_fade(fade_actors, delta)
 	online.tick(delta, busy or editing)
+	_update_quests()
 	if busy or editing:
 		_keys_locked = true
 		player.move_velocity = Vector2.ZERO
@@ -686,6 +689,8 @@ func _talk_to(n: Dictionary) -> void:
 		await _boss_talk(n)
 		return
 	var node: CharacterSprite = n["node"]
+	if await _quest_talk(n):
+		return
 	var branch := DialogueData.pick(n["talk"], Game.player)
 	var speaker := DialogueData.speaker(n["talk"], n["id"])
 	var pages := DialogueData.pages(branch)
@@ -706,6 +711,89 @@ func _talk_to(n: Dictionary) -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	busy = false
+
+
+## Quest talk (see Quests.talk_event): the giver offers a step, hands over a
+## reward or reminds you, and a talk step's NPC says their lines. Returns
+## true if it was a quest talk (instead of the NPC's usual lines).
+func _quest_talk(n: Dictionary) -> bool:
+	var ev := Quests.talk_event(n["talk"])
+	if ev.is_empty():
+		return false
+	var node: CharacterSprite = n["node"]
+	var speaker := DialogueData.speaker(n["talk"], n["id"])
+	busy = true
+	node.facing = (player.position - node.position).normalized()
+	var pages: Array = ev["pages"]
+	match ev["kind"]:
+		"offer":
+			for i in pages.size() - 1:
+				await say(pages[i], speaker, node)
+			dialog.open(pages.back(), speaker, node)
+			_place_menu.call_deferred()
+			var c := await menu.choose(["Sure!", "Not now"], "", true)
+			dialog.close()
+			if c == 0:
+				Quests.accept()
+				await say("Quest started: %s" % Quests.current().get("text", ""))
+			else:
+				await say("Oh. Well, do come back if you change your mind.", speaker, node)
+		"reward":
+			await say(pages[0], speaker, node)
+			for line in Quests.claim():
+				await say(line)
+			_update_hud()
+			for i in range(1, pages.size()):
+				await say(pages[i], speaker, node)
+			if Quests.current().is_empty():
+				pass
+			elif Quests.state().get("done", false):
+				await say("Quest: %s Already done! Talk to me again." % Quests.current()["text"])
+			else:
+				await say("Quest: %s" % Quests.current()["text"])
+		"remind":
+			await say(pages[0], speaker, node)
+		"talk":
+			for page in pages:
+				await say(page, speaker, node)
+			Quests.talked()
+	Game.save()
+	node.facing = n["face"]
+	await get_tree().process_frame
+	await get_tree().process_frame
+	busy = false
+	return true
+
+
+## Shows quest notes in the chat and a "!" over the quest giver when they
+## have a new step or a reward for you.
+func _update_quests() -> void:
+	while not Game.quest_notes.is_empty():
+		var note: String = Game.quest_notes.pop_front()
+		if online and online.chat:
+			online.chat.system(note)
+	var news := Quests.giver_has_news()
+	var giver: String = Quests.line()["giver"]
+	for n in npcs:
+		if not n.has("node") or n["node"] == null:
+			continue
+		var want: bool = news and n["talk"] == giver
+		var mark: Label = n.get("mark")
+		if want and mark == null:
+			mark = Label.new()
+			mark.text = "!"
+			mark.theme_type_variation = &"OutlineLabel"
+			mark.add_theme_color_override("font_color", Color(1, 0.85, 0.1))
+			mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			mark.size = Vector2(12, 14)
+			mark.z_index = 50
+			n["node"].add_child(mark)
+			n["mark"] = mark
+		if mark != null:
+			mark.visible = want
+			if want:
+				var top: float = n["node"].height() if n["node"].has_method("height") else 24.0
+				mark.position = Vector2(-6, -top - 14 + sin(Time.get_ticks_msec() / 200.0) * 1.5)
 
 
 ## Puts the choice menu just above (or below) the speech balloon, on screen.
@@ -885,24 +973,57 @@ func _pause_menu() -> void:
 	var other := "Evil" if p["side"] == "good" else "Good"
 	while true:
 		pause_screen.open(p, Game.character_name(), map_info["name"])
-		var options := ["Items", "Gear", "Party", "Go %s" % other, "Save", "Quit", "Close"]
+		var options := ["Items", "Gear", "Party", "Quests", "Friends", "Leaders", "Go %s" % other, "Save", "Quit", "Close"]
 		var i := await pause_screen.menu.choose(options, "", true)
-		if i == 1:
-			pause_screen.close()
-			await _gear_menu()
-			continue
-		if i > 1:
-			i -= 1  # the options below Gear keep their old numbers
-		match i:
-			0:
+		var pick: String = options[i] if i >= 0 else "Close"
+		match pick:
+			"Items":
 				pause_screen.close()
 				await _items_menu()
 				continue
-			1:
+			"Gear":
+				pause_screen.close()
+				await _gear_menu()
+				continue
+			"Party":
 				pause_screen.close()
 				await _party_menu()
 				continue
-			2:
+			"Quests":
+				pause_screen.close()
+				await say(Quests.summary())
+				continue
+			"Friends":
+				pause_screen.close()
+				var whisper_to := await _friends_menu()
+				if whisper_to != "":
+					busy = false
+					online._type_chat("/w %s " % whisper_to)
+					return
+				continue
+			"Leaders":
+				pause_screen.close()
+				if leaders_screen == null:
+					var layer := CanvasLayer.new()
+					layer.layer = 6  # over the chat log
+					add_child(layer)
+					leaders_screen = LeadersScreen.new()
+					layer.add_child(leaders_screen)
+				await leaders_screen.show_boards()
+				await get_tree().process_frame
+				continue
+			"Save":
+				Game.save()
+				await _save_online()
+			"Quit":
+				Game.save()
+				Cloud.upload()
+				Net.leave()
+				get_tree().change_scene_to_file(Game.TITLE_SCENE)
+				return
+			"Close":
+				pass
+			_:  # Go Good / Go Evil
 				dialog.open("Switch to the %s side? Your party goes home." % other.to_lower())
 				var c := await pause_screen.menu.choose(["Yes, switch", "No"], "", true)
 				dialog.close()
@@ -911,19 +1032,67 @@ func _pause_menu() -> void:
 					Game.switch_side()
 					return
 				continue
-			3:
-				Game.save()
-				await _save_online()
-			4:
-				Game.save()
-				Cloud.upload()
-				Net.leave()
-				get_tree().change_scene_to_file(Game.TITLE_SCENE)
-				return
 		break
 	pause_screen.close()
 	await get_tree().process_frame
 	busy = false
+
+
+## Pause menu > Friends: who's online and where (asked from the server), then
+## pick someone to whisper or unfriend, or add a friend by name. Returns the
+## name to whisper, or "".
+func _friends_menu() -> String:
+	var online := {}
+	if Net.request_friends(ChatBox.friends()):
+		var got: Array = []
+		var on_status := func(o): got.append(o)
+		Net.friends_status.connect(on_status)
+		var waited := 0.0
+		while got.is_empty() and waited < 3.0:
+			await get_tree().process_frame
+			waited += get_process_delta_time()
+		Net.friends_status.disconnect(on_status)
+		if not got.is_empty():
+			online = got[0]
+	var asked := Net.is_online()
+	var cursor := 0
+	while true:
+		var names: Array = ChatBox.friends().duplicate()
+		var labels: Array = []
+		var infos: Array = []
+		for f in names:
+			var where = online.get(str(f).to_lower())
+			labels.append(str(f) + ("  *" if where != null else ""))
+			infos.append(("Online: %s" % Game.MAPS.get(where, {}).get("name", where)) if where != null
+				else ("Offline" if asked else "You're offline, so you can't see who's on."))
+		labels.append_array(["Add friend", "Back"])
+		infos.append_array(["Type their username.", ""])
+		menu.max_rows = 6
+		var home := menu.position
+		menu.position = ((get_viewport_rect().size - Vector2(120, 90)) / 2.0).round()
+		var i := await menu.choose(labels, "Friends (* online)" if not names.is_empty() else "Friends", true, [], infos, [], cursor)
+		menu.max_rows = 0
+		menu.position = home
+		if i < 0 or i == labels.size() - 1:
+			return ""
+		cursor = i
+		if i == names.size():  # Add friend
+			if save_prompt == null:
+				save_prompt = TextPrompt.new()
+				$HUD.add_child(save_prompt)
+			save_prompt.position = ((get_viewport_rect().size - Vector2(160, 40)) / 2.0).round()
+			var who := await save_prompt.ask("Friend's username", "", 16)
+			if who != "":
+				await say(ChatBox.add_friend(who))
+			continue
+		var name: String = names[i]
+		var c := await menu.choose(["Whisper", "Unfriend", "Back"], name, true)
+		if c == 0:
+			return name
+		if c == 1:
+			await say(ChatBox.remove_friend(name))
+			cursor = 0
+	return ""
 
 
 ## After saving: online too if this save is linked, else offers to link it

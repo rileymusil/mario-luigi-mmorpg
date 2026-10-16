@@ -145,6 +145,15 @@ func weekly_score() -> Dictionary:
 	return _score
 
 
+## The leaderboards: {level: [...], pvp: [...], bosses: [...]}, each a top 10
+## of {name, side, character, level, pvp, bosses}. {} when the server can't be reached.
+func leaders() -> Dictionary:
+	var res := await call_server("", {}, 6.0, "/leaders")
+	if res["status"] == 200 and typeof(res["body"]) == TYPE_DICTIONARY and res["body"].has("level"):
+		return res["body"]
+	return {}
+
+
 ## What an error means to the player.
 static func error_text(code: String) -> String:
 	match code:
