@@ -188,7 +188,8 @@ func _layout(battle := false) -> void:
 		b.size = panel.get_combined_minimum_size()
 		panel.size = b.size
 		x -= b.size.x
-		b.position = Vector2(x, safe.position.y + 3)
+		# Upright phones: the status bar fills the top row, so go under it.
+		b.position = Vector2(x, safe.position.y + (24.0 if Game.is_portrait() and battle == false else 3.0))
 		x -= 4.0
 
 

@@ -1318,6 +1318,27 @@ func _ready() -> void:
 	_add_action("talk", [KEY_X, KEY_K], [JOY_BUTTON_B])  # talk / ask, cancel in menus
 	_add_action("menu", [KEY_ENTER, KEY_ESCAPE], [JOY_BUTTON_START])
 	_add_action("chat", [KEY_T, KEY_SLASH], [])
+	process_mode = Node.PROCESS_MODE_ALWAYS
+
+
+## Phones held upright: the game is drawn for a 384x216 landscape screen, so
+## in portrait it would be scaled to the phone's width and come out tiny.
+## Instead the base width shrinks to PORTRAIT_WIDTH game pixels there, so
+## everything is drawn bigger and the extra height shows more map. Battles
+## keep the full 384 width (their stage is laid out for it).
+const LANDSCAPE_BASE := Vector2i(384, 216)
+const PORTRAIT_WIDTH := 256
+
+
+func _process(_delta: float) -> void:
+	var root := get_tree().root
+	var win := DisplayServer.window_get_size()
+	var base := LANDSCAPE_BASE
+	var scene := get_tree().current_scene
+	if win.y > win.x and not (scene != null and scene.is_in_group(&"battles")):
+		base = Vector2i(PORTRAIT_WIDTH, LANDSCAPE_BASE.y)
+	if root.content_scale_size != base:
+		root.content_scale_size = base
 
 
 func _add_action(action: String, keys: Array, buttons: Array) -> void:

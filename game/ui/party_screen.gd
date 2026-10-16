@@ -36,6 +36,11 @@ func _layout_party() -> void:
 	var safe := Game.get_safe_rect()
 	cards.position = Vector2(safe.position.x, safe.position.y)
 	menu.position = Vector2(safe.end.x - menu.size.x - 6.0, safe.position.y + 8.0)
+	if Game.is_portrait() and not _all_cards().is_empty():
+		# Upright phones have no room beside the cards: the menu goes under them.
+		var last: Control = _all_cards().back()
+		cards.position.x -= 6.0  # the cards are as wide as the screen
+		menu.position = Vector2(safe.position.x + CARD_X, cards.position.y + last.position.y + last.size.y + 6.0)
 
 
 func open(p: Dictionary, character_name: String) -> void:
@@ -56,6 +61,10 @@ func open(p: Dictionary, character_name: String) -> void:
 		_names.append(m["name"])
 	visible = true
 	_layout_party()
+
+
+func _all_cards() -> Array:
+	return cards.get_children().filter(func(c): return not c.is_queued_for_deletion())
 
 
 func close() -> void:
