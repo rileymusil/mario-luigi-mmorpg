@@ -974,7 +974,9 @@ func _pause_menu() -> void:
 	while true:
 		pause_screen.open(p, Game.character_name(), map_info["name"])
 		var options := ["Items", "Gear", "Party", "Quests", "Friends", "Leaders", "Go %s" % other, "Save", "Quit", "Close"]
+		pause_screen.menu.max_rows = 7  # the rest scroll; more would run into the place strip
 		var i := await pause_screen.menu.choose(options, "", true)
+		pause_screen.menu.max_rows = 0
 		var pick: String = options[i] if i >= 0 else "Close"
 		match pick:
 			"Items":
