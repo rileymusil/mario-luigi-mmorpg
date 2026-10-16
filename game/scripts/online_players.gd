@@ -30,6 +30,7 @@ var _challenge := {}  # an evil player attacked you: start once you're free
 var _challenge_age := 0.0
 var _waiting := 0.0  # seconds left waiting for the player you attacked
 var _trade_requests: Array = []  # [{from, name}] waiting for you to answer
+const TRADE_WAIT := 20.0  # seconds to answer a trade request
 var _waiting_trade := 0.0  # seconds left waiting for peer to answer your trade request
 ## Optional: maps a reported position onto ground walkable on this map.
 var snap := Callable()
@@ -60,6 +61,7 @@ func setup(world: Node, spawn_character: Callable, local_player: CharacterSprite
 	Net.trade_declined.connect(_on_trade_declined)
 	Net.trade_started.connect(_on_trade_started)
 	Net.trade_completed.connect(_on_trade_completed)
+	Net.trade_cancelled.connect(_on_trade_cancelled)
 	add_name_tag(_player, Game.username())
 	Net.player_joined.connect(_on_player_joined)
 	Net.player_moved.connect(_on_player_moved)
@@ -168,7 +170,7 @@ func _interact(id: String) -> void:
 	match options[i]:
 		"Trade":
 			Net.request_trade(id)
-			_waiting_trade = 15.0
+			_waiting_trade = TRADE_WAIT
 			chat.system("Sent trade request to %s..." % who)
 		"Battle!":
 			Net.challenge(id)
@@ -196,9 +198,19 @@ func _on_trade_started(peer_id: String, peer_name: String) -> void:
 	_world.open_trade(peer_id, peer_name)
 
 
-func _on_trade_completed(give: Dictionary, recv: Dictionary) -> void:
-	Game.apply_trade(give, recv)
-	chat.system("Trade completed! Inventory, coins, and partners updated.")
+func _on_trade_completed(_give: Dictionary, _recv: Dictionary) -> void:
+	chat.system("Trade complete!")  # the trade screen applies it
+
+
+## A trade ended before it started: you waited too long to answer a request
+## ("expired"), or the asker gave up while you were deciding.
+func _on_trade_cancelled(reason: String) -> void:
+	if _world.trade_screen.visible:
+		return  # the trade screen says so itself
+	_waiting_trade = 0.0
+	_trade_requests.clear()
+	if reason == "expired":
+		chat.system("That trade request has expired.")
 
 
 func _answer_trade(req: Dictionary) -> void:

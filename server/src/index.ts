@@ -436,9 +436,11 @@ export class Zone extends DurableObject<Env> {
       const target = this.socketFor(String(msg.from));
       const t = target?.deserializeAttachment() as Attachment | undefined;
       if (!target || !t?.player || t.tradePartner !== a.player.id) {
+        // The asker gave up (or left) while this player was deciding.
         a.tradePartner = undefined;
         a.trading = false;
         ws.serializeAttachment(a);
+        if (msg.accept === true) ws.send(JSON.stringify({ t: "trade_cancelled", reason: "expired" }));
         return;
       }
       if (msg.accept !== true) {

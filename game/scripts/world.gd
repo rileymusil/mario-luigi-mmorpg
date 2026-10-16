@@ -1072,6 +1072,14 @@ func open_trade(peer_id: String, peer_name: String) -> void:
 	busy = true
 	trade_screen.open(peer_id, peer_name)
 	await trade_screen.closed
+	# Partners may have come or gone: walk with whoever is in the party now.
+	for f in followers:
+		f.queue_free()
+	followers.clear()
+	for member in Game.player["party"]:
+		var f := _spawn_character(member["id"])
+		f.position = player.position
+		followers.append(f)
 	busy = false
 	status.refresh(Game.player, Game.character_name())
 

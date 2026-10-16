@@ -1,8 +1,9 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://ui/trade_screen.gd" id="1_trade"]
-[ext_resource type="Texture2D" path="res://assets/ui/coin.png" id="2_coin"]
+[ext_resource type="Texture2D" path="res://assets/ui/notebook.png" id="2_book"]
 [ext_resource type="Script" path="res://scripts/choice_menu.gd" id="3_menu"]
+[ext_resource type="Texture2D" path="res://assets/ui/coin.png" id="4_coin"]
 
 [node name="TradeScreen" type="Control"]
 layout_mode = 3
@@ -22,175 +23,123 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0, 0, 0.08, 0.55)
+color = Color(0, 0, 0.08, 0.4)
 
-[node name="Panel" type="PanelContainer" parent="."]
+[node name="Book" type="TextureRect" parent="."]
 layout_mode = 0
-offset_left = 12.0
-offset_top = 8.0
-offset_right = 372.0
-offset_bottom = 208.0
-theme_type_variation = &"NavyPanel"
+offset_left = 72.0
+offset_top = 28.0
+offset_right = 312.0
+offset_bottom = 188.0
+mouse_filter = 0
+texture = ExtResource("2_book")
 
-[node name="VBox" type="VBoxContainer" parent="Panel"]
-layout_mode = 2
-theme_override_constants/separation = 4
-
-[node name="Header" type="HBoxContainer" parent="Panel/VBox"]
-layout_mode = 2
-alignment = 1
-
-[node name="Title" type="Label" parent="Panel/VBox/Header"]
-layout_mode = 2
-theme_type_variation = &"OutlineLabel"
-text = "ONLINE TRADING POST"
+[node name="Tab" type="Label" parent="Book"]
+layout_mode = 0
+offset_left = 137.0
+offset_top = 3.0
+offset_right = 183.0
+offset_bottom = 15.0
+text = "TRADE"
 horizontal_alignment = 1
 
-[node name="Columns" type="HBoxContainer" parent="Panel/VBox"]
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_constants/separation = 8
-
-[node name="LeftCol" type="VBoxContainer" parent="Panel/VBox/Columns"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 3
-
-[node name="Header" type="Label" parent="Panel/VBox/Columns/LeftCol"]
-layout_mode = 2
-theme_type_variation = &"GoldLabel"
-text = "YOUR OFFER"
+[node name="MyName" type="Label" parent="Book"]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 23.0
+offset_right = 118.0
+offset_bottom = 35.0
+theme_type_variation = &"TitleLabel"
 horizontal_alignment = 1
+clip_text = true
 
-[node name="CoinsBox" type="HBoxContainer" parent="Panel/VBox/Columns/LeftCol"]
+[node name="Menu" type="PanelContainer" parent="Book"]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 36.0
+offset_right = 118.0
+offset_bottom = 120.0
+theme_type_variation = &"FlatPanel"
+script = ExtResource("3_menu")
+
+[node name="PeerName" type="Label" parent="Book"]
+layout_mode = 0
+offset_left = 122.0
+offset_top = 23.0
+offset_right = 216.0
+offset_bottom = 35.0
+theme_type_variation = &"TitleLabel"
+horizontal_alignment = 1
+clip_text = true
+
+[node name="Peer" type="VBoxContainer" parent="Book"]
+layout_mode = 0
+offset_left = 126.0
+offset_top = 37.0
+offset_right = 214.0
+offset_bottom = 122.0
+mouse_filter = 2
+theme_override_constants/separation = 1
+
+[node name="Coins" type="HBoxContainer" parent="Book/Peer"]
 layout_mode = 2
+mouse_filter = 2
 theme_override_constants/separation = 3
 
-[node name="Icon" type="TextureRect" parent="Panel/VBox/Columns/LeftCol/CoinsBox"]
+[node name="Icon" type="TextureRect" parent="Book/Peer/Coins"]
+custom_minimum_size = Vector2(10, 12)
 layout_mode = 2
-texture = ExtResource("2_coin")
+mouse_filter = 2
+texture = ExtResource("4_coin")
 stretch_mode = 3
 
-[node name="Label" type="Label" parent="Panel/VBox/Columns/LeftCol/CoinsBox"]
-layout_mode = 2
-theme_type_variation = &"LightLabel"
-text = "0 / 20"
-
-[node name="Buttons" type="HBoxContainer" parent="Panel/VBox/Columns/LeftCol/CoinsBox"]
-layout_mode = 2
-size_flags_horizontal = 10
-theme_override_constants/separation = 2
-
-[node name="Minus10" type="Button" parent="Panel/VBox/Columns/LeftCol/CoinsBox/Buttons"]
-layout_mode = 2
-text = "-10"
-
-[node name="Minus1" type="Button" parent="Panel/VBox/Columns/LeftCol/CoinsBox/Buttons"]
-layout_mode = 2
-text = "-1"
-
-[node name="Plus1" type="Button" parent="Panel/VBox/Columns/LeftCol/CoinsBox/Buttons"]
-layout_mode = 2
-text = "+1"
-
-[node name="Plus10" type="Button" parent="Panel/VBox/Columns/LeftCol/CoinsBox/Buttons"]
-layout_mode = 2
-text = "+10"
-
-[node name="Max" type="Button" parent="Panel/VBox/Columns/LeftCol/CoinsBox/Buttons"]
-layout_mode = 2
-text = "Max"
-
-[node name="Zero" type="Button" parent="Panel/VBox/Columns/LeftCol/CoinsBox/Buttons"]
+[node name="Label" type="Label" parent="Book/Peer/Coins"]
 layout_mode = 2
 text = "0"
 
-[node name="ItemsScroll" type="ScrollContainer" parent="Panel/VBox/Columns/LeftCol"]
-custom_minimum_size = Vector2(0, 44)
+[node name="Items" type="HFlowContainer" parent="Book/Peer"]
+custom_minimum_size = Vector2(88, 0)
 layout_mode = 2
-size_flags_vertical = 3
-horizontal_scroll_mode = 0
+mouse_filter = 2
+theme_override_constants/h_separation = 2
+theme_override_constants/v_separation = 0
 
-[node name="ItemsBox" type="VBoxContainer" parent="Panel/VBox/Columns/LeftCol/ItemsScroll"]
+[node name="Partner" type="HBoxContainer" parent="Book/Peer"]
+custom_minimum_size = Vector2(0, 22)
 layout_mode = 2
-size_flags_horizontal = 3
+mouse_filter = 2
 theme_override_constants/separation = 2
 
-[node name="PartnerCard" type="PanelContainer" parent="Panel/VBox/Columns/LeftCol"]
-custom_minimum_size = Vector2(0, 36)
+[node name="Spot" type="Control" parent="Book/Peer/Partner"]
+custom_minimum_size = Vector2(20, 22)
 layout_mode = 2
-theme_type_variation = &"FlatPanel"
+mouse_filter = 2
 
-[node name="ConfirmBtn" type="Button" parent="Panel/VBox/Columns/LeftCol"]
-layout_mode = 2
-text = "CONFIRM OFFER"
-
-[node name="RightCol" type="VBoxContainer" parent="Panel/VBox/Columns"]
+[node name="Label" type="Label" parent="Book/Peer/Partner"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 3
+theme_type_variation = &"InfoLabel"
+vertical_alignment = 1
+autowrap_mode = 3
 
-[node name="Header" type="Label" parent="Panel/VBox/Columns/RightCol"]
+[node name="Status" type="Label" parent="Book/Peer"]
 layout_mode = 2
-theme_type_variation = &"GoldLabel"
-text = "PEER'S OFFER"
 horizontal_alignment = 1
 
-[node name="CoinsBox" type="HBoxContainer" parent="Panel/VBox/Columns/RightCol"]
-layout_mode = 2
-theme_override_constants/separation = 3
-
-[node name="Icon" type="TextureRect" parent="Panel/VBox/Columns/RightCol/CoinsBox"]
-layout_mode = 2
-texture = ExtResource("2_coin")
-stretch_mode = 3
-
-[node name="Label" type="Label" parent="Panel/VBox/Columns/RightCol/CoinsBox"]
-layout_mode = 2
-theme_type_variation = &"LightLabel"
-text = "0 Coins"
-
-[node name="ItemsScroll" type="ScrollContainer" parent="Panel/VBox/Columns/RightCol"]
-custom_minimum_size = Vector2(0, 44)
-layout_mode = 2
-size_flags_vertical = 3
-horizontal_scroll_mode = 0
-
-[node name="ItemsBox" type="VBoxContainer" parent="Panel/VBox/Columns/RightCol/ItemsScroll"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 2
-
-[node name="PartnerCard" type="PanelContainer" parent="Panel/VBox/Columns/RightCol"]
-custom_minimum_size = Vector2(0, 36)
-layout_mode = 2
-theme_type_variation = &"FlatPanel"
-
-[node name="PeerStatus" type="Label" parent="Panel/VBox/Columns/RightCol"]
-layout_mode = 2
-theme_type_variation = &"LightLabel"
-text = "Deciding on offer..."
+[node name="Place" type="Label" parent="Book"]
+layout_mode = 0
+offset_left = 19.0
+offset_top = 126.0
+offset_right = 221.0
+offset_bottom = 138.0
 horizontal_alignment = 1
+clip_text = true
 
-[node name="Footer" type="HBoxContainer" parent="Panel/VBox"]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="Info" type="Label" parent="Panel/VBox/Footer"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_type_variation = &"LightLabel"
-text = "Add items, coins, or a partner, then confirm."
-
-[node name="CancelBtn" type="Button" parent="Panel/VBox/Footer"]
-layout_mode = 2
-text = "Cancel Trade"
-
-[node name="SubMenu" type="PanelContainer" parent="."]
+[node name="Pick" type="PanelContainer" parent="Book"]
 visible = false
 layout_mode = 0
-offset_left = 60.0
-offset_top = 20.0
-offset_right = 240.0
-offset_bottom = 120.0
+offset_left = 112.0
+offset_top = 30.0
+offset_right = 212.0
+offset_bottom = 70.0
 script = ExtResource("3_menu")

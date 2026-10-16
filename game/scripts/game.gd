@@ -1602,8 +1602,11 @@ func bench() -> Array:
 	return player["bench"]
 
 
-## The side a party member fights for: partners are good, enemies and bosses evil.
+## The side a party member fights for: partners are good, enemies and bosses
+## evil, unless it was traded over from the other side ("side").
 static func member_side(m: Dictionary) -> String:
+	if m.has("side"):
+		return str(m["side"])
 	return "good" if m.get("kind", "") == "partner" else "evil"
 
 
@@ -1646,89 +1649,62 @@ func take_from_bench(j: int) -> String:
 	return ""
 
 
-## All partners and recruits available for trading (from party and bench).
+## All partners and recruits you could trade away (party, then bench).
 func all_tradeable_partners() -> Array:
-	var list := []
-	for m in player.get("party", []):
-		var copy: Dictionary = m.duplicate()
-		copy["location"] = "party"
-		list.append(copy)
-	for m in bench():
-		var copy: Dictionary = m.duplicate()
-		copy["location"] = "bench"
-		list.append(copy)
-	return list
+	return player.get("party", []) + bench()
 
 
-## Applies completed online trade give & receive payloads.
-func apply_trade(give: Dictionary, recv: Dictionary) -> void:
-	# 1. Coins
+## Applies a finished online trade. `give` and `recv` are the two offers
+## ({coins, items, partner}) as the server confirmed them; `give_slot` is
+## ["party" or "bench", index] of the partner you gave, or [].
+## What you receive is checked here: unknown items or characters are dropped
+## and a partner's stats are capped at what it could reach at level 50, so a
+## tampered client can't hand you anything impossible.
+## A traded partner fights for the side that receives it: trading is the only
+## way for good players to get enemies and bosses, and for evil to get partners.
+func apply_trade(give: Dictionary, recv: Dictionary, give_slot: Array = []) -> void:
 	var give_coins: int = clampi(int(give.get("coins", 0)), 0, int(player.get("coins", 0)))
 	var recv_coins: int = clampi(int(recv.get("coins", 0)), 0, 99999)
 	player["coins"] = clampi(int(player.get("coins", 0)) - give_coins + recv_coins, 0, 99999)
-
-	# 2. Items
-	var give_items: Dictionary = give.get("items", {})
-	for item_id in give_items:
-		var count: int = int(give_items[item_id])
-		if count > 0:
-			add_item(str(item_id), -count)
-
-	var recv_items: Dictionary = recv.get("items", {})
-	for item_id in recv_items:
-		var count: int = int(recv_items[item_id])
-		if count > 0:
-			add_item(str(item_id), count)
-
-	# 3. Partners - Give
-	var give_p = give.get("partner")
-	if typeof(give_p) == TYPE_DICTIONARY and not give_p.is_empty():
-		var pid: String = str(give_p.get("id", ""))
-		var pname: String = str(give_p.get("name", ""))
-		var removed := false
-		for i in range(player.get("party", []).size() - 1, -1, -1):
-			var m: Dictionary = player["party"][i]
-			if m.get("id") == pid or (pname != "" and m.get("name") == pname):
-				player["party"].remove_at(i)
-				removed = true
-				break
-		if not removed:
-			var b: Array = bench()
-			for j in range(b.size() - 1, -1, -1):
-				var m: Dictionary = b[j]
-				if m.get("id") == pid or (pname != "" and m.get("name") == pname):
-					b.remove_at(j)
-					break
-
-	# 4. Partners - Receive
-	var recv_p = recv.get("partner")
-	if typeof(recv_p) == TYPE_DICTIONARY and not recv_p.is_empty():
-		var pid: String = str(recv_p.get("id", ""))
-		var pkind: String = str(recv_p.get("kind", "partner"))
-		var pname: String = str(recv_p.get("name", ""))
-		var member: Dictionary
-		if PARTNERS.has(pid) or ENEMIES.has(pid) or BOSSES.has(pid):
-			member = make_member(pkind, pid)
+	var give_items = give.get("items", {})
+	if typeof(give_items) == TYPE_DICTIONARY:
+		for id in give_items:
+			add_item(str(id), -maxi(0, int(give_items[id])))
+	var recv_items = recv.get("items", {})
+	if typeof(recv_items) == TYPE_DICTIONARY:
+		for id in recv_items:
+			add_item(str(id), clampi(int(recv_items[id]), 0, MAX_ITEM))
+	if give_slot.size() == 2:
+		var from: Array = player["party"] if give_slot[0] == "party" else bench()
+		var j := int(give_slot[1])
+		if j >= 0 and j < from.size():
+			from.remove_at(j)
+	var m := traded_member(recv.get("partner"))
+	if not m.is_empty():
+		m["side"] = player["side"]
+		if m["kind"] == "boss" and has_boss_partner():
+			bench().append(m)  # still one boss per party: the new one waits at home
 		else:
-			member = {
-				"kind": pkind,
-				"id": pid,
-				"name": pname if pname != "" else "Partner",
-				"max_hp": clampi(int(recv_p.get("max_hp", 15)), 1, 999),
-				"hp": clampi(int(recv_p.get("hp", recv_p.get("max_hp", 15))), 1, 999),
-				"pow": clampi(int(recv_p.get("pow", 2)), 0, 999),
-				"def": clampi(int(recv_p.get("def", 0)), 0, 999),
-			}
-		if recv_p.has("max_hp") and int(recv_p["max_hp"]) > 0:
-			member["max_hp"] = int(recv_p["max_hp"])
-			member["hp"] = clampi(int(recv_p.get("hp", member["max_hp"])), 1, member["max_hp"])
-		if recv_p.has("pow"):
-			member["pow"] = int(recv_p["pow"])
-		if recv_p.has("def"):
-			member["def"] = int(recv_p["def"])
-		add_member(member)
-
+			add_member(m)
 	save()
+
+
+## A party member built from a traded partner offer, or {} if it isn't one.
+func traded_member(p) -> Dictionary:
+	if typeof(p) != TYPE_DICTIONARY:
+		return {}
+	var kind := str(p.get("kind", ""))
+	var id := str(p.get("id", ""))
+	var known: bool = (kind == "partner" and PARTNERS.has(id)) or (kind == "enemy" and ENEMIES.has(id)) \
+		or (kind == "boss" and BOSSES.has(id))
+	if not known:
+		return {}
+	var m := make_member(kind, id)
+	var grow := MAX_LEVEL - 1  # each level up gives party members +2 HP and +1 POW
+	m["max_hp"] = clampi(int(p.get("max_hp", m["max_hp"])), m["max_hp"], m["max_hp"] + 2 * grow)
+	m["hp"] = m["max_hp"]
+	m["pow"] = clampi(int(p.get("pow", m["pow"])), m["pow"], m["pow"] + grow)
+	return m
 
 
 ## The name of your home base.
