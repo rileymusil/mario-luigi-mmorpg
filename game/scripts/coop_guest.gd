@@ -419,7 +419,7 @@ func _finish(d: Dictionary) -> void:
 	var p: Dictionary = Game.player
 	match str(d.get("result", "fled")):
 		"won":
-			var xp := clampi(int(d.get("xp", 0)), 0, 999)
+			var xp := clampi(int(d.get("xp", 0)), 0, 1999)
 			var coins := clampi(int(d.get("coins", 0)), 0, 999)
 			p["coins"] += coins
 			p["wins"] += 1
@@ -431,6 +431,9 @@ func _finish(d: Dictionary) -> void:
 				allies[me_index]["member"]["max_hp"] = p["max_hp"]
 			_refresh()
 			message.text = "You won! +%d XP  +%d coins" % [xp, coins]
+			var bonus := clampi(int(d.get("bonus", 0)), 0, xp)
+			if bonus > 0:
+				message.text = "You won! +%d XP (party +%d)  +%d coins" % [xp, bonus, coins]
 			await _wait(1.6)
 			await _show_drops(Game.roll_drops(foes.map(func(f): return f["type"])))
 			if levels > 0:

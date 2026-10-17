@@ -49,6 +49,8 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
   - *Enemy turns*: press Z so whoever is attacked is in the air when it hits.
 - **Quests.** Each side has a short questline (scripts/quests.gd). Good players get it from Toadsworth in Castle Town, evil players from the Border Bro at Bowser's Castle; a scroll floats over them when they have a new step or a reward. Steps: beat enemies in the Outskirts, get a partner or recruit, carry a message to Hoohoo Village or Stardust Fields, then beat a boss. Go back to the giver after each step for coins, XP and items (a badge at the end). Progress shows in the chat, and *Quests* in the pause menu says what to do next.
 - **Daily quests.** One quest-giver per area (the gossip in Castle Town, a Koopa guard at Bowser's Castle, and someone in the East Outskirts, the Woods, Stardust Fields and Hoohoo Village) has a new task each day (UTC): beat some enemies there or bring an item. Take it, do it, come back for coins and XP. Tasks are picked from `Quests.DAILY` by the date, so everyone gets the same one that day. *Quests > Daily* lists them.
+- **Daily bonus.** The first time you enter the world each day (UTC) you get 10 coins, 5 more for each day in a row (up to 40 on day 7). A 7-day streak gives the Loyal Badge (HP +6, DEF +1, SP +4) once. Missing a day starts the streak over (`Game.daily_login`).
+- **Party bonus.** A battle you fight together with your party partner gives you both half again as much XP.
 - **Achievements.** 16 goals (scripts/achievements.gd), from your first win to beating every boss, collecting a bounty or visiting every area. Each pays coins or items, badges for the big ones. *Quests > Achievements* shows your progress.
 - **Recruit.** Good players talk to partners (X) and ask them to join: Toad, the Pianta, Bombette, Goombella, Bobbery, Prince Peasley, Koops and Bow in Castle Town, Yoshi Kid and Yoshi in the Outskirts. Evil players use *Ask to join* in battle on any enemy; hurt enemies say yes more often and stronger ones less. Up to 2 follow you and fight on their own turn with their own timed move:
 
@@ -178,7 +180,9 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
 | `throne_room` | Throne Room | inside | back to the castle hall |
 | `outskirts` | Beanbean Outskirts | wild | south path to Castle Town, east bridge to Bowser's Castle, east path to the Outskirts Meadow, stone path south to the pier |
 | `outskirts_east` | Outskirts Meadow | wild | west path to the Outskirts, north bridge to Stardust Fields, flower beds south to the woods |
-| `outskirts_woods` | Outskirts Woods | wild | north to the Outskirts Meadow |
+| `outskirts_woods` | Outskirts Woods | wild | north to the Outskirts Meadow, east (over the big bridge) to the Twilight Meadow |
+| `twilight_meadow` | Twilight Meadow | wild, levels 10-18 (Gloomba, Dark Beanie, Dark Koopa, Bony Beetle) | west to the Woods, south to the Shadow Woods |
+| `shadow_woods` | Shadow Woods | wild, levels 18-30 (Shadow Guy, Dark Bones, Gold Goomba) | north to the Twilight Meadow |
 | `outskirts_pier` | Outskirts Pier | safe | stairs up to the Outskirts; rest stop shop |
 | `stardust_fields` | Stardust Fields | wild | west paths to the Outskirts Meadow, north path and east edge to Hoohoo Village |
 | `hoohoo_village` | Hoohoo Village | town | west and south to Stardust Fields, doors into two huts |
@@ -231,6 +235,7 @@ Run the game from the Godot editor (F5), walk to a map and press **F2**. Players
 The tools read the original sheets from the `Mario&LuigiMMO` art folder (not in this repo):
 - `python3 tools/slice_sprites.py "<Mario&LuigiMMO folder>" [ids]` cuts walk cycles. Add a character with the pixel boxes of its down, side and up rows (options for white backgrounds and drawn-on shadows are described at the top of the script), then add it to `CHARACTERS`, `PARTNERS` or `ENEMIES` in `game.gd`.
 - Bosses are cut the same way (the `BOSSES` table in the script: one idle row, plus an `attack` box for the 4th row, `skip` / `attack_skip` to drop frames and `scale` to shrink big customs); put the printed counts in `BOSSES` as `frames` (columns), `idle` and `attack`.
+- `python3 tools/make_dark_areas.py` builds the late-game areas (Twilight Meadow, Shadow Woods) by relighting the Meadow and Woods art, and their enemies by recolouring the Outskirts enemies.
 - `python3 tools/make_tower.py` builds the Boss Tower floors (`boss_tower_*`) by recolouring the Beanbean Castle rooms.
 - `python3 tools/slice_ui.py "<Mario&LuigiMMO folder>"` cuts the menu art (speech balloons, notebook, stat cards, gold digits, icons, title art, the touch A / B buttons and joystick) into `assets/ui/` and builds the two bitmap fonts from the MLSS alphabet. Re-run `godot --headless --import` afterwards.
 - `python3 tools/slice_items.py "<Mario&LuigiMMO folder>"` cuts the item pictures into `assets/items/<id>.png` (one per id in `ITEMS`; add an item with its box on the Items sheet).

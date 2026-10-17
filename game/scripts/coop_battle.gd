@@ -231,8 +231,12 @@ func _mirror_fx(fx_entry: Array) -> void:
 
 func _win() -> void:
 	_result = "won"
+	if not guest.is_empty():
+		# Fighting together pays half again as much XP, for both of you.
+		xp_bonus = xp_earned / 2
+		xp_earned += xp_bonus
 	_send_sync(true)  # the last hit and HP first
-	Net.send_party({"kind": "end", "result": "won", "xp": xp_earned, "coins": coins_earned,
+	Net.send_party({"kind": "end", "result": "won", "xp": xp_earned, "bonus": xp_bonus, "coins": coins_earned,
 		"hp": _hp(guest) if not guest.is_empty() else 0})
 	await super()
 

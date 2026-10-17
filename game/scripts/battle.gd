@@ -58,6 +58,7 @@ const FOE_STATUS := {"dry_bones": ["burn", 0.3], "beanie": ["dizzy", 0.25], "shy
 var allies: Array = []
 var foes: Array = []
 var xp_earned := 0
+var xp_bonus := 0  # part of xp_earned that's a bonus (fighting with your party partner)
 var coins_earned := 0
 var _rating_tween: Tween
 var _time := 0.0
@@ -1573,6 +1574,8 @@ func _win() -> void:
 		m["hp"] = maxi(1, m["hp"])
 	var levels := Game.gain_xp(xp_earned)
 	message.text = "You won! +%d XP  +%d coins" % [xp_earned, coins_earned]
+	if xp_bonus > 0:
+		message.text = "You won! +%d XP (party +%d)  +%d coins" % [xp_earned, xp_bonus, coins_earned]
 	_refresh()
 	await _wait(1.6)
 	await _show_drops(Game.roll_drops(foes.map(func(f): return f["type"])))
