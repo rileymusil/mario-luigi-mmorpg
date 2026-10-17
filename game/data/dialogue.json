@@ -332,12 +332,23 @@
       {"say": ["Ahh, sea air! I came all the way from the Mushroom Kingdom for this beach.", "The high ground behind me? Way too steep to climb. I've tried."]}
     ]
   },
+  "dusk_guard": {
+    "branches": [
+      {"if": {"side": "evil"}, "say": ["Even Bowser's troops steer clear of this place after dark.", "The Gloombas here hit hard. Come back at level 10 or so, {character}."]},
+      {"random": true, "say": [
+        "Halt! The Twilight Meadow is no place for beginners. The monsters here are much stronger. Level 10 at least, I'd say!",
+        "South of here, the woods are dark as night. Only the toughest heroes, level 18 and up, come back from the Shadow Woods.",
+        "Seen a Gold Goomba? They say they're tough as nails, but they carry a fortune in coins."
+      ]}
+    ]
+  },
   "woods_kid": {
     "branches": [
       {"random": true, "say": [
         "Shh! I'm hiding from my big brother. He'll never find me in the woods!",
         "The streams are too wide to jump. Use the bridges!",
-        "There's a walled garden in the middle of the woods, but I've never found the way in."
+        "There's a walled garden in the middle of the woods, but I've never found the way in.",
+        "Don't cross the big bridge to the east! The meadow over there is always at sunset, and the monsters are huge."
       ]}
     ]
   },

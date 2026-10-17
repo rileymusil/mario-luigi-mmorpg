@@ -234,6 +234,22 @@ const ENEMIES := {
 		"recruit": 0.3, "move": "shell_spin"},
 	"dry_bones": {"name": "Dry Bones", "frames": 5, "hp": 16, "pow": 5, "def": 2, "xp": 10, "coins": 7,
 		"recruit": 0.25, "move": "bone_toss"},
+	# Late game (tools/make_dark_areas.py recolours their sprites): the
+	# Twilight Meadow for levels 10-18, the Shadow Woods for 18-30.
+	"gloomba": {"name": "Gloomba", "frames": 8, "hp": 44, "pow": 17, "def": 5, "xp": 26, "coins": 12,
+		"recruit": 0.25, "move": "headbonk"},
+	"dark_beanie": {"name": "Dark Beanie", "frames": 8, "hp": 50, "pow": 18, "def": 6, "xp": 30, "coins": 14,
+		"recruit": 0.2, "move": "bean_bash"},
+	"dark_koopa": {"name": "Dark Koopa", "frames": 5, "hp": 52, "pow": 18, "def": 8, "xp": 34, "coins": 15,
+		"recruit": 0.2, "move": "shell_toss"},
+	"bony_beetle": {"name": "Bony Beetle", "frames": 8, "hp": 46, "pow": 19, "def": 11, "xp": 38, "coins": 16,
+		"recruit": 0.2, "move": "shell_spin"},
+	"shadow_guy": {"name": "Shadow Guy", "frames": 6, "hp": 90, "pow": 28, "def": 11, "xp": 62, "coins": 24,
+		"recruit": 0.15, "move": "shy_spin"},
+	"dark_bones": {"name": "Dark Bones", "frames": 5, "hp": 100, "pow": 29, "def": 13, "xp": 70, "coins": 26,
+		"recruit": 0.12, "move": "bone_toss"},
+	"gold_goomba": {"name": "Gold Goomba", "frames": 8, "hp": 70, "pow": 25, "def": 16, "xp": 50, "coins": 90,
+		"recruit": 0.1, "move": "headbonk"},
 }
 
 ## Townsfolk you can talk to (sheets cut by tools/slice_sprites.py, same
@@ -315,9 +331,11 @@ const GEAR := {
 		"info": "Bowser's favourite. POW +3, DEF +1."},
 	"great_badge": {"name": "Great Badge", "slot": "badge", "price": 360, "pow": 4, "sp": 6,
 		"info": "A treasure of the mountain. POW +4, SP +6."},
+	"loyal_badge": {"name": "Loyal Badge", "slot": "badge", "price": 150, "hp": 6, "def": 1, "sp": 4,
+		"info": "For 7 days in a row of adventuring. HP +6, DEF +1, SP +4."},
 }
 const GEAR_ORDER := ["thin_pants", "work_pants", "heart_jeans", "koopa_pants", "mountain_pants",
-	"heart_badge", "power_badge", "sp_badge", "guard_badge", "spiny_badge", "great_badge"]
+	"heart_badge", "power_badge", "sp_badge", "guard_badge", "spiny_badge", "great_badge", "loyal_badge"]
 const GEAR_SLOTS := ["pants", "badge"]
 const MAX_GEAR := 9  # most of one piece of gear you can carry
 
@@ -330,6 +348,13 @@ const DROPS := {
 	"shy_guy": ["refreshing_herb", 0.15],
 	"buzzy_beetle": ["green_pepper", 0.12],
 	"dry_bones": ["super_mushroom", 0.15],
+	"gloomba": ["super_mushroom", 0.15],
+	"dark_beanie": ["super_syrup", 0.12],
+	"dark_koopa": ["super_mushroom", 0.2],
+	"bony_beetle": ["red_pepper", 0.12],
+	"shadow_guy": ["ultra_mushroom", 0.12],
+	"dark_bones": ["one_up", 0.08],
+	"gold_goomba": ["ultra_mushroom", 0.3],
 }
 
 ## Bosses (phase 7). Each stands on its map (`map`, `pos`, `face`) and you
@@ -1223,8 +1248,11 @@ const MAPS := {
 	},
 	"outskirts_woods": {
 		"name": "Outskirts Woods", "battle_bg": "outskirts", "safe": false,
-		"spawns": {"north": Vector2(133, 25)},
-		"exits": [{"rect": Rect2(75, 0, 118, 8), "to": "outskirts_east", "spawn": "south"}],
+		"spawns": {"north": Vector2(133, 25), "east": Vector2(700, 413)},
+		"exits": [
+			{"rect": Rect2(75, 0, 118, 8), "to": "outskirts_east", "spawn": "south"},
+			{"rect": Rect2(711, 385, 8, 57), "to": "twilight_meadow", "spawn": "west"},
+		],
 		"enemies": [
 			{"type": "goomba", "pos": Vector2(300, 150)}, {"type": "shy_guy", "pos": Vector2(480, 200)},
 			{"type": "dry_bones", "pos": Vector2(660, 120)}, {"type": "galoomba", "pos": Vector2(100, 520)},
@@ -1242,6 +1270,34 @@ const MAPS := {
 			{"id": "bean_elder", "pos": Vector2(100, 470), "talk": "pier_rest", "face": "right",
 				"path": [Vector2(100, 470), Vector2(195, 470)]},
 		],
+	},
+	# Late-game areas past the Woods' east bridge (tools/make_dark_areas.py
+	# relights the Meadow and Woods art): tougher enemies for levels 10-30.
+	"twilight_meadow": {
+		"name": "Twilight Meadow", "battle_bg": "bean_fields", "safe": false,
+		"spawns": {"west": Vector2(30, 450), "south": Vector2(197, 505)},
+		"exits": [
+			{"rect": Rect2(0, 413, 8, 79), "to": "outskirts_woods", "spawn": "east"},
+			{"rect": Rect2(139, 530, 117, 8), "to": "shadow_woods", "spawn": "north"},
+		],
+		"enemies": [
+			{"type": "gloomba", "pos": Vector2(300, 350)}, {"type": "dark_beanie", "pos": Vector2(520, 300)},
+			{"type": "dark_koopa", "pos": Vector2(560, 420)}, {"type": "gloomba", "pos": Vector2(900, 400)},
+			{"type": "bony_beetle", "pos": Vector2(1100, 380)}, {"type": "dark_beanie", "pos": Vector2(1180, 260)},
+			{"type": "dark_koopa", "pos": Vector2(860, 120)},
+		],
+		"npcs": [{"id": "bean_guard", "pos": Vector2(90, 400), "talk": "dusk_guard", "face": "right"}],
+	},
+	"shadow_woods": {
+		"name": "Shadow Woods", "battle_bg": "chucklehuck_woods", "safe": false,
+		"spawns": {"north": Vector2(133, 25)},
+		"exits": [{"rect": Rect2(75, 0, 118, 8), "to": "twilight_meadow", "spawn": "south"}],
+		"enemies": [
+			{"type": "shadow_guy", "pos": Vector2(300, 150)}, {"type": "dark_bones", "pos": Vector2(480, 200)},
+			{"type": "shadow_guy", "pos": Vector2(660, 120)}, {"type": "dark_bones", "pos": Vector2(100, 520)},
+			{"type": "gold_goomba", "pos": Vector2(400, 550)}, {"type": "shadow_guy", "pos": Vector2(560, 520)},
+		],
+		"npcs": [],
 	},
 	# The Boss Tower, through the castle door in Bowser's Castle (tools/make_tower.py
 	# builds its floors). Its bosses (Game.BOSSES) stand round the walls; the
@@ -1692,6 +1748,39 @@ func all_tradeable_partners() -> Array:
 ## Applies a finished online trade. `give` and `recv` are the two offers
 ## ({coins, items, partner}) as the server confirmed them; `give_slot` is
 ## ["party" or "bench", index] of the partner you gave, or [].
+## Coins for coming back each day (UTC), more for a streak of days in a row
+## (up to LOGIN_STREAK_MAX); a 7-day streak earns the Loyal Badge once.
+## Called when the world loads; returns the chat note, or "" if already
+## collected today. Saved in player["login"] = {day, streak, badge}.
+const LOGIN_COINS := 10
+const LOGIN_STREAK_COINS := 5
+const LOGIN_STREAK_MAX := 7
+
+
+func daily_login() -> String:
+	if player.is_empty():
+		return ""
+	var today := Quests.today()
+	var l = player.get("login", {})
+	if typeof(l) != TYPE_DICTIONARY:
+		l = {}
+	if str(l.get("day", "")) == today:
+		return ""
+	var yesterday := Time.get_date_string_from_unix_time(int(Time.get_unix_time_from_system()) - 86400)
+	var streak: int = int(l.get("streak", 0)) + 1 if str(l.get("day", "")) == yesterday else 1
+	l["day"] = today
+	l["streak"] = streak
+	var coins := LOGIN_COINS + LOGIN_STREAK_COINS * (mini(streak, LOGIN_STREAK_MAX) - 1)
+	player["coins"] = clampi(int(player.get("coins", 0)) + coins, 0, 99999)
+	var note := "Daily bonus: %d coins! (Day %d in a row)" % [coins, streak] if streak > 1 else "Daily bonus: %d coins! Come back tomorrow for more." % coins
+	if streak >= LOGIN_STREAK_MAX and not l.get("badge", false) and add_item("loyal_badge") > 0:
+		l["badge"] = true
+		note += " 7 days in a row: you got the Loyal Badge!"
+	player["login"] = l
+	save()
+	return note
+
+
 ## You beat someone with a price on their head in a duel (the server says so,
 ## see Net "bounty"): adds the coins and a note for the chat.
 func collect_bounty(who: String, coins: int) -> void:

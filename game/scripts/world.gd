@@ -135,6 +135,9 @@ func _ready() -> void:
 
 	Quests.check()
 	Achievements.visit(map_id)
+	var login_note := Game.daily_login()
+	if login_note != "":
+		Game.quest_notes.append(login_note)
 	if map_info["safe"]:
 		_show_weekly_score()
 	dialog.visible = false

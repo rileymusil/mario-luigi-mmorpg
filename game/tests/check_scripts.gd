@@ -36,6 +36,12 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("check_scripts: every achievement can be earned")
+	var extra_errors := _check_login() + _check_late_game()
+	if not extra_errors.is_empty():
+		printerr("check_scripts: ", "; ".join(extra_errors))
+		get_tree().quit(1)
+		return
+	print("check_scripts: daily login bonus and late-game areas are sound")
 	# Play a little: load the overworld with a new save and hold right.
 	# A town (walking NPCs) and a field (wandering enemies).
 	for map_id in ["castle_town", "outskirts"]:
@@ -163,6 +169,42 @@ func _check_dailies() -> Array:
 
 ## A new save has none; one that has done everything earns them all, once,
 ## and every reward is a real item.
+func _check_login() -> Array:
+	var errors: Array = []
+	Game.new_player("mario", "CI")
+	var coins := int(Game.player["coins"])
+	if Game.daily_login() == "" or int(Game.player["coins"]) != coins + Game.LOGIN_COINS:
+		errors.append("first login of the day pays nothing")
+	if Game.daily_login() != "":
+		errors.append("login bonus paid twice in a day")
+	# Six days in a row before today: today is day 7 and gives the badge.
+	var yesterday := Time.get_date_string_from_unix_time(int(Time.get_unix_time_from_system()) - 86400)
+	Game.player["login"] = {"day": yesterday, "streak": 6}
+	var note := Game.daily_login()
+	if Game.item_count("loyal_badge") != 1 or not "Loyal Badge" in note:
+		errors.append("a 7-day streak doesn't give the Loyal Badge")
+	Game.player["login"] = {"day": "2000-01-01", "streak": 30, "badge": true}
+	Game.daily_login()
+	if int(Game.player["login"]["streak"]) != 1:
+		errors.append("a missed day doesn't reset the streak")
+	return errors
+
+
+## The late-game enemies: sprites, drops, and on the maps meant for them.
+func _check_late_game() -> Array:
+	var errors: Array = []
+	for map_id in ["twilight_meadow", "shadow_woods"]:
+		if not Game.MAPS.has(map_id) or Game.MAPS[map_id]["enemies"].is_empty():
+			errors.append("%s has no enemies" % map_id)
+	for id in Game.ENEMIES:
+		if not ResourceLoader.exists("res://assets/characters/%s.png" % id):
+			errors.append("no sprite for %s" % id)
+	for id in Game.DROPS:
+		if Game.goods(Game.DROPS[id][0]).is_empty():
+			errors.append("%s drops unknown item %s" % [id, Game.DROPS[id][0]])
+	return errors
+
+
 func _check_achievements() -> Array:
 	var errors: Array = []
 	Game.new_player("mario", "CI")
