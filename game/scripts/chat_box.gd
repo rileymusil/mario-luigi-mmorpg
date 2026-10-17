@@ -275,7 +275,10 @@ func _show_all() -> void:
 func _process(delta: float) -> void:
 	var safe := Game.get_safe_rect()
 	var touch: bool = TouchControls.stick.visible
-	var left_x := safe.position.x + (88.0 if touch else 6.0)
+	# On a phone held upright there's no room beside the stick and buttons,
+	# so the log goes full width above them.
+	var above_controls: bool = touch and Game.is_portrait()
+	var left_x := safe.position.x + (88.0 if touch and not above_controls else 6.0)
 	_log.position.x = left_x
 	_log.size = _log.get_combined_minimum_size()
 
@@ -294,11 +297,18 @@ func _process(delta: float) -> void:
 	_button.visible = not is_typing() and (touch or not TouchControls.active) and not _text_box_open()
 
 	# Keep the log's bottom edge just above the text box or hint bar
+	# Speech balloons and menus sit where the log does: it steps aside for them.
+	_log.visible = is_typing() or not _text_box_open()
 	var base_bottom := (_prompt.position.y - 2.0) if is_typing() else (safe.end.y - 24.0)
+	if above_controls and not is_typing():
+		base_bottom = minf(TouchControls.stick.position.y, TouchControls.a_button.position.y) - 2.0
 	_log.position.y = base_bottom - _log.size.y
 
 	for line in _lines:
-		line["label"].custom_minimum_size.x = clampf(safe.size.x - 140.0, 180.0, 320.0) if touch else clampf(safe.size.x - 40.0, 220.0, 360.0)
+		if above_controls:
+			line["label"].custom_minimum_size.x = safe.size.x - 12.0
+		else:
+			line["label"].custom_minimum_size.x = clampf(safe.size.x - 140.0, 180.0, 320.0) if touch else clampf(safe.size.x - 40.0, 220.0, 360.0)
 		line["age"] += delta
 		var a: float = 1.0 if is_typing() else clampf((FADE_AFTER + 1.0 - line["age"]), 0.0, 1.0)
 		line["label"].modulate.a = a

@@ -374,6 +374,18 @@
       {"say": ["The sea breeze does wonders. Sit a while?"], "choices": [{"text": "Rest", "do": "heal", "done": "You rested on the pier. HP and SP are full!"}, {"text": "No thanks"}]}
     ]
   },
+  "pier_fisher": {
+    "name": "Fisher Toad",
+    "branches": [
+      {"say": ["The Cheep Cheeps are biting today!", "Want to try? Wait for the float to dip, then reel in quick. The faster you are, the better the catch."], "choices": [{"text": "Fish!", "do": "fish"}, {"text": "No thanks"}]}
+    ]
+  },
+  "jump_rope": {
+    "name": "Beanish Kid",
+    "branches": [
+      {"say": ["Wanna play jump rope? We turn, you jump!", "It gets faster and faster. Reach 20, 40 or 60 jumps for a prize!"], "choices": [{"text": "Let's go!", "do": "jump_rope"}, {"text": "Maybe later"}]}
+    ]
+  },
   "tower_rest": {
     "name": "Tower Toad",
     "branches": [
