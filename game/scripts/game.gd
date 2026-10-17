@@ -1029,6 +1029,7 @@ const MAPS := {
 			{"id": "bean_guard", "pos": Vector2(300, 150), "talk": "palace_guard"},
 			{"id": "bean_guard", "pos": Vector2(382, 150), "talk": "palace_guard"},
 			{"id": "bean_villager", "pos": Vector2(45, 370), "talk": "town_gate", "face": "right"},
+			{"id": "bean_kid", "pos": Vector2(218, 334), "talk": "jump_rope", "fixed": true},
 			{"id": "bean_kid", "pos": Vector2(665, 450), "talk": "town_kid", "path": [Vector2(665, 450), Vector2(665, 400), Vector2(665, 515)]},
 			{"id": "bean_girl", "pos": Vector2(1180, 400), "talk": "town_girl", "face": "left",
 				"path": [Vector2(1180, 400), Vector2(1120, 400), Vector2(1240, 400)]},
@@ -1269,6 +1270,7 @@ const MAPS := {
 			{"id": "shopkeeper", "pos": Vector2(350, 468), "talk": "pier_shop", "fixed": true, "reach": 56.0},
 			{"id": "bean_elder", "pos": Vector2(100, 470), "talk": "pier_rest", "face": "right",
 				"path": [Vector2(100, 470), Vector2(195, 470)]},
+			{"id": "toad_blue", "pos": Vector2(290, 556), "talk": "pier_fisher", "face": "down", "fixed": true},
 		],
 	},
 	# Late-game areas past the Woods' east bridge (tools/make_dark_areas.py

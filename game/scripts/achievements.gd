@@ -5,7 +5,8 @@ extends RefCounted
 ## in the chat when you earn one; the pause menu's Quests page lists them.
 ## Earned ids are saved in player["achievements"]. Counters they read:
 ## wins (battles), level, bosses, recruited, pvp_wins, quests (story lines
-## finished), dailies_done, trades, visited (map ids), bounties.
+## finished), dailies_done, trades, visited (map ids), bounties, fish_caught,
+## rope_best.
 
 const LIST := [
 	{"id": "first_win", "name": "First Victory", "text": "Win a battle.", "reward": {"coins": 20}},
@@ -23,6 +24,8 @@ const LIST := [
 	{"id": "story", "name": "Hero's Tale", "text": "Finish your side's story quests.", "reward": {"coins": 100}},
 	{"id": "daily_7", "name": "Helping Hand", "text": "Finish 7 daily quests.", "reward": {"items": {"ultra_mushroom": 2}}},
 	{"id": "trade_1", "name": "Trader", "text": "Complete a trade.", "reward": {"coins": 30}},
+	{"id": "angler", "name": "Angler", "text": "Catch 20 fish at the pier.", "reward": {"coins": 80}},
+	{"id": "rope_50", "name": "Jump Rope Pro", "text": "Make 50 jumps in a row.", "reward": {"items": {"ultra_mushroom": 2}}},
 	{"id": "explorer", "name": "Explorer", "text": "Visit every area outside the Boss Tower.", "reward": {"items": {"super_syrup": 2}}},
 ]
 
@@ -66,6 +69,10 @@ static func progress(id: String) -> Array:
 			return [int(p.get("dailies_done", 0)), 7]
 		"trade_1":
 			return [int(p.get("trades", 0)), 1]
+		"angler":
+			return [int(p.get("fish_caught", 0)), 20]
+		"rope_50":
+			return [int(p.get("rope_best", 0)), 50]
 		"explorer":
 			var seen: Array = p.get("visited", []) if typeof(p.get("visited")) == TYPE_ARRAY else []
 			return [explore_maps().filter(func(m): return m in seen).size(), explore_maps().size()]

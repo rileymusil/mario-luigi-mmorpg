@@ -36,12 +36,12 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("check_scripts: every achievement can be earned")
-	var extra_errors := _check_login() + _check_late_game()
+	var extra_errors := _check_login() + _check_late_game() + _check_minigames()
 	if not extra_errors.is_empty():
 		printerr("check_scripts: ", "; ".join(extra_errors))
 		get_tree().quit(1)
 		return
-	print("check_scripts: daily login bonus and late-game areas are sound")
+	print("check_scripts: daily login bonus, late-game areas and minigames are sound")
 	# Play a little: load the overworld with a new save and hold right.
 	# A town (walking NPCs) and a field (wandering enemies).
 	for map_id in ["castle_town", "outskirts"]:
@@ -190,6 +190,32 @@ func _check_login() -> Array:
 	return errors
 
 
+func _check_minigames() -> Array:
+	var errors: Array = []
+	Game.new_player("mario", "CI")
+	var coins := int(Game.player["coins"])
+	if Minigames.cast(-1.0)["fish"] != "" or int(Game.player["coins"]) != coins:
+		errors.append("a missed bite still catches something")
+	var golden := Minigames.cast(0.1, 0.999)
+	if golden["fish"] != "Golden Cheep" or Game.item_count("ultra_mushroom") != 1:
+		errors.append("a great reel can't land the Golden Cheep (got %s)" % golden["fish"])
+	for i in 100:
+		if Minigames.cast(0.8, i / 100.0)["fish"] in ["Big Cheep", "Golden Cheep"]:
+			errors.append("a slow reel caught a rare fish")
+			break
+	if Minigames.casts_left() != 0:
+		errors.append("casts aren't counted against the day")
+	for f in Minigames.FISH:
+		if f.has("item") and Game.goods(f["item"]).is_empty():
+			errors.append("fish prize %s isn't an item" % f["item"])
+	var supers := Game.item_count("super_mushroom")
+	Minigames.rope_prize(25)
+	Minigames.rope_prize(25)
+	if Game.item_count("super_mushroom") != supers + 1 or int(Game.player["rope_best"]) != 25:
+		errors.append("jump rope tier prizes aren't once a day")
+	return errors
+
+
 ## The late-game enemies: sprites, drops, and on the maps meant for them.
 func _check_late_game() -> Array:
 	var errors: Array = []
@@ -219,6 +245,8 @@ func _check_achievements() -> Array:
 	Game.collect_bounty("Bowsy", 40)
 	if int(p["coins"]) != coins + 40 or Achievements.progress("bounty_1")[0] != 1:
 		errors.append("collecting a bounty doesn't pay or count")
+	p["fish_caught"] = 20
+	p["rope_best"] = 50
 	p["dailies_done"] = 10
 	p["trades"] = 1
 	p["quests"] = {"good": {"step": 4, "count": 0, "done": false, "finished": true}}

@@ -38,6 +38,7 @@ var enemies: Array = []   # [{node, home, target, pause, key, type}]
 var npcs: Array = []      # [{node, id}]
 var score_box: PanelContainer  # this week's good vs evil score, in towns
 var save_prompt: TextPrompt  # password box for saving online (made when first needed)
+var minigame_screens := {}  # "fishing" / "jump_rope" -> its screen, made when first played
 var leaders_screen: LeadersScreen  # pause menu > Leaders (made when first needed)
 var _quest_news: Array = []  # talk ids that show the quest scroll (Quests.news_talk_ids)
 var _quest_news_timer := 0.0
@@ -849,7 +850,62 @@ func _ask(n: Dictionary, branch: Dictionary, question: String, speaker: String) 
 		"heal":
 			_heal_party()
 			await say(DialogueData.fill(choice.get("done", "Your HP and SP are full again!")))
+		"fish":
+			await _fish(speaker, node)
+		"jump_rope":
+			await _jump_rope(speaker, node)
 	return false
+
+
+## The fishing minigame (Minigames, ui/fishing_screen.gd): casts until you
+## stop or today's casts run out.
+func _fish(speaker: String, node: CharacterSprite) -> void:
+	while true:
+		if Minigames.casts_left() <= 0:
+			await say("The fish have had enough for today. Come back tomorrow!", speaker, node)
+			return
+		var reel: float = await _minigame_screen("fishing").cast()
+		var result := Minigames.cast(reel)
+		_update_hud()
+		Game.save()
+		await say(str(result["text"]))
+		var left := Minigames.casts_left()
+		if left <= 0:
+			await say("That's all the bait for today. Come back tomorrow!", speaker, node)
+			return
+		dialog.open("Cast again? (%d left today)" % left, speaker, node)
+		_place_menu.call_deferred()
+		var again := await menu.choose(["Cast", "Stop"], "", true)
+		dialog.close()
+		if again != 0:
+			return
+
+
+## The jump rope minigame (Minigames, ui/jump_rope_screen.gd).
+func _jump_rope(speaker: String, node: CharacterSprite) -> void:
+	while true:
+		var jumps: int = await _minigame_screen("jump_rope").play()
+		for line in Minigames.rope_prize(jumps):
+			await say(line)
+		_update_hud()
+		Game.save()
+		dialog.open("Go again? Your best is %d." % int(Game.player.get("rope_best", 0)), speaker, node)
+		_place_menu.call_deferred()
+		var again := await menu.choose(["Again!", "Done"], "", true)
+		dialog.close()
+		if again != 0:
+			return
+
+
+func _minigame_screen(kind: String) -> Control:
+	if not minigame_screens.has(kind):
+		var layer := CanvasLayer.new()
+		layer.layer = 6
+		add_child(layer)
+		var screen: Control = FishingScreen.new() if kind == "fishing" else JumpRopeScreen.new()
+		layer.add_child(screen)
+		minigame_screens[kind] = screen
+	return minigame_screens[kind]
 
 
 func _recruit(n: Dictionary, speaker: String) -> bool:

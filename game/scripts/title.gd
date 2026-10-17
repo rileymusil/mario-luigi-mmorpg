@@ -22,6 +22,7 @@ func _ready() -> void:
 	TouchControls.active_changed.connect(_show_controls_hint)
 	_show_controls_hint(TouchControls.active)
 	get_tree().root.size_changed.connect(_layout_title)
+	menu.resized.connect(_layout_title)  # a new list in the menu: centre it again
 	_layout_title()
 	_main_menu()
 
@@ -81,6 +82,15 @@ func _layout_char_select() -> void:
 	var total_w := 270.0
 	var start_x := roundf(safe.position.x + (safe.size.x - total_w) / 2.0)
 	var base_y := roundf(safe.position.y + (safe.size.y * 0.35 if is_port else 50.0))
+	if is_port and safe.size.x < total_w + 16.0:
+		# Too narrow for the card beside the list: it goes under the list.
+		start_x = roundf(safe.position.x + maxf(0.0, (safe.size.x - 200.0) / 2.0))
+		base_y = roundf(safe.position.y + safe.size.y * 0.28)
+		preview.position = Vector2(start_x + 24.0, base_y + 94.0)
+		menu.position = Vector2(start_x + 58.0, base_y)
+		menu.reset_size()
+		card.position = Vector2(start_x + 58.0, base_y + menu.size.y + 4.0)
+		return
 	preview.position = Vector2(start_x + 24.0, base_y + 94.0)
 	menu.position = Vector2(start_x + 64.0, base_y)
 	card.position = Vector2(start_x + 180.0, base_y)
@@ -218,7 +228,7 @@ func _pick_character(side: String) -> void:
 				_show_character(id)
 			await get_tree().process_frame
 	watcher.call()
-	_layout_char_select()
+	_layout_title()
 	var i := await menu.choose(names, "Choose your character", true)
 	preview.visible = false
 	card.visible = false

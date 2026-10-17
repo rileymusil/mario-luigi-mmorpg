@@ -102,9 +102,15 @@ func _fullscreen_icon() -> Control:
 func _input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch and event.pressed:
 		_set_active(true)
-	elif (event is InputEventKey and event.pressed and not event.echo) \
+	elif (event is InputEventKey and event.pressed and not event.echo and not _typing()) \
 			or (event is InputEventJoypadButton and event.pressed):
 		_set_active(false)
+
+
+## True while a text box has the focus: a phone's on-screen keyboard sends
+## key presses too, and typing a name or a chat line shouldn't hide the controls.
+func _typing() -> bool:
+	return get_viewport().gui_get_focus_owner() is LineEdit
 
 
 func _set_active(on: bool) -> void:
