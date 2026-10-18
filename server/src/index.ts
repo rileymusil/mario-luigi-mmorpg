@@ -25,11 +25,17 @@
 //                                          across sides is answered {t:"declined", reason:"side"}
 //     {t:"warp", map, spawn}               tell your partner you took an exit
 //     {t:"pmsg", d:{...}}                  anything for your partner on this map (co-op battles)
-//     {t:"duel", to, stats}                evil player attacks a good player (not in a safe zone)
-//     {t:"duel_ready", stats} / {t:"duel_busy"}   the attacked player's game answers
-//     {t:"duel_act", move, hits?, rating?, hp?}   your move in a duel, relayed to your foe
-//     {t:"duel_hit", dmg, hp, dodged, guard?}  how much your foe's move did to you
-//     {t:"duel_over", result}              lost | fled | timeout | cancel: ends the duel
+//     {t:"duel", to}                       evil player attacks a good player (not in a safe zone).
+//                                          Both players' party partners on this map join in
+//                                          (party vs party, up to 2 players a side)
+//     {t:"duel_ready"} / {t:"duel_busy"}   each invited player's game answers
+//     {t:"duel_msg", d:{...}, to_host?}    anything for the others in your duel (the attacker's
+//                                          game runs the battle, see pvp_battle.gd); to_host:
+//                                          only the attacker's game gets it (secret move picks)
+//     {t:"duel_end", winner}               the attacker's game: the duel is over, `winner` is
+//                                          "good", "evil" or "" (nobody, e.g. everyone ran)
+//     {t:"duel_over", result}              you leave the duel: fled (ran away), lost (forfeit),
+//                                          cancel (the attacker gave up waiting for answers)
 //   server -> client
 //     {t:"welcome", id, players:[Player]}  everyone already in the zone
 //     {t:"join", player:Player}
@@ -46,18 +52,22 @@
 //     {t:"party_end"}                       your partner left the party
 //     {t:"warp", map, spawn}               your partner took an exit
 //     {t:"pmsg", d:{...}}                  from your partner
-//     {t:"challenge", from, name, character, stats}  an evil player attacks you
-//     {t:"duel_start", foe:Player+{stats}, first}  both sides, first = you move first
-//     {t:"duel_act", ...} / {t:"duel_hit", ...}    your foe's move / its result
-//     {t:"duel_over", result}              your foe ended the duel (or "left", "busy", "refused")
+//     {t:"challenge", from, name, character, ally?}  an evil player attacks you (ally: your
+//                                          partner attacks someone and you join in)
+//     {t:"duel_start", host, players:[Player]}  everyone in the duel; host runs the battle
+//     {t:"duel_msg", from, d}              from someone in your duel
+//     {t:"duel_left", id, fled}            someone left your duel (ran, forfeited, disconnected)
+//     {t:"duel_over", result, winner?}     the duel ended before it began ("busy", "refused",
+//                                          "cancel"), or the attacker's game left ("host_left";
+//                                          winner: the side that wins, "" for nobody)
 //     {t:"bounty", name, coins}            you beat someone with a price on their head: add the coins
 //     {t:"leave", id}
 //     {t:"full"}                            zone is full; the socket is closed
 //     {t:"replaced"}                        the same save connected again; this socket is closed
 //   Player = {id, name, character, side, x, y}
-// A duel that ends with someone losing, leaving or timing out counts a win
-// for the other side on the weekly score and for the winner on the PvP
-// leaderboard (scores.ts, GET /score and GET /leaders). Who is on which map
+// A duel that one side wins counts a win for that side on the weekly score,
+// and a PvP leaderboard win (and any bounty) for a winner over each loser
+// (players who ran away aren't losers; ones who left mid-duel are) (scores.ts, GET /score and GET /leaders). Who is on which map
 // (for whispers and friends) is kept in presence.ts.
 // The text "ping" is answered with "pong" without waking the zone.
 
@@ -132,9 +142,7 @@ const CHAT_COOLDOWN_MS = 1000;
 const UID = /^[a-f0-9]{12}$/;
 const KEY = /^[a-f0-9]{16,64}$/;
 const MAP_ID = /^[a-z0-9_]{1,32}$/;
-const DUEL_MOVES = new Set(["jump", "special", "heal", "wait"]);
 const DUEL_COOLDOWN_MS = 30000; // after a duel, neither player can be attacked for a while
-const STAT_KEYS = ["hp", "max_hp", "sp", "max_sp", "pow", "def", "level", "coins"];
 const MAX_FRIENDS = 50;
 const MAX_LEVEL = 99;
 const MAX_BOSS_WINS = 99999;
@@ -170,9 +178,9 @@ interface Player {
 }
 
 interface DuelResult {
-  winner: Player;
-  loser: Player;
-  winnerWs: WebSocket | null;
+  side: "good" | "evil";
+  winners: { player: Player; ws: WebSocket }[];
+  losers: Player[];
 }
 
 interface TradePartner {
@@ -203,9 +211,11 @@ interface Attachment {
   wantParty?: string; // partner uid claimed at hello, waiting for them to arrive
   invited?: string; // id of the player this one invited
   safe?: boolean; // on a town map, where nobody can attack this player
-  duel?: string; // foe's id while challenging or fighting
-  dueling?: boolean; // false while the challenge waits for an answer
-  stats?: Record<string, number>;
+  duel?: string; // the duel this player is in: the attacker's id
+  dueling?: boolean; // said ready (the attacker always has)
+  duelOn?: boolean; // the duel has started
+  duelTarget?: boolean; // the attacked player: if they're busy, the duel is off
+  duelLeft?: Player[]; // on the attacker: players who left mid-duel (they lose if their side does)
   safeUntil?: number; // can't be attacked again before this time
   key?: string; // the save's secret, lets the same save replace a stale connection
   tradePartner?: string; // id of player currently trading or requested trade
@@ -429,64 +439,72 @@ export class Zone extends DurableObject<Env> {
       const ok =
         target && t?.player && target !== ws &&
         a.player.side === "evil" && t.player.side === "good" && !t.safe &&
-        !a.duel && !t.duel && a.party !== t.player.id && (t.safeUntil ?? 0) <= now;
+        this.free(a) && this.free(t) && (t.safeUntil ?? 0) <= now;
       if (!ok || !target || !t?.player) {
         ws.serializeAttachment(a);
         ws.send(JSON.stringify({ t: "duel_over", result: "refused" }));
         return;
       }
-      a.duel = t.player.id;
-      a.dueling = false;
-      a.stats = stats(msg.stats);
-      t.duel = a.player.id;
-      t.dueling = false;
+      const room = a.player.id;
+      a.duel = room;
+      a.dueling = true;
+      a.duelOn = false;
+      a.duelLeft = [];
       ws.serializeAttachment(a);
+      t.duel = room;
+      t.dueling = false;
+      t.duelTarget = true;
       target.serializeAttachment(t);
-      target.send(JSON.stringify({
-        t: "challenge", from: a.player.id, name: a.player.name, character: a.player.character, stats: a.stats,
-      }));
+      const challenge = { t: "challenge", from: room, name: a.player.name, character: a.player.character };
+      target.send(JSON.stringify(challenge));
+      // Both players' party partners on this map fight too, if they're free.
+      for (const [sock, att, ally] of [[ws, a, true], [target, t, false]] as [WebSocket, Attachment, boolean][]) {
+        const mate = att.party ? this.socketFor(att.party) : null;
+        const m = mate?.deserializeAttachment() as Attachment | undefined;
+        if (!mate || mate === sock || !m?.player || m.player.side !== att.player!.side || !this.free(m) || m.safe) continue;
+        if (!ally && (m.safeUntil ?? 0) > now) continue;
+        m.duel = room;
+        m.dueling = false;
+        mate.serializeAttachment(m);
+        mate.send(JSON.stringify({ ...challenge, ally }));
+      }
     } else if (msg.t === "duel_ready" || msg.t === "duel_busy") {
-      const foe = a.duel ? this.socketFor(a.duel) : null;
-      const f = foe?.deserializeAttachment() as Attachment | undefined;
-      if (!foe || !f?.player || a.dueling || f.duel !== a.player.id) {
+      const room = a.duel;
+      if (!room || a.dueling || a.duelOn) {
         ws.serializeAttachment(a);
         return;
       }
       if (msg.t === "duel_busy") {
-        a.duel = f.duel = undefined;
+        if (a.duelTarget) {
+          this.closeRoom(room, "busy", now, true);
+          return;
+        }
+        this.clearDuel(a);
         ws.serializeAttachment(a);
-        foe.serializeAttachment(f);
-        foe.send(JSON.stringify({ t: "duel_over", result: "busy" }));
+        this.maybeStart(room);
         return;
       }
-      a.stats = stats(msg.stats);
-      a.dueling = f.dueling = true;
+      a.dueling = true;
       ws.serializeAttachment(a);
-      foe.serializeAttachment(f);
-      foe.send(JSON.stringify({ t: "duel_start", foe: { ...a.player, stats: a.stats }, first: true }));
-      ws.send(JSON.stringify({ t: "duel_start", foe: { ...f.player, stats: f.stats }, first: false }));
-    } else if (msg.t === "duel_act" || msg.t === "duel_hit") {
+      this.maybeStart(room);
+    } else if (msg.t === "duel_msg") {
       ws.serializeAttachment(a);
-      const foe = a.dueling && a.duel ? this.socketFor(a.duel) : null;
-      if (!foe) return;
-      const out: Record<string, unknown> =
-        msg.t === "duel_act"
-          ? {
-              t: "duel_act",
-              move: DUEL_MOVES.has(String(msg.move)) ? String(msg.move) : "wait",
-              hits: Array.isArray(msg.hits) ? msg.hits.slice(0, 3).map((h) => num(h, 999)) : [],
-              rating: ["Excellent", "Good", "Miss"].includes(String(msg.rating)) ? String(msg.rating) : "Miss",
-              hp: num(msg.hp, 9999),
-              name: String(msg.name ?? "").slice(0, 24),
-            }
-          : {
-              t: "duel_hit", dmg: num(msg.dmg, 9999), hp: num(msg.hp, 9999), dodged: msg.dodged === true,
-              guard: msg.guard === true,
-            };
-      foe.send(JSON.stringify(out));
+      if (!a.duel || !a.duelOn || typeof msg.d !== "object" || msg.d === null || Array.isArray(msg.d)) return;
+      const out = JSON.stringify({ t: "duel_msg", from: a.player.id, d: msg.d });
+      for (const sock of this.roomSockets(a.duel)) {
+        if (sock === ws) continue;
+        if (msg.to_host === true && (sock.deserializeAttachment() as Attachment).player?.id !== a.duel) continue;
+        send(sock, out);
+      }
+    } else if (msg.t === "duel_end") {
+      if (!a.duel || !a.duelOn || a.duel !== a.player.id) {
+        ws.serializeAttachment(a);
+        return;
+      }
+      const winner = msg.winner === "good" || msg.winner === "evil" ? msg.winner : "";
+      await this.recordWin(this.finishRoom(a.duel, winner, now));
     } else if (msg.t === "duel_over") {
-      const result = ["lost", "fled", "timeout", "cancel"].includes(String(msg.result)) ? String(msg.result) : "cancel";
-      await this.recordWin(this.endDuel(ws, a, result, now));
+      await this.recordWin(this.leaveDuel(ws, a, String(msg.result) === "fled", now));
     } else if (msg.t === "trade_req") {
       const target = this.socketFor(String(msg.to));
       const t = target?.deserializeAttachment() as Attachment | undefined;
@@ -628,38 +646,133 @@ export class Zone extends DurableObject<Env> {
     }
   }
 
-  // Ends the duel `a` is in and tells the foe how it ended. Returns the
-  // winner and loser for the weekly score, the PvP leaderboard and bounties,
-  // or null when nobody won.
-  private endDuel(ws: WebSocket | null, a: Attachment, result: string, now: number): DuelResult | null {
-    const foe = a.duel ? this.socketFor(a.duel) : null;
-    const fought = a.dueling;
+  // Not in a duel or a trade, so they can be attacked or join one.
+  private free(a: Attachment): boolean {
+    return !a.duel && !a.trading && !a.tradePartner;
+  }
+
+  private clearDuel(a: Attachment): void {
     a.duel = undefined;
     a.dueling = false;
-    if (fought) a.safeUntil = now + DUEL_COOLDOWN_MS;
+    a.duelOn = false;
+    a.duelTarget = false;
+    a.duelLeft = undefined;
+  }
+
+  // Everyone in duel `room` (the attacker's id).
+  private roomSockets(room: string): WebSocket[] {
+    return this.ctx.getWebSockets().filter((ws) => {
+      const a = ws.deserializeAttachment() as Attachment | null;
+      return a?.player && a.duel === room;
+    });
+  }
+
+  // Starts duel `room` once everyone invited has answered.
+  private maybeStart(room: string): void {
+    const socks = this.roomSockets(room);
+    const atts = socks.map((s) => s.deserializeAttachment() as Attachment);
+    if (atts.some((x) => !x.dueling) || !atts.some((x) => x.player?.id === room)) return;
+    const players = atts.map((x) => x.player!);
+    socks.forEach((s, i) => {
+      atts[i].duelOn = true;
+      s.serializeAttachment(atts[i]);
+      send(s, JSON.stringify({ t: "duel_start", host: room, players }));
+    });
+  }
+
+  // Ends duel `room` for everyone still in it, before or after it started.
+  // `result` goes to everyone but the attacker (who already knows) when
+  // `tellHost` is false.
+  private closeRoom(room: string, result: string, now: number, tellHost: boolean, extra: object = {}): void {
+    for (const s of this.roomSockets(room)) {
+      const x = s.deserializeAttachment() as Attachment;
+      if (x.duelOn) x.safeUntil = now + DUEL_COOLDOWN_MS;
+      const isHost = x.player?.id === room;
+      this.clearDuel(x);
+      s.serializeAttachment(x);
+      if (!isHost || tellHost) send(s, JSON.stringify({ t: "duel_over", result: isHost ? result : result === "busy" ? "cancel" : result, ...extra }));
+    }
+  }
+
+  // The attacker's game says duel `room` is over and `winner` won. Returns
+  // the winners and losers for the weekly score, the leaderboard and bounties.
+  private finishRoom(room: string, winner: string, now: number): DuelResult | null {
+    const socks = this.roomSockets(room);
+    const host = socks.find((s) => (s.deserializeAttachment() as Attachment).player?.id === room);
+    const left = (host?.deserializeAttachment() as Attachment | undefined)?.duelLeft ?? [];
+    const winners: { player: Player; ws: WebSocket }[] = [];
+    const losers: Player[] = left.filter((p) => winner !== "" && p.side !== winner);
+    for (const s of socks) {
+      const x = s.deserializeAttachment() as Attachment;
+      if (x.player && winner !== "") {
+        if (x.player.side === winner) winners.push({ player: { ...x.player }, ws: s });
+        else losers.push({ ...x.player });
+      }
+      x.safeUntil = now + DUEL_COOLDOWN_MS;
+      this.clearDuel(x);
+      s.serializeAttachment(x);
+    }
+    if (winner === "" || winners.length === 0 || losers.length === 0) return null;
+    return { side: winner as "good" | "evil", winners, losers };
+  }
+
+  // `a` leaves the duel they're in: ran away (fled), forfeited or
+  // disconnected. Before it starts, the attacker leaving (or the attacked
+  // player) calls it off. After, the attacker's game runs the battle, so
+  // when it leaves the duel ends: the other side wins if nobody on the
+  // attacker's side is left in it.
+  private leaveDuel(ws: WebSocket | null, a: Attachment, fled: boolean, now: number): DuelResult | null {
+    const room = a.duel;
+    if (!room || !a.player) return null;
+    const me = { ...a.player };
+    const started = a.duelOn;
+    const isHost = me.id === room;
+    if (!started && (isHost || a.duelTarget)) {
+      this.closeRoom(room, "cancel", now, true);
+      return null;
+    }
+    if (started) a.safeUntil = now + DUEL_COOLDOWN_MS;
+    this.clearDuel(a);
     ws?.serializeAttachment(a);
-    if (!foe) return null;
-    const f = foe.deserializeAttachment() as Attachment;
-    if (f.duel !== a.player?.id) return null;
-    f.duel = undefined;
-    f.dueling = false;
-    if (fought) f.safeUntil = now + DUEL_COOLDOWN_MS;
-    foe.serializeAttachment(f);
-    foe.send(JSON.stringify({ t: "duel_over", result }));
-    if (!fought || !a.player || !f.player) return null;
-    // "lost" / "left": `a` lost; "timeout": `a` waited out a foe who stopped answering.
-    if (result === "lost" || result === "left") return { winner: { ...f.player }, loser: { ...a.player }, winnerWs: foe };
-    if (result === "timeout") return { winner: { ...a.player }, loser: { ...f.player }, winnerWs: ws };
-    return null;
+    if (!started) {
+      this.maybeStart(room);
+      return null;
+    }
+    const socks = this.roomSockets(room);
+    if (!isHost) {
+      const host = socks.find((s) => (s.deserializeAttachment() as Attachment).player?.id === room);
+      if (host && !fled) {
+        const h = host.deserializeAttachment() as Attachment;
+        h.duelLeft = [...(h.duelLeft ?? []), me].slice(0, 4);
+        host.serializeAttachment(h);
+      }
+      for (const s of socks) send(s, JSON.stringify({ t: "duel_left", id: me.id, fled }));
+      return null;
+    }
+    const mates = socks.some((s) => (s.deserializeAttachment() as Attachment).player?.side === me.side);
+    const winner = mates ? "" : me.side === "evil" ? "good" : "evil";
+    const left = a.duelLeft ?? [];
+    const winners: { player: Player; ws: WebSocket }[] = [];
+    for (const s of socks) {
+      const x = s.deserializeAttachment() as Attachment;
+      if (x.player && x.player.side === winner) winners.push({ player: { ...x.player }, ws: s });
+    }
+    this.closeRoom(room, "host_left", now, false, { winner });
+    if (winner === "" || winners.length === 0 || fled) return null;
+    return { side: winner, winners, losers: [me, ...left.filter((p) => p.side !== winner)] };
   }
 
   private async recordWin(won: DuelResult | null): Promise<void> {
     if (!won) return;
-    const { winner, loser } = won;
     try {
-      await scores(this.env).addWin(winner.side);
-      const coins = await scores(this.env).addPvpWin(winner.name, winner.side, winner.character, loser.name, loser.side);
-      if (coins > 0) won.winnerWs?.send(JSON.stringify({ t: "bounty", name: loser.name, coins }));
+      await scores(this.env).addWin(won.side);
+      // Each loser counts as one leaderboard win, shared out among the winners.
+      for (let i = 0; i < won.losers.length; i++) {
+        const { player: winner, ws } = won.winners[i % won.winners.length];
+        const loser = won.losers[i];
+        const coins = await scores(this.env).addPvpWin(winner.name, winner.side, winner.character, loser.name, loser.side);
+        if (coins > 0) send(ws, JSON.stringify({ t: "bounty", name: loser.name, coins }));
+      }
     } catch {
       // the score is nice to have; a duel never fails over it
     }
@@ -685,7 +798,7 @@ export class Zone extends DurableObject<Env> {
       this.cancelTrade(ws, a, "left");
     }
     const id = a.player.id;
-    const won = a.duel ? this.endDuel(null, a, "left", Date.now()) : null;
+    const won = a.duel ? this.leaveDuel(null, a, false, Date.now()) : null;
     a.player = null;
     ws.serializeAttachment(a);
     this.broadcast({ t: "leave", id }, ws);
@@ -784,6 +897,15 @@ export class Zone extends DurableObject<Env> {
   }
 }
 
+// Sends on a socket that may be closing (webSocketClose cleans those up).
+function send(ws: WebSocket, text: string): void {
+  try {
+    ws.send(text);
+  } catch {
+    // closing
+  }
+}
+
 function cleanName(value: unknown): string {
   const name = String(value ?? "").replace(/[^\p{L}\p{N} _.'-]/gu, "").trim().slice(0, 16);
   return name || "Player";
@@ -797,13 +919,6 @@ function coord(value: unknown): number {
 function num(value: unknown, max: number): number {
   const n = Number(value);
   return Number.isFinite(n) ? Math.round(Math.min(max, Math.max(0, n))) : 0;
-}
-
-function stats(value: unknown): Record<string, number> {
-  const out: Record<string, number> = {};
-  const v = (typeof value === "object" && value !== null ? value : {}) as Record<string, unknown>;
-  for (const key of STAT_KEYS) out[key] = num(v[key], 99999);
-  return out;
 }
 
 function speed(value: unknown): number {

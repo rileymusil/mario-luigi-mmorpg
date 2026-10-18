@@ -42,6 +42,12 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("check_scripts: daily login bonus, late-game areas and minigames are sound")
+	var pvp_errors := await _check_pvp()
+	if not pvp_errors.is_empty():
+		printerr("check_scripts: pvp: ", "; ".join(pvp_errors))
+		get_tree().quit(1)
+		return
+	print("check_scripts: a 2 against 2 online battle plays to the end")
 	# Play a little: load the overworld with a new save and hold right.
 	# A town (walking NPCs) and a field (wandering enemies).
 	for map_id in ["castle_town", "outskirts"]:
@@ -56,6 +62,38 @@ func _ready() -> void:
 		await get_tree().process_frame
 		print("check_scripts: overworld ran on ", map_id)
 	get_tree().quit(0)
+
+
+## An online battle, offline: you and a made-up teammate (evil, with
+## partners) against two made-up good players, everyone picking and pressing
+## by themselves, sped up. It has to get to a winner without script errors.
+func _check_pvp() -> Array:
+	Game.new_player("bowser", "CI")
+	Game.player["party"].append(Game.make_member("enemy", "goomba"))
+	Game.pending_battle = {"key": "", "pvp": {"bots": true, "auto": true, "no_exit": true, "host": "me", "players": [
+		{"id": "me", "name": "CI", "side": "evil", "character": "bowser"},
+		{"id": "b1", "name": "Mate", "side": "evil", "character": "koopa_bros"},
+		{"id": "g1", "name": "Hero", "side": "good", "character": "mario"},
+		{"id": "g2", "name": "Pal", "side": "good", "character": "luigi"}]}}
+	var battle: Node = load(Game.PVP_SCENE).instantiate()
+	var result := [""]
+	battle.finished.connect(func(r): result[0] = r)
+	Engine.time_scale = 6.0
+	get_tree().root.add_child.call_deferred(battle)
+	var waited := 0.0
+	while result[0] == "" and waited < 120.0:
+		await get_tree().create_timer(1.0, true, false, true).timeout
+		waited += 1.0
+	Engine.time_scale = 1.0
+	var n: int = battle.actors.size()
+	battle.queue_free()
+	await get_tree().process_frame
+	var errors := []
+	if n != 8:
+		errors.append("expected 8 fighters (2 players a side, each with a partner), got %d" % n)
+	if result[0] == "":
+		errors.append("the battle never ended")
+	return errors
 
 
 func _files(dir: String) -> Array:

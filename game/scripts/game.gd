@@ -6,6 +6,7 @@ const TITLE_SCENE := "res://scenes/title.tscn"
 const WORLD_SCENE := "res://scenes/world.tscn"
 const BATTLE_SCENE := "res://scenes/battle.tscn"
 const PVP_SCENE := "res://scenes/pvp_battle.tscn"
+const PVP_COIN_DROP := 0.2  # share of their coins a player loses in an online battle they lose
 const COOP_SCENE := "res://scenes/coop_battle.tscn"        # you started it, your partner joins
 const COOP_GUEST_SCENE := "res://scenes/coop_guest.tscn"   # your partner's battle, seen from your side
 const SAVE_PATH := "user://save.json"
@@ -1900,26 +1901,18 @@ func join_coop(start: Dictionary, overworld_position: Vector2) -> void:
 	BattleTransition.into_battle(get_tree(), COOP_GUEST_SCENE, true)
 
 
-## What a foe sees of you in an online duel (sent through the server).
-func pvp_stats() -> Dictionary:
-	var out := {}
-	for key in ["hp", "max_hp", "sp", "max_sp", "pow", "def", "level", "coins"]:
-		out[key] = player[key]
-	return out
-
-
-## An online duel with another player. foe: {id, name, character, stats}.
-func start_pvp(foe: Dictionary, first: bool, overworld_position: Vector2) -> void:
+## An online battle with other players. info: {host, players} from the server.
+func start_pvp(info: Dictionary, overworld_position: Vector2) -> void:
 	player["position"] = [overworld_position.x, overworld_position.y]
-	pending_battle = {"pvp": foe, "first": first, "key": ""}
+	pending_battle = {"pvp": info, "key": ""}
 	player["in_duel"] = true  # cleared when the duel ends; quitting mid-duel counts as a loss
 	save()
 	BattleTransition.into_battle(get_tree(), PVP_SCENE)
 
 
-## Coins a player drops when they lose a duel (the winner picks them up).
+## Coins a player drops when they lose an online battle (the winners share them).
 func pvp_drop(coins: int) -> int:
-	return coins - int(coins * 0.9)
+	return int(coins * PVP_COIN_DROP)
 
 
 ## result: "won", "lost" or "fled".
@@ -1931,7 +1924,9 @@ func end_battle(result: String) -> void:
 			Quests.on_defeat(pending_battle["enemies"], str(player.get("map", "")))
 	if result == "lost":
 		# Back to your home town with a few coins lost; items and levels stay.
-		player["coins"] = int(player["coins"] * 0.9)
+		# (An online battle took its own, bigger cut: see pvp_battle.gd.)
+		if not pending_battle.has("pvp"):
+			player["coins"] = int(player["coins"] * 0.9)
 		player["hp"] = player["max_hp"]
 		player["sp"] = player["max_sp"]
 		for member in player["party"]:

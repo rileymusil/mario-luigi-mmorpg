@@ -1858,7 +1858,7 @@ func _build_party_bar() -> void:
 	if not _presented:
 		return
 	for a in allies:
-		if a.has("panel"):
+		if a.has("panel") or a.get("no_box", false):
 			continue
 		var panel := PanelContainer.new()
 		panel.theme_type_variation = &"NavyPanel"
