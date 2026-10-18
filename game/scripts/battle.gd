@@ -298,12 +298,12 @@ func _run_battle() -> void:
 func _commands_for(a: Dictionary) -> Array:
 	var p: Dictionary = Game.player
 	if not _is_player(a):
-		var move: Dictionary = Game.MOVES[_move_id(a)]
-		return [
-			{"id": "attack", "label": move["name"], "icon": "hammer", "info": move["info"]},
-			_items_command(),
-			_run_command(),
-		]
+		var commands := []
+		for id in Game.member_moves(a["member"]):  # a second move from level 5
+			var move: Dictionary = Game.MOVES[id]
+			commands.append({"id": "move:" + id, "label": move["name"], "icon": "hammer" if commands.is_empty() else "burst",
+				"info": move["info"]})
+		return commands + [_items_command(), _run_command()]
 	var sp: Dictionary = Game.SPECIALS[Game.CHARACTERS[p["character"]]["special"]]
 	return [
 		{"id": "jump", "label": "Jump", "icon": "jump", "info": "Stomp! Press {a} as you land for a 2nd hit."},
@@ -351,14 +351,21 @@ func _ally_turn(a: Dictionary) -> String:
 		match choice:
 			"jump":
 				await _jump_attack(a, target)
-			"attack":
-				await _partner_move(a, target, _move_id(a))
+			_ when choice.begins_with("move:"):
+				await _partner_move(a, target, choice.trim_prefix("move:"))
 			"ask":
 				await _ask(target)
 			"special":
 				await _special(a, target)
+			"team":
+				await _team_attack(a, target)
 		return ""
 	return ""
+
+
+## A co-op Team Attack (coop_battle.gd); nothing in a normal battle.
+func _team_attack(_a: Dictionary, _target: Dictionary) -> void:
+	pass
 
 
 ## Returns the foe to hit, or null if the player backed out with X.
@@ -1574,6 +1581,7 @@ func _win() -> void:
 	for m in p["party"]:
 		m["hp"] = maxi(1, m["hp"])
 	var levels := Game.gain_xp(xp_earned)
+	var grown := Game.party_gain_xp(xp_earned)
 	message.text = "You won! +%d XP  +%d coins" % [xp_earned, coins_earned]
 	if xp_bonus > 0:
 		message.text = "You won! +%d XP (party +%d)  +%d coins" % [xp_earned, xp_bonus, coins_earned]
@@ -1588,7 +1596,16 @@ func _win() -> void:
 		_show_rating("LEVEL UP!")
 		_refresh()
 		await _wait(1.8)
+	await _party_level_lines(grown)
 	_leave("won")
+
+
+## Shows the party's level-ups after a win (Game.party_gain_xp).
+func _party_level_lines(lines: Array) -> void:
+	for line in lines:
+		message.text = line
+		_refresh()
+		await _wait(1.3)
 
 
 ## "Got a Mushroom!" for each item the enemies left behind.
