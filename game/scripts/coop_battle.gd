@@ -67,7 +67,8 @@ func _add_guest(info: Dictionary) -> void:
 			if not (Game.PARTNERS.has(id) or Game.ENEMIES.has(id) or Game.BOSSES.has(id)):
 				continue
 			var a := _add_remote(m, id, "Partner")
-			a["moves"] = [Game.move_of(kind, id), Game.second_move_of(kind, id)]  # the 2nd from level 5, on their side
+			# Their game knows which they've learned (levels 5 and 10).
+			a["moves"] = [Game.move_of(kind, id), Game.second_move_of(kind, id), Game.third_move_of(kind, id)]
 			guest_party.append(a)
 	var mine := allies.filter(func(a): return not a.get("remote", false))
 	for team in [[mine, HOST_SPOTS], [[guest] + guest_party, GUEST_SPOTS]]:

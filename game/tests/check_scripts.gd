@@ -235,6 +235,8 @@ func _check_partner_levels() -> Array:
 	for id in Game.PARTNERS:
 		if not Game.MOVES.has(Game.second_move_of("partner", id)):
 			errors.append("%s's second move is missing" % id)
+		if not Game.MOVES.has(Game.third_move_of("partner", id)):
+			errors.append("%s's third move is missing" % id)
 	Game.new_player("mario", "CI")
 	var toad := Game.make_member("partner", "toad")
 	Game.player["party"] = [toad]
@@ -248,7 +250,13 @@ func _check_partner_levels() -> Array:
 		errors.append("a level %d partner doesn't know its second move" % Game.MOVE2_LEVEL)
 	if not "Toad learned Super Toss!" in lines:
 		errors.append("learning the second move isn't announced")
-	if int(toad["pow"]) != int(Game.PARTNERS["toad"]["pow"]) + Game.MOVE2_LEVEL - 1:
+	var more := 0
+	for lv in range(Game.MOVE2_LEVEL, Game.MOVE3_LEVEL):
+		more += Game.xp_to_next(lv)
+	lines = Game.party_gain_xp(more)
+	if Game.member_moves(toad) != ["mushroom_toss", "super_toss", "ultra_toss"] or not "Toad learned Ultra Toss!" in lines:
+		errors.append("a level %d partner doesn't learn its third move" % Game.MOVE3_LEVEL)
+	if int(toad["pow"]) != int(Game.PARTNERS["toad"]["pow"]) + Game.MOVE3_LEVEL - 1:
 		errors.append("partner POW doesn't grow with its levels")
 	# A partner from an older save (it grew +1 POW with each of your levels).
 	var old := {"kind": "enemy", "id": "goomba", "name": "Goomba", "hp": 9, "max_hp": 9,

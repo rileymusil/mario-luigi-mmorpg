@@ -78,9 +78,33 @@ const SPECIALS := {
 ## and extras an Excellent adds: stun, burn (turns), def_down (DEF lost),
 ## heal (party HP), pierce (the next enemy is hit too).
 ##
-## Party members learn a second move at level MOVE2_LEVEL: PARTNERS
-## "move2", or power_bash for recruited enemies and bosses.
+## Party members learn a second move at level MOVE2_LEVEL and a third at
+## MOVE3_LEVEL: PARTNERS "move2" / "move3", or power_bash / mega_bash for
+## recruited enemies and bosses.
 const MOVES := {
+	# Third moves (party member level 10).
+	"ultra_toss": {"name": "Ultra Toss", "kind": "throw", "color": Color(0.7, 0.35, 0.95), "bonus": 4, "heal": 8,
+		"info": "Throws an Ultra Mushroom. Excellent heals the party 8 HP."},
+	"mega_slam": {"name": "Mega Slam", "kind": "tackle", "bonus": 4, "ignore_def": true, "stun": true,
+		"info": "A crushing slam that ignores DEF. Excellent stuns."},
+	"mega_bomb": {"name": "Mega Bomb", "kind": "blast", "bonus": 4, "burn": 2,
+		"info": "A huge blast on every enemy. Excellent burns."},
+	"spook_slap": {"name": "Spook Slap", "kind": "multi", "hits": 5, "bonus": 2,
+		"info": "Up to 5 ghostly slaps, {a} in the gold zone for each."},
+	"mega_bobombast": {"name": "Mega Bob-ombast", "kind": "blast", "bonus": 5, "burn": 3,
+		"info": "The biggest blast there is. Excellent sets every enemy on fire."},
+	"tattle_bonk": {"name": "Tattle Bonk", "kind": "stomp", "bonus": 3, "def_down": 2,
+		"info": "Finds the weak spot and bonks it. {a} as you land; Excellent lowers DEF a lot."},
+	"shell_slam": {"name": "Shell Slam", "kind": "multi", "hits": 3, "bonus": 3, "def_down": 1,
+		"info": "Up to 3 shell slams, {a} for each. Excellent lowers DEF."},
+	"gulp_rush": {"name": "Gulp Rush", "kind": "tackle", "bonus": 4, "ignore_def": true,
+		"info": "Gulps the enemy and slams it down. Ignores DEF."},
+	"royal_rose": {"name": "Royal Rose", "kind": "throw", "color": Color(1.0, 0.3, 0.45), "bonus": 4, "def_down": 3, "pierce": true,
+		"info": "A royal rose. Excellent charms two enemies: DEF way down."},
+	"egg_storm": {"name": "Egg Storm", "kind": "blast", "bonus": 3, "stun": true,
+		"info": "Eggs rain on every enemy. Excellent stuns them."},
+	"mega_bash": {"name": "Mega Bash", "kind": "tackle", "bonus": 4, "def_down": 1,
+		"info": "An all-out tackle. Excellent lowers the enemy's DEF."},
 	# Second moves (party member level 5).
 	"super_toss": {"name": "Super Toss", "kind": "throw", "color": Color(0.95, 0.55, 0.15), "bonus": 2, "heal": 5,
 		"info": "Throws a Super Mushroom. Excellent heals the party 5 HP."},
@@ -224,25 +248,25 @@ const MOVES := {
 ## stronger enemies start lower. `move` is their turn in battle (MOVES),
 ## `line` what a partner says when you talk to them.
 const PARTNERS := {
-	"toad": {"name": "Toad", "frames": 8, "hp": 14, "pow": 3, "def": 1, "recruit": 0.5, "move": "mushroom_toss", "move2": "super_toss",
+	"toad": {"name": "Toad", "frames": 8, "hp": 14, "pow": 3, "def": 1, "recruit": 0.5, "move": "mushroom_toss", "move2": "super_toss", "move3": "ultra_toss",
 		"line": "Going out to the Outskirts? It's dangerous out there..."},
-	"pianta": {"name": "Pianta", "frames": 3, "hp": 20, "pow": 4, "def": 2, "recruit": 0.35, "move": "pianta_slam", "move2": "pianta_quake",
+	"pianta": {"name": "Pianta", "frames": 3, "hp": 20, "pow": 4, "def": 2, "recruit": 0.35, "move": "pianta_slam", "move2": "pianta_quake", "move3": "mega_slam",
 		"line": "Whoa, a traveler! Need some muscle out there?"},
-	"bombette": {"name": "Bombette", "frames": 4, "hp": 14, "pow": 4, "def": 1, "recruit": 0.45, "move": "bomb", "move2": "power_bomb",
+	"bombette": {"name": "Bombette", "frames": 4, "hp": 14, "pow": 4, "def": 1, "recruit": 0.45, "move": "bomb", "move2": "power_bomb", "move3": "mega_bomb",
 		"line": "Hi, I'm Bombette! I get a little explosive once I get going!"},
-	"bow": {"name": "Bow", "frames": 4, "hp": 14, "pow": 3, "def": 1, "recruit": 0.4, "move": "smack", "move2": "fan_smack",
+	"bow": {"name": "Bow", "frames": 4, "hp": 14, "pow": 3, "def": 1, "recruit": 0.4, "move": "smack", "move2": "fan_smack", "move3": "spook_slap",
 		"line": "Hmph. I am Lady Bow. I suppose I could slap a few Goombas for you."},
-	"bobbery": {"name": "Bobbery", "frames": 3, "hp": 18, "pow": 5, "def": 1, "recruit": 0.3, "move": "bob_ombast", "move2": "bomb_barrage",
+	"bobbery": {"name": "Bobbery", "frames": 3, "hp": 18, "pow": 5, "def": 1, "recruit": 0.3, "move": "bob_ombast", "move2": "bomb_barrage", "move3": "mega_bobombast",
 		"line": "Ahoy! Admiral Bobbery here. These old fuses still pack a blast!"},
-	"goombella": {"name": "Goombella", "frames": 5, "hp": 14, "pow": 3, "def": 1, "recruit": 0.5, "move": "headbonk", "move2": "multibonk",
+	"goombella": {"name": "Goombella", "frames": 5, "hp": 14, "pow": 3, "def": 1, "recruit": 0.5, "move": "headbonk", "move2": "multibonk", "move3": "tattle_bonk",
 		"line": "Hi! I'm Goombella, archaeology student. Want some company?"},
-	"koops": {"name": "Koops", "frames": 9, "hp": 15, "pow": 4, "def": 2, "recruit": 0.45, "move": "shell_toss", "move2": "power_shell",
+	"koops": {"name": "Koops", "frames": 9, "hp": 15, "pow": 4, "def": 2, "recruit": 0.45, "move": "shell_toss", "move2": "power_shell", "move3": "shell_slam",
 		"line": "H-hi, I'm Koops. I want to be brave... Maybe you could help?"},
-	"yoshi_kid": {"name": "Yoshi Kid", "frames": 9, "hp": 13, "pow": 3, "def": 1, "recruit": 0.5, "move": "gulp", "move2": "egg_barrage",
+	"yoshi_kid": {"name": "Yoshi Kid", "frames": 9, "hp": 13, "pow": 3, "def": 1, "recruit": 0.5, "move": "gulp", "move2": "egg_barrage", "move3": "gulp_rush",
 		"line": "Yo! I'm the toughest Yoshi around. You need me, right?"},
 	"peasley": {"name": "Prince Peasley", "frames": 8, "hp": 18, "pow": 5, "def": 2, "recruit": 0.3,
-		"move": "rose_toss", "move2": "rose_storm", "line": "Greetings! I am Prince Peasley of the Beanbean Kingdom. Shall we ride out?"},
-	"yoshi": {"name": "Yoshi", "frames": 8, "hp": 18, "pow": 4, "def": 1, "recruit": 0.4, "move": "ground_pound", "move2": "egg_throw",
+		"move": "rose_toss", "move2": "rose_storm", "move3": "royal_rose", "line": "Greetings! I am Prince Peasley of the Beanbean Kingdom. Shall we ride out?"},
+	"yoshi": {"name": "Yoshi", "frames": 8, "hp": 18, "pow": 4, "def": 1, "recruit": 0.4, "move": "ground_pound", "move2": "egg_throw", "move3": "egg_storm",
 		"line": "Yoshi! Yoshi! (He looks ready for an adventure.)"},
 }
 
@@ -1689,6 +1713,7 @@ func gain_xp(amount: int) -> int:
 ## same XP you get, on your curve), and learns a second move at MOVE2_LEVEL.
 
 const MOVE2_LEVEL := 5
+const MOVE3_LEVEL := 10
 
 
 ## A party member's level. Members from before levels existed start at the
@@ -1719,14 +1744,22 @@ func member_gain_xp(m: Dictionary, amount: int) -> int:
 	return gained
 
 
-## The moves a party member knows: its own, plus the second one from MOVE2_LEVEL.
+## The moves a party member knows: its own, the second one from
+## MOVE2_LEVEL and the third from MOVE3_LEVEL.
 func member_moves(m: Dictionary) -> Array:
 	var kind := str(m.get("kind", "partner"))
 	var id := str(m.get("id", ""))
 	var moves := [move_of(kind, id)]
 	if member_level(m) >= MOVE2_LEVEL:
 		moves.append(second_move_of(kind, id))
+	if member_level(m) >= MOVE3_LEVEL:
+		moves.append(third_move_of(kind, id))
 	return moves
+
+
+## A party member's third move (MOVE3_LEVEL).
+func third_move_of(kind: String, id: String) -> String:
+	return str(PARTNERS.get(id, {}).get("move3", "mega_bash")) if kind == "partner" else "mega_bash"
 
 
 ## A party member's second move (MOVE2_LEVEL), whether or not it's learned yet.
@@ -1744,6 +1777,8 @@ func party_gain_xp(xp: int) -> Array:
 			lines.append("%s grew to level %d!" % [m["name"], m["level"]])
 			if before < MOVE2_LEVEL and m["level"] >= MOVE2_LEVEL:
 				lines.append("%s learned %s!" % [m["name"], MOVES[second_move_of(str(m.get("kind", "partner")), str(m["id"]))]["name"]])
+			if before < MOVE3_LEVEL and m["level"] >= MOVE3_LEVEL:
+				lines.append("%s learned %s!" % [m["name"], MOVES[third_move_of(str(m.get("kind", "partner")), str(m["id"]))]["name"]])
 	return lines
 
 
