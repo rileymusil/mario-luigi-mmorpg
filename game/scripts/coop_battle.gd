@@ -8,6 +8,9 @@ extends "res://scripts/battle.gd"
 ##                 numbers, ratings, flashes...), turn (pick a move), dodge (an
 ##                 enemy is charging at you), end (result + rewards)
 ##   from partner: coop_yes / coop_no, act (their move), dodged
+## Team Attack: either of you can start one for TEAM_SP each. You start it:
+## "team" asks their game for a timing press, it answers team_rating. They
+## start it: their act says so and this game does your press.
 ## The partner brings their own party members too: their game picks those
 ## members' moves and dodges for them as well ("turn" / "dodge" say who).
 ## If the partner can't come, doesn't answer or leaves, the battle carries on
@@ -20,11 +23,14 @@ const DODGE_WAIT := 6.0
 ## a step behind (you / they first, then the party members).
 const HOST_SPOTS := [Vector2(140, 176), Vector2(92, 166), Vector2(50, 182)]
 const GUEST_SPOTS := [Vector2(152, 124), Vector2(104, 114), Vector2(58, 130)]
+const TEAM_SP := 4
+const TEAM_WAIT := 8.0
 const SYNC_RATE := 12.0  # sync messages a second at most (the server allows 30)
 const MAX_FX := 12       # effects per sync message; the rest go in the next
 
 var guest := {}  # the partner's battle actor, once they've joined
 var guest_party: Array = []  # their party members' battle actors
+var guest_sp := 0            # their SP, as their game last told us
 var _inbox: Array = []
 var _last_sync := ""
 var _sync_timer := 0.0
@@ -49,6 +55,7 @@ func _ready() -> void:
 func _add_guest(info: Dictionary) -> void:
 	var character := str(info.get("id", "mario"))
 	guest = _add_remote(info, character if Game.CHARACTERS.has(character) else "mario", "Partner")
+	guest_sp = clampi(int(info.get("sp", 0)), 0, 999)
 	# Their party members (older games don't send any).
 	var party = info.get("party", [])
 	if typeof(party) == TYPE_ARRAY:
@@ -60,7 +67,7 @@ func _add_guest(info: Dictionary) -> void:
 			if not (Game.PARTNERS.has(id) or Game.ENEMIES.has(id) or Game.BOSSES.has(id)):
 				continue
 			var a := _add_remote(m, id, "Partner")
-			a["move"] = Game.move_of(kind, id)
+			a["moves"] = [Game.move_of(kind, id), Game.second_move_of(kind, id)]  # the 2nd from level 5, on their side
 			guest_party.append(a)
 	var mine := allies.filter(func(a): return not a.get("remote", false))
 	for team in [[mine, HOST_SPOTS], [[guest] + guest_party, GUEST_SPOTS]]:
@@ -109,8 +116,10 @@ func _ally_turn(a: Dictionary) -> String:
 		return ""
 	message.text = "%s's turn" % a["name"]
 	_inbox.clear()
-	Net.send_party({"kind": "turn", "who": allies.find(a)})
+	Net.send_party({"kind": "turn", "who": allies.find(a), "sp": Game.player["sp"]})
 	var act := await _await_party(["act"], TURN_WAIT)
+	if act.has("sp"):
+		guest_sp = clampi(int(act["sp"]), 0, 999)
 	if act.is_empty():
 		message.text = "%s is away." % a["name"]
 		await _wait(0.8)
@@ -126,6 +135,19 @@ func _ally_turn(a: Dictionary) -> String:
 			_replaying = false
 			_refresh()
 			await _wait(0.6)
+		"team":
+			var alive := _alive(foes)
+			if alive.is_empty() or _hp(allies[0]) <= 0:
+				return ""
+			var i := int(act.get("target", 0))
+			var target: Dictionary = foes[i] if i >= 0 and i < foes.size() and _hp(foes[i]) > 0 else alive[0]
+			var rating := str(act.get("rating", "Miss"))
+			# Your half: SP and a timing press here.
+			Game.player["sp"] = maxi(0, Game.player["sp"] - TEAM_SP)
+			_refresh()
+			_say("%s calls a Team Attack! Press {a} in the gold zone!", [a["name"]])
+			var mine := await _timing_bar(1.0)
+			await _team_hit(target, mine, rating if rating in ["Excellent", "Good"] else "Miss")
 		"jump", "special", "partner":
 			var alive := _alive(foes)
 			if alive.is_empty():
@@ -139,12 +161,85 @@ func _ally_turn(a: Dictionary) -> String:
 	return ""
 
 
+# --- Team Attack ------------------------------------------------------------------
+
+func _commands_for(a: Dictionary) -> Array:
+	var commands := super(a)
+	if _is_player(a) and not guest.is_empty():
+		var ready: bool = Game.player["sp"] >= TEAM_SP and guest_sp >= TEAM_SP and _hp(guest) > 0 and Net.party_here
+		commands.insert(2, {"id": "team", "label": "Team Attack (%d SP each)" % TEAM_SP, "icon": "burst",
+			"enabled": ready, "info": "You and %s pile on one enemy: both press {a} in the gold zone." % guest["name"]})
+	return commands
+
+
+## You started it: both of you pay, both press, then the hit.
+func _team_attack(_a: Dictionary, target: Dictionary) -> void:
+	Game.player["sp"] -= TEAM_SP
+	guest_sp = maxi(0, guest_sp - TEAM_SP)
+	_refresh()
+	_inbox.clear()
+	Net.send_party({"kind": "team", "foe": foes.find(target)})
+	_say("Team Attack! Press {a} in the gold zone!")
+	var mine := await _timing_bar(1.0)
+	var answer := await _await_party(["team_rating"], TEAM_WAIT)
+	var theirs := str(answer.get("rating", "Miss"))
+	await _team_hit(target, mine, theirs if theirs in ["Excellent", "Good"] else "Miss")
+
+
+## You and your partner jump on `target` together. Damage: both POWs + 2,
+## +3 for each Excellent and +1 for each Good; two Excellents also hit every
+## other enemy for half.
+static func team_damage(pow_a: int, pow_b: int, ratings: Array) -> int:
+	var dmg := pow_a + pow_b + 2
+	for r in ratings:
+		dmg += {"Excellent": 3, "Good": 1}.get(r, 0)
+	return dmg
+
+
+func _team_hit(target: Dictionary, mine: String, theirs: String) -> void:
+	var you: Dictionary = allies[0]
+	var pair := [you, guest]
+	var dmg := team_damage(int(you["pow"]), int(guest["pow"]), [mine, theirs])
+	message.text = "Team Attack!"
+	var longest := 0.0
+	for i in pair.size():
+		var stand: Vector2 = target["node"].position + Vector2(-40, -10 + 20 * i)
+		longest = maxf(longest, pair[i]["node"].position.distance_to(stand))
+		_walk(pair[i]["node"], stand, 200.0)  # side by side: not awaited
+	await _wait(longest / 200.0 + 0.1)
+	var top: Vector2 = target["node"].position + Vector2(0, -target["node"].height() * SCALE * 0.8)
+	for i in pair.size():
+		_arc(pair[i]["node"], pair[i]["node"].position, top + Vector2(-14 + 28 * i, 0), 50.0, 0.5, false)
+	await _wait(0.5)
+	_burst(_middle(target), Color(1.0, 0.85, 0.3), 26.0)
+	_damage(target, dmg)
+	var both := "Excellent" if mine == "Excellent" and theirs == "Excellent" else ("Good" if mine != "Miss" and theirs != "Miss" else "Miss")
+	_show_rating(both)
+	if both == "Excellent":
+		for f in _alive(foes):
+			if not is_same(f, target):
+				_burst(_middle(f), Color(1.0, 0.85, 0.3), 18.0)
+				_damage(f, dmg / 2)
+	await _wait(0.4)
+	longest = 0.0
+	for a in pair:
+		longest = maxf(longest, a["node"].position.distance_to(a["home"]))
+		_walk(a["node"], a["home"], 180.0)
+	await _wait(longest / 180.0 + 0.1)
+	for a in pair:
+		a["node"].position = a["home"]
+		a["node"].facing = Vector2.RIGHT
+	_refresh()
+
+
 ## Plays one of the partner's party members' moves (they did the timing on
 ## their screen) and deals its damage. Its numbers show on both screens.
 func _remote_partner_move(a: Dictionary, target: Dictionary, act: Dictionary) -> void:
-	var move: Dictionary = Game.MOVES.get(a.get("move", ""), {})
-	if move.is_empty():
+	var moves: Array = a.get("moves", [])
+	if moves.is_empty():
 		return
+	var id := str(act.get("id", moves[0]))
+	var move: Dictionary = Game.MOVES[id if id in moves else moves[0]]
 	var node: CharacterSprite = a["node"]
 	var hits: Array = act.get("hits", [])
 	var result := str(act.get("rating", "Miss"))

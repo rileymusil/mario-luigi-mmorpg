@@ -77,7 +77,33 @@ const SPECIALS := {
 ## stops it). Optional: bonus (added to POW), ignore_def, color (of a throw),
 ## and extras an Excellent adds: stun, burn (turns), def_down (DEF lost),
 ## heal (party HP), pierce (the next enemy is hit too).
+##
+## Party members learn a second move at level MOVE2_LEVEL: PARTNERS
+## "move2", or power_bash for recruited enemies and bosses.
 const MOVES := {
+	# Second moves (party member level 5).
+	"super_toss": {"name": "Super Toss", "kind": "throw", "color": Color(0.95, 0.55, 0.15), "bonus": 2, "heal": 5,
+		"info": "Throws a Super Mushroom. Excellent heals the party 5 HP."},
+	"pianta_quake": {"name": "Pianta Quake", "kind": "blast", "stun": true,
+		"info": "Stomps the ground under every enemy. Excellent stuns them."},
+	"power_bomb": {"name": "Power Bomb", "kind": "blast", "bonus": 2, "burn": 1,
+		"info": "A bigger blast on every enemy. Excellent burns."},
+	"fan_smack": {"name": "Fan Smack", "kind": "multi", "hits": 4, "bonus": 1,
+		"info": "Up to 4 fan slaps, {a} in the gold zone for each."},
+	"bomb_barrage": {"name": "Bomb Barrage", "kind": "multi", "hits": 3, "bonus": 1, "burn": 2,
+		"info": "Up to 3 bombs, {a} for each. Excellent sets the enemy on fire."},
+	"multibonk": {"name": "Multibonk", "kind": "multi", "hits": 4,
+		"info": "Bonks again and again: {a} in the gold zone for each, up to 4."},
+	"power_shell": {"name": "Power Shell", "kind": "blast", "def_down": 1,
+		"info": "A spinning shell hits every enemy. Excellent lowers their DEF."},
+	"egg_barrage": {"name": "Egg Barrage", "kind": "multi", "hits": 3, "bonus": 1,
+		"info": "Up to 3 eggs, {a} in the gold zone for each."},
+	"rose_storm": {"name": "Rose Storm", "kind": "blast", "def_down": 1,
+		"info": "Roses rain on every enemy. Excellent lowers their DEF."},
+	"egg_throw": {"name": "Egg Throw", "kind": "throw", "color": Color(0.4, 0.85, 0.35), "bonus": 2, "pierce": true,
+		"info": "A hard-thrown egg. Excellent hits the next enemy too."},
+	"power_bash": {"name": "Power Bash", "kind": "tackle", "bonus": 2, "stun": true,
+		"info": "A charged-up tackle. Excellent stuns."},
 	"mushroom_toss": {"name": "Mushroom Toss", "kind": "throw", "color": Color(0.95, 0.25, 0.2), "heal": 3,
 		"info": "Throws a Mushroom. Excellent also heals the party 3 HP."},
 	"pianta_slam": {"name": "Pianta Slam", "kind": "tackle", "bonus": 1, "info": "A heavy belly slam."},
@@ -198,25 +224,25 @@ const MOVES := {
 ## stronger enemies start lower. `move` is their turn in battle (MOVES),
 ## `line` what a partner says when you talk to them.
 const PARTNERS := {
-	"toad": {"name": "Toad", "frames": 8, "hp": 14, "pow": 3, "def": 1, "recruit": 0.5, "move": "mushroom_toss",
+	"toad": {"name": "Toad", "frames": 8, "hp": 14, "pow": 3, "def": 1, "recruit": 0.5, "move": "mushroom_toss", "move2": "super_toss",
 		"line": "Going out to the Outskirts? It's dangerous out there..."},
-	"pianta": {"name": "Pianta", "frames": 3, "hp": 20, "pow": 4, "def": 2, "recruit": 0.35, "move": "pianta_slam",
+	"pianta": {"name": "Pianta", "frames": 3, "hp": 20, "pow": 4, "def": 2, "recruit": 0.35, "move": "pianta_slam", "move2": "pianta_quake",
 		"line": "Whoa, a traveler! Need some muscle out there?"},
-	"bombette": {"name": "Bombette", "frames": 4, "hp": 14, "pow": 4, "def": 1, "recruit": 0.45, "move": "bomb",
+	"bombette": {"name": "Bombette", "frames": 4, "hp": 14, "pow": 4, "def": 1, "recruit": 0.45, "move": "bomb", "move2": "power_bomb",
 		"line": "Hi, I'm Bombette! I get a little explosive once I get going!"},
-	"bow": {"name": "Bow", "frames": 4, "hp": 14, "pow": 3, "def": 1, "recruit": 0.4, "move": "smack",
+	"bow": {"name": "Bow", "frames": 4, "hp": 14, "pow": 3, "def": 1, "recruit": 0.4, "move": "smack", "move2": "fan_smack",
 		"line": "Hmph. I am Lady Bow. I suppose I could slap a few Goombas for you."},
-	"bobbery": {"name": "Bobbery", "frames": 3, "hp": 18, "pow": 5, "def": 1, "recruit": 0.3, "move": "bob_ombast",
+	"bobbery": {"name": "Bobbery", "frames": 3, "hp": 18, "pow": 5, "def": 1, "recruit": 0.3, "move": "bob_ombast", "move2": "bomb_barrage",
 		"line": "Ahoy! Admiral Bobbery here. These old fuses still pack a blast!"},
-	"goombella": {"name": "Goombella", "frames": 5, "hp": 14, "pow": 3, "def": 1, "recruit": 0.5, "move": "headbonk",
+	"goombella": {"name": "Goombella", "frames": 5, "hp": 14, "pow": 3, "def": 1, "recruit": 0.5, "move": "headbonk", "move2": "multibonk",
 		"line": "Hi! I'm Goombella, archaeology student. Want some company?"},
-	"koops": {"name": "Koops", "frames": 9, "hp": 15, "pow": 4, "def": 2, "recruit": 0.45, "move": "shell_toss",
+	"koops": {"name": "Koops", "frames": 9, "hp": 15, "pow": 4, "def": 2, "recruit": 0.45, "move": "shell_toss", "move2": "power_shell",
 		"line": "H-hi, I'm Koops. I want to be brave... Maybe you could help?"},
-	"yoshi_kid": {"name": "Yoshi Kid", "frames": 9, "hp": 13, "pow": 3, "def": 1, "recruit": 0.5, "move": "gulp",
+	"yoshi_kid": {"name": "Yoshi Kid", "frames": 9, "hp": 13, "pow": 3, "def": 1, "recruit": 0.5, "move": "gulp", "move2": "egg_barrage",
 		"line": "Yo! I'm the toughest Yoshi around. You need me, right?"},
 	"peasley": {"name": "Prince Peasley", "frames": 8, "hp": 18, "pow": 5, "def": 2, "recruit": 0.3,
-		"move": "rose_toss", "line": "Greetings! I am Prince Peasley of the Beanbean Kingdom. Shall we ride out?"},
-	"yoshi": {"name": "Yoshi", "frames": 8, "hp": 18, "pow": 4, "def": 1, "recruit": 0.4, "move": "ground_pound",
+		"move": "rose_toss", "move2": "rose_storm", "line": "Greetings! I am Prince Peasley of the Beanbean Kingdom. Shall we ride out?"},
+	"yoshi": {"name": "Yoshi", "frames": 8, "hp": 18, "pow": 4, "def": 1, "recruit": 0.4, "move": "ground_pound", "move2": "egg_throw",
 		"line": "Yoshi! Yoshi! (He looks ready for an adventure.)"},
 }
 
@@ -1654,21 +1680,85 @@ func gain_xp(amount: int) -> int:
 			player["def"] += 1
 		player["hp"] = player["max_hp"]
 		player["sp"] = player["max_sp"]
-		for member in player["party"]:
-			member["max_hp"] += 2
-			member["hp"] = member["max_hp"]
-			member["pow"] += 1
 		gained += 1
 	return gained
 
 
+# --- Party member levels ---------------------------------------------------------
+## Each party member levels up on its own from the battles it fights in (the
+## same XP you get, on your curve), and learns a second move at MOVE2_LEVEL.
+
+const MOVE2_LEVEL := 5
+
+
+## A party member's level. Members from before levels existed start at the
+## level their POW says they reached (they used to grow +1 POW with you).
+func member_level(m: Dictionary) -> int:
+	if not m.has("level"):
+		var src := _member_src(str(m.get("kind", "partner")), str(m.get("id", "")))
+		m["level"] = clampi(1 + int(m.get("pow", 0)) - int(src.get("pow", m.get("pow", 0))), 1, MAX_LEVEL)
+		m["xp"] = 0
+	return int(m["level"])
+
+
+## Adds XP to a party member; returns how many levels it gained. Each level:
+## +2 max HP, +1 POW, and +1 DEF every 3rd level.
+func member_gain_xp(m: Dictionary, amount: int) -> int:
+	var gained := 0
+	member_level(m)
+	m["xp"] = int(m.get("xp", 0)) + maxi(0, amount)
+	while m["level"] < MAX_LEVEL and m["xp"] >= xp_to_next(m["level"]):
+		m["xp"] -= xp_to_next(m["level"])
+		m["level"] += 1
+		m["max_hp"] += 2
+		m["hp"] = m["max_hp"]
+		m["pow"] += 1
+		if m["level"] % 3 == 0:
+			m["def"] += 1
+		gained += 1
+	return gained
+
+
+## The moves a party member knows: its own, plus the second one from MOVE2_LEVEL.
+func member_moves(m: Dictionary) -> Array:
+	var kind := str(m.get("kind", "partner"))
+	var id := str(m.get("id", ""))
+	var moves := [move_of(kind, id)]
+	if member_level(m) >= MOVE2_LEVEL:
+		moves.append(second_move_of(kind, id))
+	return moves
+
+
+## A party member's second move (MOVE2_LEVEL), whether or not it's learned yet.
+func second_move_of(kind: String, id: String) -> String:
+	return str(PARTNERS.get(id, {}).get("move2", "power_bash")) if kind == "partner" else "power_bash"
+
+
+## Gives every party member `xp` after a won battle; returns lines like
+## "Toad grew to level 5!" / "Toad learned Super Toss!".
+func party_gain_xp(xp: int) -> Array:
+	var lines: Array = []
+	for m in player["party"]:
+		var before := member_level(m)
+		if member_gain_xp(m, xp) > 0:
+			lines.append("%s grew to level %d!" % [m["name"], m["level"]])
+			if before < MOVE2_LEVEL and m["level"] >= MOVE2_LEVEL:
+				lines.append("%s learned %s!" % [m["name"], MOVES[second_move_of(str(m.get("kind", "partner")), str(m["id"]))]["name"]])
+	return lines
+
+
 ## Builds a party member from a partner or enemy id.
 func make_member(kind: String, id: String) -> Dictionary:
-	var src: Dictionary = PARTNERS[id] if kind == "partner" else ENEMIES.get(id, {})
-	if kind == "boss":
-		src = BOSSES[id]["partner"].merged({"name": BOSSES[id]["name"]})
+	var src := _member_src(kind, id)
 	return {"kind": kind, "id": id, "name": src["name"], "max_hp": src["hp"], "hp": src["hp"],
-		"pow": src["pow"], "def": src["def"]}
+		"pow": src["pow"], "def": src["def"], "level": 1, "xp": 0}
+
+
+## Where a party member's starting stats come from.
+func _member_src(kind: String, id: String) -> Dictionary:
+	if kind == "boss":
+		return BOSSES.get(id, {}).get("partner", {}).merged({"name": BOSSES.get(id, {}).get("name", id)})
+	return PARTNERS.get(id, {}) if kind == "partner" else ENEMIES.get(id, {})
 
 
 ## The move (MOVES id) a party member uses on its turn, or an enemy is known for.

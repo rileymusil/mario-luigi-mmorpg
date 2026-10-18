@@ -6,6 +6,8 @@ extends Node
 ## "SCRIPT ERROR" in the output.
 ## Run: godot --headless res://tests/check_scripts.tscn
 
+const CoopBattle := preload("res://scripts/coop_battle.gd")
+
 func _ready() -> void:
 	var bad: Array = []
 	for path in _files("res://"):
@@ -36,12 +38,12 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("check_scripts: every achievement can be earned")
-	var extra_errors := _check_login() + _check_late_game() + _check_minigames()
+	var extra_errors := _check_login() + _check_late_game() + _check_minigames() + _check_partner_levels()
 	if not extra_errors.is_empty():
 		printerr("check_scripts: ", "; ".join(extra_errors))
 		get_tree().quit(1)
 		return
-	print("check_scripts: daily login bonus, late-game areas and minigames are sound")
+	print("check_scripts: daily login bonus, late-game areas, minigames and partner levels are sound")
 	var pvp_errors := await _check_pvp()
 	if not pvp_errors.is_empty():
 		printerr("check_scripts: pvp: ", "; ".join(pvp_errors))
@@ -225,6 +227,36 @@ func _check_login() -> Array:
 	Game.daily_login()
 	if int(Game.player["login"]["streak"]) != 1:
 		errors.append("a missed day doesn't reset the streak")
+	return errors
+
+
+func _check_partner_levels() -> Array:
+	var errors: Array = []
+	for id in Game.PARTNERS:
+		if not Game.MOVES.has(Game.second_move_of("partner", id)):
+			errors.append("%s's second move is missing" % id)
+	Game.new_player("mario", "CI")
+	var toad := Game.make_member("partner", "toad")
+	Game.player["party"] = [toad]
+	if Game.member_moves(toad).size() != 1:
+		errors.append("a new partner already knows two moves")
+	var xp := 0
+	for lv in range(1, Game.MOVE2_LEVEL):
+		xp += Game.xp_to_next(lv)
+	var lines := Game.party_gain_xp(xp)
+	if Game.member_level(toad) != Game.MOVE2_LEVEL or Game.member_moves(toad) != ["mushroom_toss", "super_toss"]:
+		errors.append("a level %d partner doesn't know its second move" % Game.MOVE2_LEVEL)
+	if not "Toad learned Super Toss!" in lines:
+		errors.append("learning the second move isn't announced")
+	if int(toad["pow"]) != int(Game.PARTNERS["toad"]["pow"]) + Game.MOVE2_LEVEL - 1:
+		errors.append("partner POW doesn't grow with its levels")
+	# A partner from an older save (it grew +1 POW with each of your levels).
+	var old := {"kind": "enemy", "id": "goomba", "name": "Goomba", "hp": 9, "max_hp": 9,
+		"pow": int(Game.ENEMIES["goomba"]["pow"]) + 6, "def": 0}
+	if Game.member_level(old) != 7 or Game.member_moves(old) != [Game.move_of("enemy", "goomba"), "power_bash"]:
+		errors.append("an older save's partner gets the wrong level")
+	if CoopBattle.team_damage(5, 6, ["Excellent", "Good"]) != 17:
+		errors.append("Team Attack damage is off")
 	return errors
 
 

@@ -6,9 +6,12 @@ extends "res://scripts/battle.gd"
 ## look and timing helpers of battle.gd.
 
 const SETUP_WAIT := 6.0
+const TEAM_SP := 4  # as coop_battle.gd
 const FACES := [Vector2.DOWN, Vector2.RIGHT, Vector2.UP, Vector2.LEFT]
 
 var me_index := -1
+var _team_follow := 0.0 # seconds your sprite follows their screen (the Team Attack plays there)
+var host_sp := 0        # their SP, from their last "turn" (for the Team Attack)
 var mine: Array = []    # where your party members are in `allies` (same order as your party)
 var over := false
 var _queue: Array = []  # turn / dodge requests, handled one at a time
@@ -68,7 +71,7 @@ func _on_party_message(d: Dictionary) -> void:
 				_queue.append(d)  # before the setup is built: apply it then
 			else:
 				_apply_sync(d)
-		"turn", "dodge":
+		"turn", "dodge", "team":
 			_queue.append(d)
 		"end":
 			_finish(d)
@@ -183,6 +186,7 @@ func _play_fx(fx: Array) -> void:
 ## always yours to move (your moves and dodges play here first).
 func _process(delta: float) -> void:
 	super(delta)
+	_team_follow -= delta
 	var actors := allies + foes
 	for i in mini(_pose.size(), actors.size()):
 		var p: Array = _pose[i]
@@ -192,7 +196,7 @@ func _process(delta: float) -> void:
 		if p.size() > 7 and Game.BOSS_FORMS.has(str(p[7])) and node.character_id != str(p[7]):
 			node.character_id = str(p[7])  # the boss changed shape (BOSSES "phase2_form")
 			node.scale = Vector2.ONE * node.battle_scale(SCALE)
-		if i == me_index or (_local and (i == allies.size() + _local_foe or i == _local_ally)):
+		if (i == me_index and _team_follow <= 0.0) or (_local and (i == allies.size() + _local_foe or i == _local_ally)):
 			continue
 		var target := Vector2(p[0], p[1])
 		var to := target - node.position
@@ -212,7 +216,11 @@ func _loop() -> void:
 		var d: Dictionary = _queue.pop_front()
 		_local = true
 		var who := int(d.get("who", me_index))
-		if d["kind"] == "turn" and who != me_index and who in mine:
+		if d.has("sp"):
+			host_sp = int(d["sp"])
+		if d["kind"] == "team":
+			await _team_press()
+		elif d["kind"] == "turn" and who != me_index and who in mine:
 			await _member_turn(who)
 		elif d["kind"] == "turn":
 			await _my_turn()
@@ -237,6 +245,9 @@ func _my_turn() -> void:
 		{"label": "%s (%d SP)" % [sp["name"], sp["sp"]], "icon": "burst", "enabled": p["sp"] >= sp["sp"], "info": sp["info"]},
 		{"label": "Items", "icon": "mushroom", "enabled": Game.owned_items().any(_guest_usable),
 			"info": "Use an item. It takes this turn."},
+		{"label": "Team Attack (%d SP each)" % TEAM_SP, "icon": "burst",
+			"enabled": p["sp"] >= TEAM_SP and host_sp >= TEAM_SP and int(allies[0]["member"]["hp"]) > 0,
+			"info": "You and %s pile on one enemy: both press {a} in the gold zone." % allies[0]["name"]},
 	]
 	_set_turn(me)
 	var choice := -1
@@ -270,10 +281,20 @@ func _my_turn() -> void:
 	var hp: int = me["member"]["hp"]
 	var max_hp: int = me["member"]["max_hp"]
 	if target_i < 0:
-		Net.send_party({"kind": "act", "move": "wait"})
+		_act({"move": "wait"})
 		return
 	var target: Dictionary = foes[target_i]
 	var node: CharacterSprite = me["node"]
+	if choice == 3:  # Team Attack: your press here, theirs on their screen
+		p["sp"] -= TEAM_SP
+		_refresh()
+		_say("Team Attack! Press {a} in the gold zone!")
+		var rating := await _timing_bar(1.0)
+		_show_rating(rating)
+		_act({"move": "team", "target": target_i, "rating": rating})
+		_team_follow = 4.0
+		node.facing = Vector2.RIGHT
+		return
 	if choice == 0:  # Jump
 		var stand: Vector2 = target["node"].position + Vector2(-40, 0)
 		var top: Vector2 = target["node"].position + Vector2(0, -target["node"].height() * SCALE * 0.8)
@@ -288,7 +309,7 @@ func _my_turn() -> void:
 			hits.append(pow + (1 if result == "Excellent" else 0))
 		# The host deals the damage when it plays this move back; send it now
 		# and show the same numbers here straight away.
-		Net.send_party({"kind": "act", "move": "jump", "target": target_i, "hits": hits, "rating": result})
+		_act({"move": "jump", "target": target_i, "hits": hits, "rating": result})
 		_hit(target, hits[0])
 		_show_rating(result)
 		if result != "Miss":
@@ -301,12 +322,12 @@ func _my_turn() -> void:
 		var result := await _timing_bar(1.0)
 		if sp_id == "peach_heart":
 			var heal: int = {"Excellent": 14, "Good": 10, "Miss": 6}[result]
-			Net.send_party({"kind": "act", "move": "heal", "hp": mini(max_hp, hp + heal)})
+			_act({"move": "heal", "hp": mini(max_hp, hp + heal)})
 			_show_rating("%s  +%d HP" % [result, heal])
 			return
 		var bonus: int = {"Excellent": 3, "Good": 1, "Miss": 0}[result]
 		var hit: int = p["pow"] + _pow_bonus + 2 + bonus
-		Net.send_party({"kind": "act", "move": "special", "target": target_i, "hits": [hit],
+		_act({"move": "special", "target": target_i, "hits": [hit],
 			"rating": result, "name": sp["name"]})
 		await _walk(node, target["node"].position + Vector2(-22, 0), 220.0)
 		_hit(target, hit)
@@ -320,16 +341,23 @@ func _member_turn(who: int) -> void:
 	var k := mine.find(who)
 	var party: Array = Game.player["party"]
 	var member: Dictionary = party[k] if k >= 0 and k < party.size() else {}
-	var move: Dictionary = Game.MOVES.get(Game.move_of(member.get("kind", "partner"), str(member.get("id", ""))), {})
 	var a: Dictionary = allies[who]
-	if move.is_empty():
-		Net.send_party({"kind": "act", "move": "wait"})
+	if member.is_empty():
+		_act({"move": "wait"})
 		return
-	var commands := [{"label": move["name"], "icon": "hammer", "info": move.get("info", "")}]
+	var ids: Array = Game.member_moves(member)  # a second move from level 5
+	var commands := []
+	for id in ids:
+		commands.append({"label": Game.MOVES[id]["name"], "icon": "hammer" if commands.is_empty() else "burst",
+			"info": Game.MOVES[id]["info"]})
+	var move: Dictionary = {}
+	var move_id := ""
 	_set_turn(a)
 	var target_i := -1
 	while true:
-		await blocks.choose(commands, a["node"], true)
+		var pick_move: int = await blocks.choose(commands, a["node"], true)
+		move_id = ids[clampi(pick_move, 0, ids.size() - 1)]
+		move = Game.MOVES[move_id]
 		if over:
 			return
 		var alive := []
@@ -350,11 +378,11 @@ func _member_turn(who: int) -> void:
 	_set_turn({})
 	message.text = move["name"] + "!"
 	if target_i < 0:
-		Net.send_party({"kind": "act", "move": "wait"})
+		_act({"move": "wait"})
 		return
 	var result: String = await member_hits(move, int(member.get("pow", 1)), int(foes[target_i]["def"]),
 		func(): return await _timing_bar(1.0, "hammer_green"))
-	Net.send_party({"kind": "act", "move": "partner", "target": target_i, "hits": _last_hits, "rating": result})
+	_act({"move": "partner", "id": move_id, "target": target_i, "hits": _last_hits, "rating": result})
 	_show_rating(result)
 
 
@@ -384,6 +412,25 @@ func member_hits(move: Dictionary, pow: int, target_def: int, bar: Callable) -> 
 		_:  # tackle, throw
 			_last_hits = [power + extra + {"Excellent": 2, "Good": 1, "Miss": 0}[result]]
 	return result
+
+
+## Your partner started a Team Attack: pay your SP and press in time.
+func _team_press() -> void:
+	var p: Dictionary = Game.player
+	p["sp"] = maxi(0, p["sp"] - TEAM_SP)
+	_refresh()
+	_say("%s calls a Team Attack! Press {a} in the gold zone!", [allies[0]["name"]])
+	var rating := await _timing_bar(1.0)
+	_show_rating(rating)
+	Net.send_party({"kind": "team_rating", "rating": rating})
+	_team_follow = 4.0
+
+
+## Sends your move to their game, with your SP (for the Team Attack).
+func _act(d: Dictionary) -> void:
+	d["kind"] = "act"
+	d["sp"] = Game.player["sp"]
+	Net.send_party(d)
 
 
 ## Can you use item `id` on yourself right now, in your partner's battle?
@@ -429,7 +476,7 @@ func _guest_item(me: Dictionary) -> bool:
 		var m: Dictionary = me["member"]
 		var hp := mini(m["max_hp"], m["hp"] + int(item["hp"]))
 		_show_rating("+%d HP" % (hp - m["hp"]))
-		Net.send_party({"kind": "act", "move": "heal", "hp": hp})
+		_act({"move": "heal", "hp": hp})
 		return true
 	if item.has("sp"):
 		var before: int = p["sp"]
@@ -439,7 +486,7 @@ func _guest_item(me: Dictionary) -> bool:
 		_pow_bonus += int(item["pow"])
 		_show_rating("POW +%d" % int(item["pow"]))
 	_refresh()
-	Net.send_party({"kind": "act", "move": "wait"})
+	_act({"move": "wait"})
 	return true
 
 
@@ -518,6 +565,7 @@ func _finish(d: Dictionary) -> void:
 			if typeof(party_hp) == TYPE_ARRAY:  # your party members' HP after the fight
 				for k in mini(party_hp.size(), p["party"].size()):
 					p["party"][k]["hp"] = clampi(int(party_hp[k]), 1, int(p["party"][k]["max_hp"]))
+			var grown := Game.party_gain_xp(xp)
 			if me_index >= 0:  # your box shows your HP and SP after the win
 				allies[me_index]["member"]["hp"] = p["hp"]
 				allies[me_index]["member"]["max_hp"] = p["max_hp"]
@@ -532,6 +580,7 @@ func _finish(d: Dictionary) -> void:
 				message.text = "Level up! %s is now level %d!" % [Game.character_name(), p["level"]]
 				_show_rating("LEVEL UP!")
 				await _wait(1.8)
+			await _party_level_lines(grown)
 			_leave("won")
 		"lost":
 			message.text = "Your party was defeated... Back to town, a few coins lighter."
