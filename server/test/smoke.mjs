@@ -170,51 +170,89 @@ const ev2 = open("Evie", "bowser", 0, 0, { uid: "eeeeeeeeeee4", side: "evil" }, 
 await ev2.ready;
 await ev2.next("welcome");
 
-ev.send({ t: "duel", to: "eeeeeeeeeee3", stats: { hp: 20 } });
+ev.send({ t: "duel", to: "eeeeeeeeeee3" });
 check((await ev.next("duel_over")).result === "refused", "can't attack someone in a town");
-gd.send({ t: "duel", to: "eeeeeeeeeee4", stats: { hp: 20 } });
+gd.send({ t: "duel", to: "eeeeeeeeeee4" });
 check((await gd.next("duel_over")).result === "refused", "good players can't start duels");
 
-ev.send({ t: "duel", to: "eeeeeeeeeee2", stats: { hp: 30, pow: 5, coins: 100, junk: 4 } });
+ev.send({ t: "duel", to: "eeeeeeeeeee2" });
 const ch = await gd.next("challenge");
-check(ch.from === "eeeeeeeeeee1" && ch.stats.hp === 30 && ch.stats.junk === undefined, "the good player is challenged with the attacker's stats");
-ev2.send({ t: "duel", to: "eeeeeeeeeee2", stats: {} });
+check(ch.from === "eeeeeeeeeee1" && ch.name === "Bowsy" && !ch.ally, "the good player is challenged");
+ev2.send({ t: "duel", to: "eeeeeeeeeee2" });
 check((await ev2.next("duel_over")).result === "refused", "can't attack someone already in a duel");
-gd.send({ t: "duel_ready", stats: { hp: 22, def: 1 } });
+gd.send({ t: "duel_ready" });
 const s1 = await ev.next("duel_start");
 const s2 = await gd.next("duel_start");
-check(s1.first && !s2.first && s1.foe.stats.hp === 22 && s2.foe.name === "Bowsy", "both sides start the duel");
+check(s1.host === "eeeeeeeeeee1" && s2.host === "eeeeeeeeeee1" && s1.players.length === 2, "both sides start the duel");
 
-ev.send({ t: "duel_act", move: "jump", hits: [6, 7, 8, 9], rating: "Excellent", hp: 30 });
-const act = await gd.next("duel_act");
-check(act.move === "jump" && act.hits.length === 3 && act.rating === "Excellent", "moves are relayed to the foe");
-gd.send({ t: "duel_hit", dmg: 12, hp: 10, dodged: false });
-check((await ev.next("duel_hit")).hp === 10, "hit results go back to the attacker");
+ev.send({ t: "duel_msg", d: { k: "round", n: 1 } });
+const dm = await gd.next("duel_msg");
+check(dm.from === "eeeeeeeeeee1" && dm.d.k === "round", "the attacker's game runs the duel through duel_msg");
+gd.send({ t: "duel_msg", d: { k: "plan" }, to_host: true });
+check((await ev.next("duel_msg")).d.k === "plan", "secret picks go to the attacker's game");
+gd.send({ t: "duel_end", winner: "good" });
+await new Promise((r) => setTimeout(r, 200));
+check(!ev.inbox.some((m) => m.t === "duel_over"), "only the attacker's game can end the duel");
 
 const scoreUrl = `${base.replace(/^ws/, "http")}/score`;
 const before = await (await fetch(scoreUrl)).json();
 check(Number.isInteger(before.good) && Number.isInteger(before.evil) && before.ends_at > Date.now(), "the weekly score can be read");
-gd.send({ t: "duel_over", result: "lost" });
-check((await ev.next("duel_over")).result === "lost", "the winner hears the loser lost");
-ev.send({ t: "duel", to: "eeeeeeeeeee2", stats: {} });
+ev.send({ t: "duel_end", winner: "evil" });
+await new Promise((r) => setTimeout(r, 300));
+ev.send({ t: "duel", to: "eeeeeeeeeee2" });
 check((await ev.next("duel_over")).result === "refused", "the loser can't be attacked again right away");
 
-// Walking away mid-duel ends it.
+// Walking away mid-duel: the others hear it, and it's a loss if that side loses.
 const gd2 = open("Gwen", "peach", 0, 0, { uid: "eeeeeeeeeee5", side: "good" }, zone3);
 await gd2.ready;
 await gd2.next("welcome");
-ev2.send({ t: "duel", to: "eeeeeeeeeee5", stats: {} });
+ev2.send({ t: "duel", to: "eeeeeeeeeee5" });
 await gd2.next("challenge");
-gd2.send({ t: "duel_ready", stats: {} });
+gd2.send({ t: "duel_ready" });
 await ev2.next("duel_start");
 gd2.ws.close();
-check((await ev2.next("duel_over")).result === "left", "leaving mid-duel tells the foe");
+const gone = await ev2.next("duel_left");
+check(gone.id === "eeeeeeeeeee5" && gone.fled === false, "leaving mid-duel tells the others");
+ev2.send({ t: "duel_end", winner: "evil" });
 await new Promise((r) => setTimeout(r, 500));
 const after = await (await fetch(scoreUrl)).json();
-check(after.week !== before.week || after.evil >= before.evil + 2, "a loss and a walk-out each count a win for evil");
-
-ev.send({ t: "duel_act", move: "jump" });
+check(after.week !== before.week || after.evil >= before.evil + 2, "a win and a walk-out each count a win for evil");
 for (const x of [ev, gd, town, ev2]) x.ws.close();
+
+// Party vs party: both players' partners on the map join in.
+const zp = `${zone}_pp`;
+const pe1 = open("Ev One", "bowser", 0, 0, { uid: "cccccccccc01", side: "evil" }, zp);
+const pe2 = open("Ev Two", "bowser", 0, 0, { uid: "cccccccccc02", side: "evil" }, zp);
+const pg1 = open("Gd One", "mario", 0, 0, { uid: "cccccccccc03", side: "good" }, zp);
+const pg2 = open("Gd Two", "luigi", 0, 0, { uid: "cccccccccc04", side: "good" }, zp);
+for (const x of [pe1, pe2, pg1, pg2]) {
+  await x.ready;
+  await x.next("welcome");
+}
+pe1.send({ t: "invite", to: "cccccccccc02" });
+await pe2.next("invite");
+pe2.send({ t: "accept", from: "cccccccccc01" });
+await pe1.next("party");
+pg1.send({ t: "invite", to: "cccccccccc04" });
+await pg2.next("invite");
+pg2.send({ t: "accept", from: "cccccccccc03" });
+await pg1.next("party");
+pe1.send({ t: "duel", to: "cccccccccc03" });
+const c1 = await pg1.next("challenge");
+const c2 = await pg2.next("challenge");
+const c3 = await pe2.next("challenge");
+check(!c1.ally && !c2.ally && c3.ally === true, "both parties are called into the duel");
+for (const x of [pg1, pg2]) x.send({ t: "duel_ready" });
+await new Promise((r) => setTimeout(r, 200));
+check(!pe1.inbox.some((m) => m.t === "duel_start"), "the duel waits for everyone to answer");
+pe2.send({ t: "duel_ready" });
+const ps = await Promise.all([pe1, pe2, pg1, pg2].map((x) => x.next("duel_start")));
+check(ps.every((m) => m.players.length === 4 && m.host === "cccccccccc01"), "two against two");
+pe1.ws.close();
+const hl = await pg1.next("duel_over");
+check(hl.result === "host_left" && hl.winner === "", "the attacker leaving calls it off while a teammate is still in");
+await pe2.next("duel_over");
+for (const x of [pe2, pg1, pg2]) x.ws.close();
 
 // Good and evil players can't team up, even with a modified client.
 const zone4 = `${zone}_d`;
@@ -261,16 +299,7 @@ const fake = open("Fake", "bowser", 0, 0, { uid: "fffffffff001", side: "evil", k
 await fake.ready;
 check((await fake.next("welcome")).id !== "fffffffff001", "a wrong key can't take over someone's id");
 
-// Duel guard flag is relayed.
-const g5 = open("Gil", "mario", 0, 0, { uid: "fffffffff005", side: "good" }, zone4);
-await g5.ready;
-await g5.next("welcome");
-hero3.send({ t: "duel", to: "fffffffff005", stats: {} });
-await g5.next("challenge");
-g5.send({ t: "duel_ready", stats: {} });
-await hero3.next("duel_start");
-g5.send({ t: "duel_hit", dmg: 3, hp: 17, dodged: false, guard: true });
-for (const x of [hero3, vil, pal, fake, g5]) x.ws.close();
+for (const x of [hero3, vil, pal, fake]) x.ws.close();
 
 // --- Online Trading ---
 const zoneTrade = `${zone}_trade`;
@@ -384,13 +413,13 @@ for (const x of [bh, bg1, bg2, bg3]) {
 }
 await new Promise((res) => setTimeout(res, 300));
 async function duel(evil, good, goodUid, loser) {
-  evil.send({ t: "duel", to: goodUid, stats: {} });
+  evil.send({ t: "duel", to: goodUid });
   await good.next("challenge");
-  good.send({ t: "duel_ready", stats: {} });
+  good.send({ t: "duel_ready" });
   await evil.next("duel_start");
   await good.next("duel_start");
-  loser.send({ t: "duel_over", result: "lost" });
-  await (loser === evil ? good : evil).next("duel_over");
+  evil.send({ t: "duel_end", winner: loser === evil ? "good" : "evil" });
+  await new Promise((res) => setTimeout(res, 300));
 }
 await duel(bh, bg1, "ddddddddddd2", bg1);
 const paid = await bh.next("bounty");

@@ -25,10 +25,10 @@ signal invite_declined(name: String, reason: String)  # reason "side": good and 
 signal party_changed                                # formed, ended, or partner arrived
 signal warp_requested(map_id: String, spawn: String) # your partner took an exit
 signal party_message(d: Dictionary)               # co-op battle traffic from your partner
-signal challenged(foe: Dictionary)                  # an evil player attacks you: {id, name, character, stats}
-signal duel_started(foe: Dictionary, first: bool)   # foe: Player + {stats}; first: you move first
-signal duel_message(msg: Dictionary)                # duel_act / duel_hit from your foe
-signal duel_over(result: String)                    # your foe ended the duel: lost, fled, timeout, left, busy, refused...
+signal challenged(foe: Dictionary)                  # an evil player attacks you: {id, name, character, ally}
+                                                    # (ally: your partner attacks someone, you join in)
+signal duel_started(info: Dictionary)               # {host, players: [Player]}: everyone in the duel
+signal duel_over(result: String)                    # the duel ended early: busy, refused, cancel, host_left...
 signal trade_requested(from_id: String, name: String) # someone asked to trade
 signal trade_declined(name: String, reason: String)   # peer declined or busy
 signal trade_started(peer_id: String, peer_name: String) # trade session active
@@ -58,8 +58,8 @@ var is_trading := false
 ## True while the overworld is up and can take a duel; otherwise a challenge is
 ## answered "busy" straight away.
 var in_world := false
-var duel_foe := ""  # foe's id from challenging until the duel ends
-## Duel traffic (duel_act, duel_hit, duel_over) since the duel started, so
+var duel_foe := ""  # the duel's id (the attacker's) from challenging until the duel ends
+## Duel traffic (duel_msg, duel_left, duel_over) since the duel started, so
 ## nothing is lost while the battle scene is still loading. pvp_battle.gd reads it.
 var duel_inbox: Array = []
 ## While true, partner messages are also kept in party_inbox: set when you
@@ -187,32 +187,42 @@ func send_party(d: Dictionary) -> bool:
 	return true
 
 
-## Evil only: attack a good player standing next to you.
+## Evil only: attack a good player standing next to you. Your party partner
+## and theirs are called in too, if they're on this map.
 func challenge(id: String) -> void:
-	duel_foe = id
+	duel_foe = my_id
 	duel_inbox.clear()
-	_send({"t": "duel", "to": id, "stats": Game.pvp_stats()})
+	_send({"t": "duel", "to": id})
 
 
-## Answer a challenge: fight (sends your stats) or say you're busy.
+## Answer a challenge: fight or say you're busy.
 func answer_challenge(ready: bool) -> void:
 	if ready:
 		duel_inbox.clear()
-		_send({"t": "duel_ready", "stats": Game.pvp_stats()})
+		_send({"t": "duel_ready"})
 	else:
 		duel_foe = ""
 		_send({"t": "duel_busy"})
 
 
-## duel_act / duel_hit to your foe.
-func duel_send(msg: Dictionary) -> void:
-	_send(msg)
+## Anything for the others in your duel (pvp_battle.gd); to_host: only the
+## game running the battle gets it.
+func duel_send(d: Dictionary, to_host := false) -> void:
+	_send({"t": "duel_msg", "d": d, "to_host": to_host})
 
 
-## lost, fled, timeout or cancel.
+## Leave the duel early: fled, lost (forfeit) or cancel.
 func end_duel(result: String) -> void:
 	if duel_foe != "":
 		_send({"t": "duel_over", "result": result})
+	duel_foe = ""
+
+
+## The game running the battle: it's over and `winner` ("good", "evil" or "")
+## won. The server counts the scores and pays bounties.
+func finish_duel(winner: String) -> void:
+	if duel_foe != "":
+		_send({"t": "duel_end", "winner": winner})
 	duel_foe = ""
 
 
@@ -396,21 +406,18 @@ func _handle(text: String) -> void:
 				party_message.emit(msg["d"])
 		"challenge":
 			var foe := {"id": str(msg["from"]), "name": str(msg["name"]), "character": str(msg["character"]),
-				"stats": msg.get("stats", {})}
+				"ally": msg.get("ally", false) == true}
 			if not in_world or duel_foe != "":
 				_send({"t": "duel_busy"})
 			else:
 				duel_foe = foe["id"]
 				challenged.emit(foe)
 		"duel_start":
-			var foe: Dictionary = msg["foe"]
-			foe["id"] = str(foe["id"])
-			duel_foe = foe["id"]
+			duel_foe = str(msg.get("host", ""))
 			duel_inbox.clear()
-			duel_started.emit(foe, msg.get("first", false) == true)
-		"duel_act", "duel_hit":
+			duel_started.emit(msg)
+		"duel_msg", "duel_left":
 			duel_inbox.append(msg)
-			duel_message.emit(msg)
 		"duel_over":
 			duel_foe = ""
 			duel_inbox.append(msg)

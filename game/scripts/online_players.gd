@@ -5,7 +5,8 @@ extends Node
 ## parties: X next to another player to team up; your partner's tag is green
 ## and taking an exit brings them along. Only players on the same side can
 ## team up (the server refuses the rest too). Evil players can also pick "Battle!"
-## on a good player outside town to start an online duel (pvp_battle.gd).
+## on a good player outside town to start an online battle (pvp_battle.gd):
+## both players' party partners on the map join in, party against party.
 ## The world creates one and calls setup(), then tick() every frame.
 
 const GLIDE_SPEED := 96.0
@@ -267,13 +268,13 @@ func _on_party_message(d: Dictionary) -> void:
 func _on_challenged(foe: Dictionary) -> void:
 	_challenge = foe
 	_challenge_age = 0.0
-	chat.system("%s attacks you!" % foe["name"])
+	chat.system("Your partner attacks! You join the battle." if foe.get("ally", false) else "%s attacks you!" % foe["name"])
 
 
-func _on_duel_started(foe: Dictionary, first: bool) -> void:
+func _on_duel_started(info: Dictionary) -> void:
 	_waiting = 0.0
 	_world.busy = true
-	Game.start_pvp(foe, first, _player.position)
+	Game.start_pvp(info, _player.position)
 
 
 func _on_duel_over(result: String) -> void:
