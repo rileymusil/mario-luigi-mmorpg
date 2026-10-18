@@ -63,7 +63,102 @@ func _ready() -> void:
 		world.queue_free()
 		await get_tree().process_frame
 		print("check_scripts: overworld ran on ", map_id)
+	var ruins_errors := await _check_ruins()
+	if not ruins_errors.is_empty():
+		printerr("check_scripts: ruins: ", "; ".join(ruins_errors))
+		get_tree().quit(1)
+		return
+	print("check_scripts: both floors of the Teehee Ruins can be solved")
 	get_tree().quit(0)
+
+
+## The Teehee Ruins (Dungeon): every piece stands on walkable ground, the
+## way on is shut until the puzzle is worked, and working it in order (the
+## one way that solves it) opens the way to the stairs and the prize.
+func _check_ruins() -> Array:
+	var errors: Array = []
+	Game.new_player("mario", "CI")
+	# shut: [spot, pieces left standing]: with everything else cleared away,
+	# the spot still can't be reached (no way round a rock, gate or lock).
+	var plans := {
+		"teehee_ruins_1": {"from": Vector2(159, 462), "to": Vector2(240, 126),
+			"steps": ["r3", "s1", "b1", "l1"],
+			"shut": [[Vector2(254, 215), ["r1", "r2", "r3", "r4", "r5"]], [Vector2(175, 212), ["g1", "g2"]],
+				[Vector2(240, 126), ["l1"]]]},
+		"teehee_ruins_2": {"from": Vector2(255, 462), "to": Vector2(255, 166),
+			"steps": ["sa", "sc", "r1", "b1", "l1"],
+			"shut": [[Vector2(127, 186), ["r1", "r2"]], [Vector2(255, 166), ["g1"]], [Vector2(255, 166), ["g2"]],
+				[Vector2(255, 166), ["g3"]], [Vector2(255, 166), ["l1"]]]},
+	}
+	for map_id in plans:
+		Game.player["map"] = map_id
+		Game.player["spawn"] = "south"
+		Game.player["position"] = null
+		var world: Node = load(Game.WORLD_SCENE).instantiate()
+		get_tree().root.add_child(world)
+		await get_tree().process_frame
+		var plan: Dictionary = plans[map_id]
+		for p in world.dungeon.pieces:
+			var at: Vector2 = p["def"]["pos"] - Vector2(0, 2)
+			if world.mask.get_pixel(int(at.x), int(at.y)).r < 0.5:
+				errors.append("%s: %s stands off the floor" % [map_id, p["def"]["id"]])
+		for shut in plan["shut"]:
+			for p in world.dungeon.pieces:
+				if p["def"]["kind"] in ["rock", "gate", "lock"]:
+					Game.puzzle_state[map_id][p["def"]["id"]] = not p["def"]["id"] in shut[1]
+			world.rebuild_collision()
+			if _reachable(world, plan["from"], shut[0]):
+				errors.append("%s: %s can be reached past %s" % [map_id, shut[0], shut[1]])
+		Game.puzzle_state.clear()
+		world.queue_free()
+		await get_tree().process_frame
+		world = load(Game.WORLD_SCENE).instantiate()
+		get_tree().root.add_child(world)
+		await get_tree().process_frame
+		if _reachable(world, plan["from"], plan["to"]):
+			errors.append("%s: the way on is open before the puzzle" % map_id)
+		for id in plan["steps"]:
+			var piece: Dictionary = world.dungeon.piece(id)
+			var seen := _reach_set(world, plan["from"])
+			var foot := Rect2(world.dungeon.foot(piece))
+			if not seen.keys().any(func(c): return foot.grow(Dungeon.REACH - 4.0).has_point(Vector2(c * 3))):
+				errors.append("%s: can't get next to %s" % [map_id, id])
+			var line: String = world.dungeon.work(piece)
+			if line.begins_with("A stone face"):
+				errors.append("%s: no key for the lock" % map_id)
+		if not _reachable(world, plan["from"], plan["to"]):
+			errors.append("%s: still shut after the puzzle" % map_id)
+		if map_id == "teehee_ruins_2":
+			if not world.dungeon.work(world.dungeon.piece("prize")).begins_with("You cleared"):
+				errors.append("the prize doesn't pay out")
+			if not world.dungeon.work(world.dungeon.piece("prize")).contains("empty"):
+				errors.append("the prize pays twice in a day")
+		world.queue_free()
+		await get_tree().process_frame
+	return errors
+
+
+## Can someone walk from a to b (a 3px grid of can_stand)?
+func _reachable(world: Node, a: Vector2, b: Vector2) -> bool:
+	var goal := Vector2i(b / 3.0)
+	return _reach_set(world, a).keys().any(func(c): return (c - goal).length() <= 2.0)
+
+
+## Every cell of the 3px grid you can walk to from a.
+func _reach_set(world: Node, a: Vector2) -> Dictionary:
+	a = world.nearest_walkable(a)
+	var seen := {}
+	var todo: Array = [Vector2i(a / 3.0)]
+	while not todo.is_empty():
+		var c: Vector2i = todo.pop_back()
+		if seen.has(c):
+			continue
+		seen[c] = true
+		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var n: Vector2i = c + d
+			if not seen.has(n) and world.can_stand(Vector2(n * 3)):
+				todo.append(n)
+	return seen
 
 
 ## An online battle, offline: you and a made-up teammate (evil, with
@@ -235,6 +330,8 @@ func _check_partner_levels() -> Array:
 	for id in Game.PARTNERS:
 		if not Game.MOVES.has(Game.second_move_of("partner", id)):
 			errors.append("%s's second move is missing" % id)
+		if not Game.MOVES.has(Game.third_move_of("partner", id)):
+			errors.append("%s's third move is missing" % id)
 	Game.new_player("mario", "CI")
 	var toad := Game.make_member("partner", "toad")
 	Game.player["party"] = [toad]
@@ -248,7 +345,13 @@ func _check_partner_levels() -> Array:
 		errors.append("a level %d partner doesn't know its second move" % Game.MOVE2_LEVEL)
 	if not "Toad learned Super Toss!" in lines:
 		errors.append("learning the second move isn't announced")
-	if int(toad["pow"]) != int(Game.PARTNERS["toad"]["pow"]) + Game.MOVE2_LEVEL - 1:
+	var more := 0
+	for lv in range(Game.MOVE2_LEVEL, Game.MOVE3_LEVEL):
+		more += Game.xp_to_next(lv)
+	lines = Game.party_gain_xp(more)
+	if Game.member_moves(toad) != ["mushroom_toss", "super_toss", "ultra_toss"] or not "Toad learned Ultra Toss!" in lines:
+		errors.append("a level %d partner doesn't learn its third move" % Game.MOVE3_LEVEL)
+	if int(toad["pow"]) != int(Game.PARTNERS["toad"]["pow"]) + Game.MOVE3_LEVEL - 1:
 		errors.append("partner POW doesn't grow with its levels")
 	# A partner from an older save (it grew +1 POW with each of your levels).
 	var old := {"kind": "enemy", "id": "goomba", "name": "Goomba", "hp": 9, "max_hp": 9,

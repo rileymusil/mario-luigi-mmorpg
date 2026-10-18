@@ -3,6 +3,7 @@ the repo (like tools/make_tower.py does for the Boss Tower):
 
   twilight_meadow  the Outskirts Meadow at dusk   (levels 10-18)
   shadow_woods     the Outskirts Woods at night   (levels 18-30)
+  (its east path leads on to Teehee Valley, levels 30-40: tools/make_maps.py)
 
 The maps keep the walk masks and props of the maps they come from, with a few
 edge pixels blocked where the copy has a path that leads nowhere (see SEAL).
@@ -30,7 +31,6 @@ AREAS = {
 # map id: list of (x, y, w, h) rectangles to paint black on the walk mask.
 SEAL = {
     "twilight_meadow": [(340, 0, 90, 6)],        # the meadow's north path (to Stardust Fields)
-    "shadow_woods": [(712, 370, 7, 90)],         # the woods' east path (back to the Woods)
 }
 
 # enemy id: (source sprite, hue turn, saturation factor, brightness factor,
@@ -43,6 +43,13 @@ ENEMIES = {
     "dark_bones": ("dry_bones", 0.0, 0.5, 0.45, False),
     "shadow_guy": ("shy_guy", 0.75, 0.9, 0.45, True),
     "gold_goomba": ("goomba", 0.09, 1.4, 1.25, True),
+    # Teehee Valley and the Ruins (levels 30-40)
+    "dune_goomba": ("goomba", 0.05, 1.0, 1.08, True),
+    "dune_beanie": ("beanie", 0.85, 1.0, 1.1, True),
+    "sun_koopa": ("koopa", 0.95, 1.3, 1.05, True),
+    "crystal_beetle": ("buzzy_beetle", 0.3, 1.2, 1.3, True),
+    "blaze_guy": ("shy_guy", 0.08, 1.0, 1.1, True),
+    "pharaoh_bones": ("dry_bones", 0.5, 1.5, 1.0, True),
 }
 
 

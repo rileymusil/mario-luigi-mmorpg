@@ -149,6 +149,39 @@ def sky(r, g, b):
     return False  # nothing to keep blocked under props
 
 
+def valley_walk(r, g, b):
+    # Teehee Valley: the bright yellow sand walks; the pale cream plateaus,
+    # the striped cliffs and the crystal cacti block. Orange (the glow round
+    # the plateaus, and the sand's ripples) is decided by patch size.
+    h, s, v = hsv(r, g, b)
+    if r + g + b < 200:
+        return False
+    if 0.13 <= h < 0.19 and s > 0.6 and v > 0.9:
+        return True
+    if 0.08 <= h < 0.13 and s > 0.6 and v > 0.85:
+        return None
+    if s < 0.3 and v > 0.8:
+        return None  # bones lying in the sand (small), or pale rock
+    return False
+
+def ruins_walk(r, g, b):
+    # Guffawha Ruins (the Teehee Ruins' first floor): the teal floor and its
+    # grass walk, the white stepping stones too; the grey stone, the totems
+    # and the purple pits block.
+    h, s, v = hsv(r, g, b)
+    if 0.42 < h < 0.53 and s > 0.35 and v > 0.6:
+        return True
+    if (r, g, b) in ((255, 255, 255), (248, 248, 248)):
+        return None
+    return False
+
+
+def temple_walk(r, g, b):
+    # Thunder Temple (the Teehee Ruins' second floor): the pale sand floor
+    # walks; the walls, statues, rocks and the stairs (see the hand fixes) don't.
+    h, s, v = hsv(r, g, b)
+    return 0.08 < h < 0.18 and s < 0.2 and v > 0.85
+
 # crop: (left, top, right, bottom) on the source sheet.
 # walk: colour guess (True walk, False block, None decide by patch size).
 # hard: colours a prop never opens up (water, lava), even when it hides them.
@@ -156,6 +189,7 @@ def sky(r, g, b):
 # seeds: points on the main walkable area (spawns); walkable ground that can't be
 #   reached from them (islands in water or lava) is blocked, to keep the mask tidy.
 # fixes: list of ("block"|"walk", (left, top, right, bottom)) in map pixels, applied last.
+# close: closes blocked lines thinner than this many pixels (cracks drawn on a floor).
 MAPS = {
     "castle_town": {
         "sheet": "Maps/Game Boy Advance - Mario & Luigi_ Superstar Saga - Maps - Beanbean Castle Town (Exterior).png",
@@ -387,6 +421,53 @@ MAPS.update({
     },
 })
 
+# Past the Shadow Woods: Teehee Valley for levels 30-40 (two screens of the
+# valley sheet in an L; the rip's purple corner becomes more plateau). The
+# gate at the top right is the way into the Teehee Ruins (game/scripts/dungeon.gd).
+MAPS.update({
+    "teehee_valley": {
+        "sheet": "Maps/Game Boy Advance - Mario & Luigi_ Superstar Saga - Maps - Teehee Valley.png",
+        "crop": (565, 1760, 1765, 2400), "walk": valley_walk, "hard": lambda r, g, b: False, "smooth": 5,
+        "islands": 200, "stones": 300, "paint": [((480, 480, 1200, 640), (248, 240, 160))],
+        "seeds": [(120, 470), (700, 380)],
+        "fixes": [
+            ("block", (25, 450, 80, 525)), ("block", (540, 278, 595, 345)),  # warp pipes
+            ("block", (1000, 150, 1125, 240)),  # the gate
+            ("block", (620, 95, 660, 160)),  # yellow block on its pillar
+        ],
+    },
+    # The Teehee Ruins, through the gate: two floors of puzzles (switches,
+    # hammer rocks, ? blocks with keys, locked doors; see game/scripts/dungeon.gd).
+    "teehee_ruins_1": {
+        "sheet": "Maps/Game Boy Advance - Mario & Luigi_ Superstar Saga - Maps - Guffawha Ruins.png",
+        "crop": (105, 8, 505, 500), "walk": ruins_walk, "hard": lambda r, g, b: False, "smooth": 3,
+        "islands": 60, "stones": 600,
+        "paint": [((260, 330, 400, 470), (24, 24, 24)), ((395, 245, 400, 285), (24, 24, 24))],  # credits box, a stray sprite
+        "seeds": [(120, 300)],
+        "fixes": [
+            ("walk", (146, 440, 172, 488)),  # the stairs down to the valley
+            ("walk", (138, 272, 184, 444)),  # stepping stones
+            ("block", (0, 0, 82, 142)), ("block", (266, 40, 310, 142)),  # vines on the walls
+        ],
+    },
+    "teehee_ruins_2": {
+        "sheet": "Maps/Game Boy Advance - Mario & Luigi_ Superstar Saga - Maps - Thunder Temple.png",
+        "crop": (0, 0, 501, 488), "walk": temple_walk, "hard": lambda r, g, b: False, "smooth": 3,
+        "islands": 60, "close": 5, "paint": [((0, 0, 100, 78), (0, 0, 0))],  # the rip's orb sprites
+        "seeds": [(255, 470)],
+        "fixes": [
+            # The pyramid's brick walls (the crack closing opens their mortar lines).
+            ("block", (170, 90, 226, 300)), ("block", (284, 90, 340, 300)), ("block", (200, 84, 310, 128)),
+            ("block", (226, 162, 240, 232)), ("block", (270, 162, 284, 232)),
+            ("walk", (230, 345, 280, 392)),  # the step up to the terrace
+            ("walk", (226, 232, 284, 324)), ("walk", (240, 158, 270, 236)),  # the pyramid's stairs
+            ("walk", (212, 128, 298, 162)),  # its top, with the orb
+            ("walk", (242, 440, 268, 488)),  # the way back down
+            ("block", (60, 460, 100, 488)),  # the other doorway (rubble)
+        ],
+    },
+})
+
 
 def components(mask, value):
     """Yields (area, touches_edge, pixels) for each 4-connected region of `value`."""
@@ -589,6 +670,9 @@ def build_mask(map_id, cfg, art):
     for area, edge, pixels in list(components(mask, 128)):
         for x, y in pixels:
             mp[x, y] = 255 if area < cfg.get("stones", 400) else 0
+    if cfg.get("close"):
+        # Thin blocked lines across open floor (cracks drawn on it) are closed up.
+        mask = mask.filter(ImageFilter.MaxFilter(cfg["close"])).filter(ImageFilter.MinFilter(cfg["close"]))
     if cfg.get("smooth", 5) > 1:
         mask = mask.filter(ImageFilter.MedianFilter(cfg.get("smooth", 5)))
     remove_specks(mask, cfg.get("islands", 150))

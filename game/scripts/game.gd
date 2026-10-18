@@ -78,9 +78,33 @@ const SPECIALS := {
 ## and extras an Excellent adds: stun, burn (turns), def_down (DEF lost),
 ## heal (party HP), pierce (the next enemy is hit too).
 ##
-## Party members learn a second move at level MOVE2_LEVEL: PARTNERS
-## "move2", or power_bash for recruited enemies and bosses.
+## Party members learn a second move at level MOVE2_LEVEL and a third at
+## MOVE3_LEVEL: PARTNERS "move2" / "move3", or power_bash / mega_bash for
+## recruited enemies and bosses.
 const MOVES := {
+	# Third moves (party member level 10).
+	"ultra_toss": {"name": "Ultra Toss", "kind": "throw", "color": Color(0.7, 0.35, 0.95), "bonus": 4, "heal": 8,
+		"info": "Throws an Ultra Mushroom. Excellent heals the party 8 HP."},
+	"mega_slam": {"name": "Mega Slam", "kind": "tackle", "bonus": 4, "ignore_def": true, "stun": true,
+		"info": "A crushing slam that ignores DEF. Excellent stuns."},
+	"mega_bomb": {"name": "Mega Bomb", "kind": "blast", "bonus": 4, "burn": 2,
+		"info": "A huge blast on every enemy. Excellent burns."},
+	"spook_slap": {"name": "Spook Slap", "kind": "multi", "hits": 5, "bonus": 2,
+		"info": "Up to 5 ghostly slaps, {a} in the gold zone for each."},
+	"mega_bobombast": {"name": "Mega Bob-ombast", "kind": "blast", "bonus": 5, "burn": 3,
+		"info": "The biggest blast there is. Excellent sets every enemy on fire."},
+	"tattle_bonk": {"name": "Tattle Bonk", "kind": "stomp", "bonus": 3, "def_down": 2,
+		"info": "Finds the weak spot and bonks it. {a} as you land; Excellent lowers DEF a lot."},
+	"shell_slam": {"name": "Shell Slam", "kind": "multi", "hits": 3, "bonus": 3, "def_down": 1,
+		"info": "Up to 3 shell slams, {a} for each. Excellent lowers DEF."},
+	"gulp_rush": {"name": "Gulp Rush", "kind": "tackle", "bonus": 4, "ignore_def": true,
+		"info": "Gulps the enemy and slams it down. Ignores DEF."},
+	"royal_rose": {"name": "Royal Rose", "kind": "throw", "color": Color(1.0, 0.3, 0.45), "bonus": 4, "def_down": 3, "pierce": true,
+		"info": "A royal rose. Excellent charms two enemies: DEF way down."},
+	"egg_storm": {"name": "Egg Storm", "kind": "blast", "bonus": 3, "stun": true,
+		"info": "Eggs rain on every enemy. Excellent stuns them."},
+	"mega_bash": {"name": "Mega Bash", "kind": "tackle", "bonus": 4, "def_down": 1,
+		"info": "An all-out tackle. Excellent lowers the enemy's DEF."},
 	# Second moves (party member level 5).
 	"super_toss": {"name": "Super Toss", "kind": "throw", "color": Color(0.95, 0.55, 0.15), "bonus": 2, "heal": 5,
 		"info": "Throws a Super Mushroom. Excellent heals the party 5 HP."},
@@ -224,25 +248,25 @@ const MOVES := {
 ## stronger enemies start lower. `move` is their turn in battle (MOVES),
 ## `line` what a partner says when you talk to them.
 const PARTNERS := {
-	"toad": {"name": "Toad", "frames": 8, "hp": 14, "pow": 3, "def": 1, "recruit": 0.5, "move": "mushroom_toss", "move2": "super_toss",
+	"toad": {"name": "Toad", "frames": 8, "hp": 14, "pow": 3, "def": 1, "recruit": 0.5, "move": "mushroom_toss", "move2": "super_toss", "move3": "ultra_toss",
 		"line": "Going out to the Outskirts? It's dangerous out there..."},
-	"pianta": {"name": "Pianta", "frames": 3, "hp": 20, "pow": 4, "def": 2, "recruit": 0.35, "move": "pianta_slam", "move2": "pianta_quake",
+	"pianta": {"name": "Pianta", "frames": 3, "hp": 20, "pow": 4, "def": 2, "recruit": 0.35, "move": "pianta_slam", "move2": "pianta_quake", "move3": "mega_slam",
 		"line": "Whoa, a traveler! Need some muscle out there?"},
-	"bombette": {"name": "Bombette", "frames": 4, "hp": 14, "pow": 4, "def": 1, "recruit": 0.45, "move": "bomb", "move2": "power_bomb",
+	"bombette": {"name": "Bombette", "frames": 4, "hp": 14, "pow": 4, "def": 1, "recruit": 0.45, "move": "bomb", "move2": "power_bomb", "move3": "mega_bomb",
 		"line": "Hi, I'm Bombette! I get a little explosive once I get going!"},
-	"bow": {"name": "Bow", "frames": 4, "hp": 14, "pow": 3, "def": 1, "recruit": 0.4, "move": "smack", "move2": "fan_smack",
+	"bow": {"name": "Bow", "frames": 4, "hp": 14, "pow": 3, "def": 1, "recruit": 0.4, "move": "smack", "move2": "fan_smack", "move3": "spook_slap",
 		"line": "Hmph. I am Lady Bow. I suppose I could slap a few Goombas for you."},
-	"bobbery": {"name": "Bobbery", "frames": 3, "hp": 18, "pow": 5, "def": 1, "recruit": 0.3, "move": "bob_ombast", "move2": "bomb_barrage",
+	"bobbery": {"name": "Bobbery", "frames": 3, "hp": 18, "pow": 5, "def": 1, "recruit": 0.3, "move": "bob_ombast", "move2": "bomb_barrage", "move3": "mega_bobombast",
 		"line": "Ahoy! Admiral Bobbery here. These old fuses still pack a blast!"},
-	"goombella": {"name": "Goombella", "frames": 5, "hp": 14, "pow": 3, "def": 1, "recruit": 0.5, "move": "headbonk", "move2": "multibonk",
+	"goombella": {"name": "Goombella", "frames": 5, "hp": 14, "pow": 3, "def": 1, "recruit": 0.5, "move": "headbonk", "move2": "multibonk", "move3": "tattle_bonk",
 		"line": "Hi! I'm Goombella, archaeology student. Want some company?"},
-	"koops": {"name": "Koops", "frames": 9, "hp": 15, "pow": 4, "def": 2, "recruit": 0.45, "move": "shell_toss", "move2": "power_shell",
+	"koops": {"name": "Koops", "frames": 9, "hp": 15, "pow": 4, "def": 2, "recruit": 0.45, "move": "shell_toss", "move2": "power_shell", "move3": "shell_slam",
 		"line": "H-hi, I'm Koops. I want to be brave... Maybe you could help?"},
-	"yoshi_kid": {"name": "Yoshi Kid", "frames": 9, "hp": 13, "pow": 3, "def": 1, "recruit": 0.5, "move": "gulp", "move2": "egg_barrage",
+	"yoshi_kid": {"name": "Yoshi Kid", "frames": 9, "hp": 13, "pow": 3, "def": 1, "recruit": 0.5, "move": "gulp", "move2": "egg_barrage", "move3": "gulp_rush",
 		"line": "Yo! I'm the toughest Yoshi around. You need me, right?"},
 	"peasley": {"name": "Prince Peasley", "frames": 8, "hp": 18, "pow": 5, "def": 2, "recruit": 0.3,
-		"move": "rose_toss", "move2": "rose_storm", "line": "Greetings! I am Prince Peasley of the Beanbean Kingdom. Shall we ride out?"},
-	"yoshi": {"name": "Yoshi", "frames": 8, "hp": 18, "pow": 4, "def": 1, "recruit": 0.4, "move": "ground_pound", "move2": "egg_throw",
+		"move": "rose_toss", "move2": "rose_storm", "move3": "royal_rose", "line": "Greetings! I am Prince Peasley of the Beanbean Kingdom. Shall we ride out?"},
+	"yoshi": {"name": "Yoshi", "frames": 8, "hp": 18, "pow": 4, "def": 1, "recruit": 0.4, "move": "ground_pound", "move2": "egg_throw", "move3": "egg_storm",
 		"line": "Yoshi! Yoshi! (He looks ready for an adventure.)"},
 }
 
@@ -277,6 +301,20 @@ const ENEMIES := {
 		"recruit": 0.12, "move": "bone_toss"},
 	"gold_goomba": {"name": "Gold Goomba", "frames": 8, "hp": 70, "pow": 25, "def": 16, "xp": 50, "coins": 90,
 		"recruit": 0.1, "move": "headbonk"},
+	# Teehee Valley and the Teehee Ruins, levels 30-40 (colour swaps by
+	# tools/make_dark_areas.py too).
+	"dune_goomba": {"name": "Dune Goomba", "frames": 8, "hp": 130, "pow": 36, "def": 16, "xp": 95, "coins": 30,
+		"recruit": 0.12, "move": "headbonk"},
+	"dune_beanie": {"name": "Dune Beanie", "frames": 8, "hp": 135, "pow": 39, "def": 19, "xp": 105, "coins": 32,
+		"recruit": 0.1, "move": "bean_bash"},
+	"sun_koopa": {"name": "Sun Koopa", "frames": 5, "hp": 140, "pow": 37, "def": 18, "xp": 100, "coins": 32,
+		"recruit": 0.1, "move": "shell_toss"},
+	"crystal_beetle": {"name": "Crystal Beetle", "frames": 8, "hp": 120, "pow": 38, "def": 26, "xp": 110,
+		"coins": 34, "recruit": 0.1, "move": "shell_spin"},
+	"blaze_guy": {"name": "Blaze Guy", "frames": 6, "hp": 150, "pow": 42, "def": 18, "xp": 125, "coins": 36,
+		"recruit": 0.08, "move": "shy_spin"},
+	"pharaoh_bones": {"name": "Pharaoh Bones", "frames": 5, "hp": 165, "pow": 41, "def": 21, "xp": 130,
+		"coins": 38, "recruit": 0.08, "move": "bone_toss"},
 }
 
 ## Townsfolk you can talk to (sheets cut by tools/slice_sprites.py, same
@@ -382,6 +420,12 @@ const DROPS := {
 	"shadow_guy": ["ultra_mushroom", 0.12],
 	"dark_bones": ["one_up", 0.08],
 	"gold_goomba": ["ultra_mushroom", 0.3],
+	"dune_goomba": ["ultra_mushroom", 0.15],
+	"dune_beanie": ["green_pepper", 0.15],
+	"sun_koopa": ["super_syrup", 0.2],
+	"crystal_beetle": ["red_pepper", 0.15],
+	"blaze_guy": ["ultra_mushroom", 0.15],
+	"pharaoh_bones": ["one_up", 0.1],
 }
 
 ## Bosses (phase 7). Each stands on its map (`map`, `pos`, `face`) and you
@@ -1319,12 +1363,80 @@ const MAPS := {
 	},
 	"shadow_woods": {
 		"name": "Shadow Woods", "battle_bg": "chucklehuck_woods", "safe": false,
-		"spawns": {"north": Vector2(133, 25)},
-		"exits": [{"rect": Rect2(75, 0, 118, 8), "to": "twilight_meadow", "spawn": "south"}],
+		"spawns": {"north": Vector2(133, 25), "east": Vector2(700, 413)},
+		"exits": [
+			{"rect": Rect2(75, 0, 118, 8), "to": "twilight_meadow", "spawn": "south"},
+			{"rect": Rect2(711, 385, 8, 57), "to": "teehee_valley", "spawn": "pipe"},
+		],
 		"enemies": [
 			{"type": "shadow_guy", "pos": Vector2(300, 150)}, {"type": "dark_bones", "pos": Vector2(480, 200)},
 			{"type": "shadow_guy", "pos": Vector2(660, 120)}, {"type": "dark_bones", "pos": Vector2(100, 520)},
 			{"type": "gold_goomba", "pos": Vector2(400, 550)}, {"type": "shadow_guy", "pos": Vector2(560, 520)},
+		],
+		"npcs": [],
+	},
+	# Teehee Valley, east of the Shadow Woods (levels 30-40; tools/make_maps.py).
+	# The gate at the top right opens on the Teehee Ruins, two floors of
+	# puzzles (Dungeon, "puzzle"); the middle pipe is a way home to town.
+	"teehee_valley": {
+		"name": "Teehee Valley", "battle_bg": "oho_oasis", "safe": false,
+		"spawns": {"pipe": Vector2(108, 492), "ruins": Vector2(1062, 268)},
+		"exits": [
+			{"rect": Rect2(74, 466, 16, 46), "to": "shadow_woods", "spawn": "east"},
+			{"rect": Rect2(1012, 240, 100, 10), "to": "teehee_ruins_1", "spawn": "south", "door": true},
+			{"rect": Rect2(592, 290, 16, 48), "to": "castle_town", "spawn": "start"},
+		],
+		"enemies": [
+			{"type": "dune_goomba", "pos": Vector2(160, 260)}, {"type": "sun_koopa", "pos": Vector2(300, 380)},
+			{"type": "dune_beanie", "pos": Vector2(200, 560)}, {"type": "crystal_beetle", "pos": Vector2(760, 180)},
+			{"type": "dune_goomba", "pos": Vector2(720, 380)}, {"type": "blaze_guy", "pos": Vector2(900, 330)},
+			{"type": "sun_koopa", "pos": Vector2(1080, 330)},
+		],
+		"npcs": [{"id": "toad_blue", "pos": Vector2(970, 300), "talk": "ruins_explorer", "face": "up"}],
+	},
+	"teehee_ruins_1": {
+		"name": "Teehee Ruins", "battle_bg": "guffawha_ruins", "safe": false,
+		"spawns": {"south": Vector2(159, 462), "top": Vector2(240, 150)},
+		"exits": [
+			{"rect": Rect2(146, 480, 26, 8), "to": "teehee_valley", "spawn": "ruins"},
+			{"rect": Rect2(220, 112, 40, 14), "to": "teehee_ruins_2", "spawn": "south", "door": true},
+		],
+		"puzzle_reset": "south",  # walking in from the valley starts the puzzles over
+		"puzzle": [
+			{"id": "r1", "kind": "rock", "pos": Vector2(96, 302)}, {"id": "r2", "kind": "rock", "pos": Vector2(128, 302)},
+			{"id": "r3", "kind": "rock", "pos": Vector2(160, 302)}, {"id": "r4", "kind": "rock", "pos": Vector2(192, 302)},
+			{"id": "r5", "kind": "rock", "pos": Vector2(224, 302)},
+			{"id": "s1", "kind": "switch", "pos": Vector2(254, 196), "toggles": ["g1", "g2"]},
+			{"id": "g1", "kind": "gate", "pos": Vector2(175, 252)}, {"id": "g2", "kind": "gate", "pos": Vector2(142, 182)},
+			{"id": "b1", "kind": "block", "pos": Vector2(175, 196)},
+			{"id": "l1", "kind": "lock", "pos": Vector2(240, 134)},
+		],
+		"enemies": [
+			{"type": "pharaoh_bones", "pos": Vector2(60, 200)}, {"type": "blaze_guy", "pos": Vector2(130, 150)},
+		],
+		"npcs": [],
+	},
+	"teehee_ruins_2": {
+		"name": "Teehee Ruins 2F", "battle_bg": "pyramid", "safe": false,
+		"spawns": {"south": Vector2(255, 462)},
+		"exits": [{"rect": Rect2(242, 480, 26, 8), "to": "teehee_ruins_1", "spawn": "top"}],
+		# Three gates up the pyramid's stairs: switch A flips gate 1, B flips 1
+		# and 2, C flips 2 and 3. All shut to begin with: A and C open the lot.
+		"puzzle": [
+			{"id": "sa", "kind": "switch", "pos": Vector2(120, 446), "toggles": ["g1"]},
+			{"id": "sb", "kind": "switch", "pos": Vector2(330, 446), "toggles": ["g1", "g2"]},
+			{"id": "sc", "kind": "switch", "pos": Vector2(410, 420), "toggles": ["g2", "g3"]},
+			{"id": "g1", "kind": "gate", "pos": Vector2(255, 322)},
+			{"id": "g2", "kind": "gate", "pos": Vector2(255, 268)},
+			{"id": "g3", "kind": "gate", "pos": Vector2(255, 226)},
+			{"id": "r1", "kind": "rock", "pos": Vector2(158, 238)}, {"id": "r2", "kind": "rock", "pos": Vector2(115, 238)},
+			{"id": "b1", "kind": "block", "pos": Vector2(127, 170)},
+			{"id": "l1", "kind": "lock", "pos": Vector2(255, 194)},
+			{"id": "prize", "kind": "prize", "pos": Vector2(255, 152)},
+		],
+		"enemies": [
+			{"type": "crystal_beetle", "pos": Vector2(90, 400)}, {"type": "pharaoh_bones", "pos": Vector2(420, 380)},
+			{"type": "blaze_guy", "pos": Vector2(380, 300)},
 		],
 		"npcs": [],
 	},
@@ -1395,6 +1507,7 @@ const HOME_MAP := {"good": "castle_town", "evil": "bowser_castle"}
 var player := {}          # the saved player, see new_player()
 var pending_battle := {}  # set by the world right before a battle starts
 var defeated := {}        # "map:index" -> time it was beaten (enemies respawn)
+var puzzle_state := {}    # the Teehee Ruins' puzzles (see Dungeon): map -> piece -> done, and "keys"
 var quest_notes: Array = []  # quest progress lines for the world to show (see Quests)
 const RESPAWN_SECONDS := 45.0
 
@@ -1689,6 +1802,7 @@ func gain_xp(amount: int) -> int:
 ## same XP you get, on your curve), and learns a second move at MOVE2_LEVEL.
 
 const MOVE2_LEVEL := 5
+const MOVE3_LEVEL := 10
 
 
 ## A party member's level. Members from before levels existed start at the
@@ -1719,14 +1833,22 @@ func member_gain_xp(m: Dictionary, amount: int) -> int:
 	return gained
 
 
-## The moves a party member knows: its own, plus the second one from MOVE2_LEVEL.
+## The moves a party member knows: its own, the second one from
+## MOVE2_LEVEL and the third from MOVE3_LEVEL.
 func member_moves(m: Dictionary) -> Array:
 	var kind := str(m.get("kind", "partner"))
 	var id := str(m.get("id", ""))
 	var moves := [move_of(kind, id)]
 	if member_level(m) >= MOVE2_LEVEL:
 		moves.append(second_move_of(kind, id))
+	if member_level(m) >= MOVE3_LEVEL:
+		moves.append(third_move_of(kind, id))
 	return moves
+
+
+## A party member's third move (MOVE3_LEVEL).
+func third_move_of(kind: String, id: String) -> String:
+	return str(PARTNERS.get(id, {}).get("move3", "mega_bash")) if kind == "partner" else "mega_bash"
 
 
 ## A party member's second move (MOVE2_LEVEL), whether or not it's learned yet.
@@ -1744,6 +1866,8 @@ func party_gain_xp(xp: int) -> Array:
 			lines.append("%s grew to level %d!" % [m["name"], m["level"]])
 			if before < MOVE2_LEVEL and m["level"] >= MOVE2_LEVEL:
 				lines.append("%s learned %s!" % [m["name"], MOVES[second_move_of(str(m.get("kind", "partner")), str(m["id"]))]["name"]])
+			if before < MOVE3_LEVEL and m["level"] >= MOVE3_LEVEL:
+				lines.append("%s learned %s!" % [m["name"], MOVES[third_move_of(str(m.get("kind", "partner")), str(m["id"]))]["name"]])
 	return lines
 
 
@@ -1872,6 +1996,34 @@ func daily_login() -> String:
 	player["login"] = l
 	save()
 	return note
+
+
+## The big block at the top of the Teehee Ruins: a big prize the first time,
+## a smaller one once a day after that. Returns what it says.
+const RUINS_FIRST_PRIZE := {"coins": 500, "items": [["ultra_mushroom", 2], ["one_up", 1], ["super_syrup", 2]]}
+const RUINS_DAILY_PRIZE := {"coins": 120, "items": [["ultra_mushroom", 1]]}
+
+
+func claim_ruins_prize() -> String:
+	var today := Quests.today()
+	var r = player.get("ruins", {})
+	if typeof(r) != TYPE_DICTIONARY:
+		r = {}
+	if str(r.get("day", "")) == today:
+		return "The block is empty. It fills up again tomorrow!"
+	var prize: Dictionary = RUINS_FIRST_PRIZE if int(r.get("clears", 0)) == 0 else RUINS_DAILY_PRIZE
+	r["day"] = today
+	r["clears"] = int(r.get("clears", 0)) + 1
+	player["ruins"] = r
+	player["coins"] = clampi(int(player.get("coins", 0)) + int(prize["coins"]), 0, 99999)
+	var got: Array = ["%d coins" % prize["coins"]]
+	for it in prize["items"]:
+		var n := add_item(it[0], it[1])
+		if n > 0:
+			got.append("%d %s" % [n, goods(it[0])["name"]] if n > 1 else with_article(goods(it[0])["name"]))
+	save()
+	var head := "You cleared the Teehee Ruins!" if r["clears"] == 1 else "Teehee Ruins cleared again!"
+	return "%s Inside the block: %s." % [head, ", ".join(got)]
 
 
 ## You beat someone with a price on their head in a duel (the server says so,
