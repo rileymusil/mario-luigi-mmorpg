@@ -9,6 +9,7 @@ const SETUP_WAIT := 6.0
 const FACES := [Vector2.DOWN, Vector2.RIGHT, Vector2.UP, Vector2.LEFT]
 
 var me_index := -1
+var mine: Array = []    # where your party members are in `allies` (same order as your party)
 var over := false
 var _queue: Array = []  # turn / dodge requests, handled one at a time
 var _setup := {}
@@ -20,6 +21,7 @@ const GUEST_ITEMS := ["hp", "sp", "pow"]
 var _pose: Array = []   # latest positions from the host, one per ally then foe
 var _local := false     # playing your own move or dodge: your screen leads
 var _local_foe := -1    # the foe charging at you while you dodge
+var _local_ally := -1   # who is dodging it (you or one of your party members)
 
 
 func _ready() -> void:
@@ -76,6 +78,7 @@ func _build(d: Dictionary) -> void:
 	if d.has("bg"):
 		_load_background(str(d["bg"]))
 	me_index = int(d.get("me", -1))
+	mine = d.get("mine", []).map(func(i): return int(i)) if typeof(d.get("mine")) == TYPE_ARRAY else []
 	for a in d.get("allies", []):
 		var node := _sprite(str(a[1]), Vector2(a[2], a[3]), Vector2.RIGHT)
 		# "you": your own box shows your SP too.
@@ -189,7 +192,7 @@ func _process(delta: float) -> void:
 		if p.size() > 7 and Game.BOSS_FORMS.has(str(p[7])) and node.character_id != str(p[7]):
 			node.character_id = str(p[7])  # the boss changed shape (BOSSES "phase2_form")
 			node.scale = Vector2.ONE * node.battle_scale(SCALE)
-		if i == me_index or (_local and i == allies.size() + _local_foe):
+		if i == me_index or (_local and (i == allies.size() + _local_foe or i == _local_ally)):
 			continue
 		var target := Vector2(p[0], p[1])
 		var to := target - node.position
@@ -208,12 +211,16 @@ func _loop() -> void:
 			continue
 		var d: Dictionary = _queue.pop_front()
 		_local = true
-		if d["kind"] == "turn":
+		var who := int(d.get("who", me_index))
+		if d["kind"] == "turn" and who != me_index and who in mine:
+			await _member_turn(who)
+		elif d["kind"] == "turn":
 			await _my_turn()
 		elif d["kind"] == "dodge":
 			await _dodge(d)
 		_local = false
 		_local_foe = -1
+		_local_ally = -1
 
 
 # --- Your turn -------------------------------------------------------------------
@@ -307,6 +314,78 @@ func _my_turn() -> void:
 	node.facing = Vector2.RIGHT
 
 
+## One of your party members' turns: their move, a target, and the timing
+## here; their game plays it back and deals the damage.
+func _member_turn(who: int) -> void:
+	var k := mine.find(who)
+	var party: Array = Game.player["party"]
+	var member: Dictionary = party[k] if k >= 0 and k < party.size() else {}
+	var move: Dictionary = Game.MOVES.get(Game.move_of(member.get("kind", "partner"), str(member.get("id", ""))), {})
+	var a: Dictionary = allies[who]
+	if move.is_empty():
+		Net.send_party({"kind": "act", "move": "wait"})
+		return
+	var commands := [{"label": move["name"], "icon": "hammer", "info": move.get("info", "")}]
+	_set_turn(a)
+	var target_i := -1
+	while true:
+		await blocks.choose(commands, a["node"], true)
+		if over:
+			return
+		var alive := []
+		for i in foes.size():
+			if foes[i]["hp"] > 0:
+				alive.append(i)
+		alive.sort_custom(func(x, y): return foes[x]["node"].position.x < foes[y]["node"].position.x)
+		if alive.size() <= 1:
+			target_i = alive[0] if alive.size() == 1 else -1
+			break
+		message.text = "Pick a target."
+		var pick := await targets.choose(alive.map(func(i): return {"node": foes[i]["node"], "label": foes[i]["name"]}))
+		if over:
+			return
+		if pick >= 0:
+			target_i = alive[pick]
+			break
+	_set_turn({})
+	message.text = move["name"] + "!"
+	if target_i < 0:
+		Net.send_party({"kind": "act", "move": "wait"})
+		return
+	var result: String = await member_hits(move, int(member.get("pow", 1)), int(foes[target_i]["def"]),
+		func(): return await _timing_bar(1.0, "hammer_green"))
+	Net.send_party({"kind": "act", "move": "partner", "target": target_i, "hits": _last_hits, "rating": result})
+	_show_rating(result)
+
+
+var _last_hits: Array = []
+
+
+## Rates a party member's move with timing bars and works out its hits
+## (into _last_hits) the way battle.gd's _partner_move does; returns the
+## rating. `bar` plays one timing bar.
+func member_hits(move: Dictionary, pow: int, target_def: int, bar: Callable) -> String:
+	var power: int = pow + int(move.get("bonus", 0))
+	var extra: int = target_def if move.get("ignore_def", false) else 0
+	_last_hits = []
+	var result: String = await bar.call()
+	match move["kind"]:
+		"blast":
+			_last_hits = [maxi(0, power + {"Excellent": 2, "Good": 0, "Miss": -1}[result])]
+		"multi":
+			_last_hits = [maxi(0, power - 1 + {"Excellent": 2, "Good": 1, "Miss": 0}[result])]
+			while result != "Miss" and _last_hits.size() < int(move.get("hits", 2)):
+				result = await bar.call()
+				_last_hits.append(maxi(0, power - 1 + {"Excellent": 2, "Good": 1, "Miss": 0}[result]))
+		"stomp":
+			_last_hits = [power]
+			if result != "Miss":
+				_last_hits.append(power + (1 if result == "Excellent" else 0))
+		_:  # tackle, throw
+			_last_hits = [power + extra + {"Excellent": 2, "Good": 1, "Miss": 0}[result]]
+	return result
+
+
 ## Can you use item `id` on yourself right now, in your partner's battle?
 func _guest_usable(id: String) -> bool:
 	var item: Dictionary = Game.ITEMS[id]
@@ -381,13 +460,22 @@ func _dodge(d: Dictionary) -> void:
 		Net.send_party({"kind": "dodged", "ok": false})
 		return
 	_local_foe = i
+	# "who": you, or one of your party members (you jump for them, as in
+	# your own battles).
+	var who := int(d.get("who", me_index))
+	if not (who == me_index or who in mine):
+		who = me_index
+	_local_ally = who
 	var fnode: CharacterSprite = foes[i]["node"]
-	var node: CharacterSprite = allies[me_index]["node"]
+	var node: CharacterSprite = allies[who]["node"]
 	var start: Vector2 = foes[i]["home"]
 	var contact := Vector2(node.position.x + 8, node.position.y)
 	var duration := clampf(float(d.get("time", 0.7)), 0.3, 1.2)
-	_say("%s charges at you! Press {a} to jump!", [foes[i]["name"]])
-	var badge := _show_badge(allies[me_index], "jump")
+	if who == me_index:
+		_say("%s charges at you! Press {a} to jump!", [foes[i]["name"]])
+	else:
+		_say("%s charges at %s! Press {a} to jump!", [foes[i]["name"], allies[who]["name"]])
+	var badge := _show_badge(allies[who], "jump")
 	var t := 0.0
 	while t < duration:
 		await get_tree().process_frame
@@ -426,6 +514,10 @@ func _finish(d: Dictionary) -> void:
 			p["hp"] = clampi(int(d.get("hp", p["hp"])), 1, p["max_hp"])
 			var levels := Game.gain_xp(xp)
 			Quests.on_defeat(foes.map(func(f): return f["type"]), str(p.get("map", "")))
+			var party_hp = d.get("party_hp", [])
+			if typeof(party_hp) == TYPE_ARRAY:  # your party members' HP after the fight
+				for k in mini(party_hp.size(), p["party"].size()):
+					p["party"][k]["hp"] = clampi(int(party_hp[k]), 1, int(p["party"][k]["max_hp"]))
 			if me_index >= 0:  # your box shows your HP and SP after the win
 				allies[me_index]["member"]["hp"] = p["hp"]
 				allies[me_index]["member"]["max_hp"] = p["max_hp"]

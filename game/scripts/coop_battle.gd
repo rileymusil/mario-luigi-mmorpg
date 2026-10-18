@@ -8,17 +8,23 @@ extends "res://scripts/battle.gd"
 ##                 numbers, ratings, flashes...), turn (pick a move), dodge (an
 ##                 enemy is charging at you), end (result + rewards)
 ##   from partner: coop_yes / coop_no, act (their move), dodged
+## The partner brings their own party members too: their game picks those
+## members' moves and dodges for them as well ("turn" / "dodge" say who).
 ## If the partner can't come, doesn't answer or leaves, the battle carries on
 ## without them.
 
 const ANSWER_WAIT := 3.0
 const TURN_WAIT := 40.0
 const DODGE_WAIT := 6.0
-const EXTRA_SPOT := Vector2(96, 124)
+## Where everyone stands once the partner joins: your party in front, theirs
+## a step behind (you / they first, then the party members).
+const HOST_SPOTS := [Vector2(140, 176), Vector2(92, 166), Vector2(50, 182)]
+const GUEST_SPOTS := [Vector2(152, 124), Vector2(104, 114), Vector2(58, 130)]
 const SYNC_RATE := 12.0  # sync messages a second at most (the server allows 30)
 const MAX_FX := 12       # effects per sync message; the rest go in the next
 
 var guest := {}  # the partner's battle actor, once they've joined
+var guest_party: Array = []  # their party members' battle actors
 var _inbox: Array = []
 var _last_sync := ""
 var _sync_timer := 0.0
@@ -41,18 +47,27 @@ func _ready() -> void:
 
 
 func _add_guest(info: Dictionary) -> void:
-	var node := CharacterSprite.new()
 	var character := str(info.get("id", "mario"))
-	node.character_id = character if Game.CHARACTERS.has(character) else "mario"
-	node.facing = Vector2.RIGHT
-	node.scale = Vector2(SCALE, SCALE)
-	node.position = _spot(ALLY_SPOTS[allies.size()] if allies.size() < ALLY_SPOTS.size() else EXTRA_SPOT)
-	stage.add_child(node)
-	var member := {"name": str(info.get("name", "Partner")), "max_hp": maxi(1, int(info.get("max_hp", 10))),
-		"hp": maxi(1, int(info.get("hp", 10))), "pow": int(info.get("pow", 1)), "def": int(info.get("def", 0))}
-	guest = {"name": member["name"], "node": node, "member": member, "ally": true, "home": node.position,
-		"pow": member["pow"], "def": member["def"], "remote": true}
-	allies.append(guest)
+	guest = _add_remote(info, character if Game.CHARACTERS.has(character) else "mario", "Partner")
+	# Their party members (older games don't send any).
+	var party = info.get("party", [])
+	if typeof(party) == TYPE_ARRAY:
+		for m in party.slice(0, Game.MAX_PARTY):
+			if typeof(m) != TYPE_DICTIONARY:
+				continue
+			var id := str(m.get("id", ""))
+			var kind := str(m.get("kind", "partner"))
+			if not (Game.PARTNERS.has(id) or Game.ENEMIES.has(id) or Game.BOSSES.has(id)):
+				continue
+			var a := _add_remote(m, id, "Partner")
+			a["move"] = Game.move_of(kind, id)
+			guest_party.append(a)
+	var mine := allies.filter(func(a): return not a.get("remote", false))
+	for team in [[mine, HOST_SPOTS], [[guest] + guest_party, GUEST_SPOTS]]:
+		for i in mini(team[0].size(), team[1].size()):
+			var a: Dictionary = team[0][i]
+			a["home"] = _spot(team[1][i])
+			a["node"].position = a["home"]
 	var ally_list := []
 	for a in allies:
 		ally_list.append([a["name"], a["node"].character_id, a["home"].x, a["home"].y])
@@ -61,9 +76,27 @@ func _add_guest(info: Dictionary) -> void:
 		foe_list.append([f["name"], f["type"], f["home"].x, f["home"].y])
 	var bg: String = Game.pending_battle.get("battle_bg",
 		Game.MAPS.get(Game.player["map"], {}).get("battle_bg", DEFAULT_BACKGROUND))
-	Net.send_party({"kind": "setup", "allies": ally_list, "foes": foe_list, "me": allies.size() - 1, "bg": bg})
+	Net.send_party({"kind": "setup", "allies": ally_list, "foes": foe_list, "me": allies.find(guest),
+		"mine": guest_party.map(func(m): return allies.find(m)), "bg": bg})
 	_refresh()
 	_send_sync(true)
+
+
+## A battle actor for the partner or one of their party members, played by
+## their game.
+func _add_remote(info: Dictionary, sprite_id: String, fallback: String) -> Dictionary:
+	var node := CharacterSprite.new()
+	node.character_id = sprite_id
+	node.facing = Vector2.RIGHT
+	node.scale = Vector2(SCALE, SCALE)
+	stage.add_child(node)
+	var member := {"name": str(info.get("name", fallback)).left(16), "max_hp": clampi(int(info.get("max_hp", 10)), 1, 999),
+		"hp": clampi(int(info.get("hp", 10)), 1, 999), "pow": clampi(int(info.get("pow", 1)), 0, 99),
+		"def": clampi(int(info.get("def", 0)), 0, 99)}
+	var a := {"name": member["name"], "node": node, "member": member, "ally": true, "home": node.position,
+		"pow": member["pow"], "def": member["def"], "remote": true}
+	allies.append(a)
+	return a
 
 
 # --- The partner's turn ----------------------------------------------------------
@@ -76,7 +109,7 @@ func _ally_turn(a: Dictionary) -> String:
 		return ""
 	message.text = "%s's turn" % a["name"]
 	_inbox.clear()
-	Net.send_party({"kind": "turn"})
+	Net.send_party({"kind": "turn", "who": allies.find(a)})
 	var act := await _await_party(["act"], TURN_WAIT)
 	if act.is_empty():
 		message.text = "%s is away." % a["name"]
@@ -93,14 +126,57 @@ func _ally_turn(a: Dictionary) -> String:
 			_replaying = false
 			_refresh()
 			await _wait(0.6)
-		"jump", "special":
+		"jump", "special", "partner":
 			var alive := _alive(foes)
 			if alive.is_empty():
 				return ""
 			var i := int(act.get("target", 0))
 			var target: Dictionary = foes[i] if i >= 0 and i < foes.size() and _hp(foes[i]) > 0 else alive[0]
-			await _remote_attack(a, target, act)
+			if act.get("move") == "partner":
+				await _remote_partner_move(a, target, act)
+			else:
+				await _remote_attack(a, target, act)
 	return ""
+
+
+## Plays one of the partner's party members' moves (they did the timing on
+## their screen) and deals its damage. Its numbers show on both screens.
+func _remote_partner_move(a: Dictionary, target: Dictionary, act: Dictionary) -> void:
+	var move: Dictionary = Game.MOVES.get(a.get("move", ""), {})
+	if move.is_empty():
+		return
+	var node: CharacterSprite = a["node"]
+	var hits: Array = act.get("hits", [])
+	var result := str(act.get("rating", "Miss"))
+	if not result in ["Excellent", "Good", "Miss"]:
+		result = "Miss"
+	message.text = move["name"] + "!"
+	var hit: Array = [target]
+	match move["kind"]:
+		"blast":
+			hit = _alive(foes)
+			for f in hit:
+				_burst(_middle(f), Color(1.0, 0.6, 0.15), 22.0)
+				_damage(f, clampi(int(hits[0]) if hits.size() > 0 else 0, 0, 99))
+		"throw":
+			await _projectile(_middle(a) + Vector2(10, 0), _middle(target), move.get("color", Color.WHITE))
+			for h in hits.slice(0, 1):
+				_damage(target, clampi(int(h), 0, 99))
+		_:
+			var stand: Vector2 = target["node"].position + Vector2(-22, 0)
+			await _walk(node, stand, 220.0)
+			for h in hits.slice(0, maxi(2, int(move.get("hits", 1)))):  # a stomp lands twice
+				if _hp(target) <= 0:
+					break
+				_damage(target, clampi(int(h), 0, 99))
+				await _wait(0.25)
+			await _walk(node, a["home"], 160.0)
+			node.facing = Vector2.RIGHT
+	_replaying = true
+	_show_rating(result)  # their screen showed its own
+	_replaying = false
+	_move_extras(move, result, hit)
+	await _wait(0.4)
 
 
 ## Plays the partner's move on this screen and deals its damage.
@@ -134,10 +210,11 @@ func _remote_attack(a: Dictionary, target: Dictionary, act: Dictionary) -> void:
 ## The partner went away: they sit out the rest of the battle. (Still listed
 ## in `allies`, since this can happen while battle.gd loops over it.)
 func _drop_guest() -> void:
-	if guest.is_empty() or _hp(guest) <= 0:
+	if guest.is_empty() or not guest["node"].visible:
 		return
-	guest["member"]["hp"] = 0
-	guest["node"].visible = false
+	for a in [guest] + guest_party:
+		a["member"]["hp"] = 0
+		a["node"].visible = false
 	message.text = "%s left the battle." % guest["name"]
 	_refresh()
 
@@ -178,7 +255,7 @@ func _charge(f: Dictionary, target: Dictionary, local: bool) -> void:
 	var duration := randf_range(0.55, 0.85)
 	if not local:
 		_inbox.clear()
-		Net.send_party({"kind": "dodge", "foe": foes.find(f), "time": duration})
+		Net.send_party({"kind": "dodge", "foe": foes.find(f), "time": duration, "who": allies.find(target)})
 	var start := fnode.position
 	var contact := Vector2(node.position.x + 8, node.position.y)
 	var t := 0.0
@@ -237,7 +314,7 @@ func _win() -> void:
 		xp_earned += xp_bonus
 	_send_sync(true)  # the last hit and HP first
 	Net.send_party({"kind": "end", "result": "won", "xp": xp_earned, "bonus": xp_bonus, "coins": coins_earned,
-		"hp": _hp(guest) if not guest.is_empty() else 0})
+		"hp": _hp(guest) if not guest.is_empty() else 0, "party_hp": guest_party.map(func(a): return _hp(a))})
 	await super()
 
 

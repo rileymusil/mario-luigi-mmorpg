@@ -71,7 +71,7 @@ var _hint_shown := ""
 @onready var background: TextureRect = $Background
 @onready var stage: Node2D = $Stage
 @onready var message: Label = $UI/MessageBox/Message
-@onready var party_bar: HBoxContainer = $UI/PartyBar
+@onready var party_bar: HFlowContainer = $UI/PartyBar  # wraps onto a 2nd row when it must (co-op)
 @onready var foe_box: PanelContainer = $UI/FoeBox
 @onready var foe_list: VBoxContainer = $UI/FoeBox/FoeList
 @onready var rating: Label = $UI/Rating
@@ -121,6 +121,7 @@ func _setup_presentation(map_id: String) -> void:
 	blocks.highlighted.connect(func(info: String): _say(info))
 	TouchControls.active_changed.connect(_on_touch_mode_changed)
 	get_tree().root.size_changed.connect(_layout_battle)
+	party_bar.sort_children.connect(_party_bar_to_bottom)
 	_layout_battle()
 	_refresh()
 
@@ -1840,15 +1841,39 @@ func _wait(seconds: float) -> void:
 func _place_party_bar() -> void:
 	var safe := Game.get_safe_rect()
 	# Narrow screens (a phone held upright): drop the hearts so the boxes fit.
+	# Still too wide (a co-op battle with both parties): two rows.
+	var width := 0.0
 	for squeeze in [false, true]:
 		for a in allies:
 			if a.has("heart"):
 				a["heart"].visible = not squeeze
-		party_bar.reset_size()
-		if party_bar.get_combined_minimum_size().x <= safe.size.x - 4.0:
+		width = _party_bar_width()
+		if width <= safe.size.x - 4.0:
 			break
+	if width > safe.size.x - 4.0:
+		var widest := 0.0
+		for box in party_bar.get_children():
+			widest = maxf(widest, box.get_combined_minimum_size().x)
+		width = ceilf(width / 2.0) + widest  # half of them on each row
+	party_bar.size.x = minf(width, safe.size.x - 4.0)
 	party_bar.position.x = roundf(safe.position.x + (safe.size.x - party_bar.size.x) / 2.0)
-	party_bar.position.y = safe.end.y - party_bar.size.y - 2.0
+	_party_bar_to_bottom()
+
+
+## Sits the bar on the bottom edge. Again each time it re-flows (its height
+## is only known once the boxes are laid out at the new width).
+func _party_bar_to_bottom() -> void:
+	party_bar.size.y = 0.0  # as short as its rows allow
+	party_bar.position.y = Game.get_safe_rect().end.y - party_bar.size.y - 2.0
+
+
+## How wide the HP boxes are side by side, in one row.
+func _party_bar_width() -> float:
+	var width := 0.0
+	var boxes := party_bar.get_children()
+	for box in boxes:
+		width += box.get_combined_minimum_size().x
+	return width + 4.0 * maxi(0, boxes.size() - 1)
 
 
 ## One navy box per ally on the bottom bar: face, heart and HP (SP for you).

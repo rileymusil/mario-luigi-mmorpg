@@ -257,7 +257,9 @@ func _on_party_message(d: Dictionary) -> void:
 	Net.party_inbox.clear()
 	Net.hold_party = true
 	Net.send_party({"kind": "coop_yes", "name": Game.username(), "id": p["character"],
-		"hp": p["hp"], "max_hp": p["max_hp"], "pow": p["pow"], "def": p["def"]})
+		"hp": p["hp"], "max_hp": p["max_hp"], "pow": p["pow"], "def": p["def"],
+		"party": p["party"].map(func(m): return {"name": m["name"], "id": m["id"], "kind": m.get("kind", "partner"),
+			"hp": m["hp"], "max_hp": m["max_hp"], "pow": m["pow"], "def": m["def"]})})
 	_world.busy = true
 	Game.join_coop(d, _player.position)
 
