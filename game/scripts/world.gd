@@ -57,6 +57,7 @@ var _keys_locked := true
 var _unlocked_frame := -1
 const WORLD_KEYS: Array[StringName] = [&"action", &"talk", &"menu"]
 var online: OnlinePlayers # other players on this map, see online_players.gd
+var dungeon: Dungeon       # the map's puzzle pieces (Teehee Ruins), if it has any
 
 @onready var actors: Node2D = $Actors
 @onready var camera: Camera2D = $Camera2D
@@ -85,6 +86,12 @@ func _ready() -> void:
 	height = MapProps.load_height(map_id, Vector2i(map_size))
 	props.load_props(map_id)
 	props.build(actors, art)
+	if map_info.has("puzzle"):
+		if Game.player["position"] == null and Game.player["spawn"] == map_info.get("puzzle_reset", ""):
+			Game.puzzle_state.clear()  # walked in from outside: the ruins start fresh
+		dungeon = Dungeon.new()
+		add_child(dungeon)
+		dungeon.setup(self, map_id, map_info["puzzle"])
 	rebuild_collision()
 	_spawn_bosses()  # before anyone else: they stand on solid feet (see rebuild_collision)
 	_fit_camera()
@@ -197,6 +204,8 @@ func rebuild_collision() -> void:
 	if solid.get_format() != Image.FORMAT_L8:
 		solid.convert(Image.FORMAT_L8)
 	props.paint_feet(solid)
+	if dungeon:
+		dungeon.paint(solid)
 	_paint_boss_feet()
 
 
@@ -424,6 +433,8 @@ func _process(delta: float) -> void:
 		var npc = _nearest_npc()
 		if npc != null:
 			_talk_to(npc)
+		elif dungeon and not dungeon.nearest(player.position).is_empty():
+			dungeon.use(dungeon.nearest(player.position))
 	elif Input.is_action_just_pressed("menu"):
 		_pause_menu()
 
@@ -628,6 +639,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	var npc: Variant = _nearest_npc()
 	if npc == null:
+		# A puzzle piece (see Dungeon): tapping the bubble works it.
+		if dungeon and not dungeon.nearest(player.position).is_empty() \
+				and talk_bubble.get_global_rect().grow(6).has_point(event.position):
+			get_viewport().set_input_as_handled()
+			Pointer.tap_action(&"talk")
 		return
 	var node: CharacterSprite = npc["node"]
 	var feet := node.get_global_transform_with_canvas().origin
@@ -1444,14 +1460,19 @@ func _update_hud() -> void:
 	status.position = Vector2(safe.position.x + 4.0, safe.position.y + 3.0)
 
 	var npc: Variant = null if busy else _nearest_npc()
+	var piece: Dictionary = {} if busy or npc != null or dungeon == null else dungeon.nearest(player.position)
 	if busy:
 		hint.text = ""
 	elif npc != null:
 		hint.text = "B or tap: Talk" if TouchControls.active else "X: Talk"
+	elif not piece.is_empty():
+		hint.text = ("B: " if TouchControls.active else "X: ") + dungeon.verb(piece)
 	else:
 		hint.text = ("A: Jump   B: Talk" if TouchControls.active else "Z: Jump   X: Talk   Enter: Menu") \
 			+ ("" if map_info["safe"] or Game.is_portrait() else "   Jump on foes first!")
 	var hint_box: Control = hint.get_parent()
+	if dungeon and not busy and dungeon.keys() > 0:
+		hint.text += "   Keys: %d" % dungeon.keys()
 	hint_box.visible = hint.text != ""
 	hint_box.reset_size()
 	hint_box.position.x = roundf(safe.position.x + (safe.size.x - hint_box.size.x) / 2.0)
@@ -1473,10 +1494,11 @@ func _update_hud() -> void:
 	menu.position = Vector2(safe.end.x - menu.size.x - 4.0, safe.position.y + 24.0)
 
 	# A "!" bubble pops up over whoever you can talk to.
-	talk_bubble.visible = npc != null
-	if npc != null:
-		var node: CharacterSprite = npc["node"]
-		var head := node.get_global_transform_with_canvas().origin - Vector2(0, node.height() + 6)
+	talk_bubble.visible = npc != null or not piece.is_empty()
+	if npc != null or not piece.is_empty():
+		var node: Node2D = npc["node"] if npc != null else piece["node"]
+		var tall: float = node.height() if npc != null else piece["size"].y
+		var head := node.get_global_transform_with_canvas().origin - Vector2(0, tall + 6)
 		var bob := roundf(absf(sin(Time.get_ticks_msec() / 160.0)) * 2.0)
 		talk_bubble.position = (head - Vector2(talk_bubble.size.x / 2.0, talk_bubble.size.y + bob)).round()
 

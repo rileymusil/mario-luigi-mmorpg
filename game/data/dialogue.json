@@ -338,7 +338,8 @@
       {"random": true, "say": [
         "Halt! The Twilight Meadow is no place for beginners. The monsters here are much stronger. Level 10 at least, I'd say!",
         "South of here, the woods are dark as night. Only the toughest heroes, level 18 and up, come back from the Shadow Woods.",
-        "Seen a Gold Goomba? They say they're tough as nails, but they carry a fortune in coins."
+        "Seen a Gold Goomba? They say they're tough as nails, but they carry a fortune in coins.",
+        "Past the Shadow Woods' east path lies Teehee Valley. Only heroes of level 30 or more should go there."
       ]}
     ]
   },
@@ -390,6 +391,17 @@
     "name": "Tower Toad",
     "branches": [
       {"say": ["Phew, you made it this far! This tower is full of the toughest bosses around.", "Want to catch your breath before the next fight?"], "choices": [{"text": "Rest", "do": "heal", "done": "You had a good rest. HP and SP are full!"}, {"text": "No thanks"}]}
+    ]
+  },
+  "ruins_explorer": {
+    "name": "Explorer Toad",
+    "branches": [
+      {"random": true, "say": [
+        "Behind that gate are the Teehee Ruins! Smash the rocks, hit the switches, find the keys... and a big prize waits at the top.",
+        "Hit a switch and watch the planks move. Some switches move more than one gate, so think before you swing!",
+        "The ? blocks in the ruins hold Ruins Keys. The stone faces won't budge without one.",
+        "The prize at the top of the ruins fills up again every day. Leave the ruins and the puzzles start over."
+      ]}
     ]
   }
 }

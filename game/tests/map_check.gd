@@ -46,6 +46,12 @@ func _check(map_id: String, image_dir: String) -> void:
 	get_tree().root.add_child.call_deferred(w)
 	await get_tree().process_frame
 	await get_tree().process_frame
+	if w.dungeon:
+		# The Teehee Ruins: walk them with every puzzle solved (rocks smashed,
+		# gates open, locks gone); check_scripts checks the puzzles themselves.
+		for piece in w.dungeon.pieces:
+			Game.puzzle_state[map_id][piece["def"]["id"]] = true
+		w.rebuild_collision()
 	var size: Vector2i = Vector2i(w.map_size)
 	var cols := size.x / GRID
 	var rows := size.y / GRID
