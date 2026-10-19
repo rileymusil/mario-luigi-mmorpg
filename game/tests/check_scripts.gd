@@ -69,7 +69,76 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("check_scripts: both floors of the Teehee Ruins can be solved")
+	var battle_errors := await _check_battle_fun()
+	if not battle_errors.is_empty():
+		printerr("check_scripts: battle: ", "; ".join(battle_errors))
+		get_tree().quit(1)
+		return
+	print("check_scripts: enemy attacks can be dodged, combos and ranks add up")
 	get_tree().quit(0)
+
+
+## Enemy attack kinds (battle.gd _foe_attack): each one can be dodged by
+## jumping as it hits, and dodges build the combo; standing still gets hit and
+## ends it. Then the combo's damage bonus and the rank thresholds.
+func _check_battle_fun() -> Array:
+	var errors: Array = []
+	Game.new_player("mario", "CI")
+	Game.pending_battle = {"enemies": ["shadow_guy"], "key": "test"}
+	var battle: Node = load(Game.BATTLE_SCENE).instantiate()
+	get_tree().root.add_child(battle)
+	battle.blocks.process_mode = Node.PROCESS_MODE_DISABLED  # nobody picks a command
+	await get_tree().create_timer(0.3).timeout
+	var f: Dictionary = battle.foes[0]
+	var me: Dictionary = battle.allies[0]
+	f["pow"] = 1
+	var presser := {"on": true, "last": -1}
+	var press := func():
+		while presser["on"]:
+			await get_tree().process_frame
+			var at: int = battle.hit_at
+			if at > 0 and at != presser["last"] and Time.get_ticks_msec() >= at - 130:
+				presser["last"] = at
+				var ev := InputEventAction.new()
+				ev.action = &"action"
+				ev.pressed = true
+				Input.parse_input_event(ev)
+				await get_tree().process_frame
+				await get_tree().process_frame
+				var up := InputEventAction.new()
+				up.action = &"action"
+				up.pressed = false
+				Input.parse_input_event(up)
+	press.call()
+	var expected := 0
+	for kind in ["charge", "feint", "double", "throw"]:
+		var hp: int = Game.player["hp"]
+		await battle.call("_foe_" + kind, f, me)
+		expected += 2 if kind == "double" else 1
+		if Game.player["hp"] != hp:
+			errors.append("a well-timed jump didn't dodge the %s" % kind)
+		await get_tree().create_timer(0.3).timeout
+	if battle.combo != expected:
+		errors.append("combo is %d after %d dodges" % [battle.combo, expected])
+	presser["on"] = false
+	await get_tree().create_timer(0.1).timeout
+	await battle._foe_charge(f, me)
+	if battle.hurt <= 0 or battle.combo != 0:
+		errors.append("standing still didn't take the hit and end the combo")
+	battle.combo = 3
+	f["def"] = 0
+	f["hp"] = 999
+	f["max_hp"] = 999
+	var dealt: int = battle._damage(f, 10)
+	if dealt != 13:
+		errors.append("a x3 combo hit for %d, not 13" % dealt)
+	for c in [[0.0, 0, "S"], [0.1, 1, "A"], [0.3, 3, "B"], [0.9, 0, "C"]]:
+		if battle.grade_for(c[0], c[1]) != c[2]:
+			errors.append("rank for %s should be %s" % [c, c[2]])
+	Engine.time_scale = 1.0
+	battle.queue_free()
+	await get_tree().process_frame
+	return errors
 
 
 ## The Teehee Ruins (Dungeon): every piece stands on walkable ground, the

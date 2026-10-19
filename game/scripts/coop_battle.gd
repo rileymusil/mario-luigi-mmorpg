@@ -334,7 +334,10 @@ func _foe_turn(f: Dictionary) -> void:
 		await _boss_turn(f)  # battle.gd; attacks on the partner go to _boss_remote
 		return
 	var target: Dictionary = _alive(allies).pick_random()
-	await _charge(f, target, not target.get("remote", false))
+	if target.get("remote", false):
+		await _charge(f, target, false)  # their game plays the dodge
+	else:
+		await _foe_attack(f, target)  # battle.gd: charge, feint, double or throw
 
 
 ## Like battle.gd's enemy charge. `local`: Z (A on touch) jumps here;
@@ -404,6 +407,7 @@ func _mirror_fx(fx_entry: Array) -> void:
 
 func _win() -> void:
 	_result = "won"
+	await _grade()  # before the XP is sent, so the partner gets the rank bonus too
 	if not guest.is_empty():
 		# Fighting together pays half again as much XP, for both of you.
 		xp_bonus = xp_earned / 2
