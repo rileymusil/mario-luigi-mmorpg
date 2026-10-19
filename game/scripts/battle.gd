@@ -68,6 +68,23 @@ var _hint := ""         # the hint in the message box, before key names went in
 var _hint_args: Array = []
 var _hint_shown := ""
 
+## Combo meter: each Excellent and each dodge adds one; a Miss or a hit taken
+## ends it. From x2 your hits do COMBO_STEP more damage per step (up to
+## COMBO_MAX steps) and every COMBO_SP_EVERY-th step gives you 1 SP back.
+## The grade at the end of a won battle (S, A, B, C, see _grade) pays
+## GRADE_BONUS more XP and coins. Normal and co-op battles only (_extras).
+const COMBO_STEP := 0.1
+const COMBO_MAX := 5
+const COMBO_SP_EVERY := 3
+const GRADE_BONUS := {"S": 0.5, "A": 0.25, "B": 0.1, "C": 0.0}
+var combo := 0
+var best_combo := 0
+var presses := {"Excellent": 0, "Good": 0, "Miss": 0}
+var hurt := 0           # damage your side took
+var grade := ""         # set once the battle is won (see _grade)
+var _combo_label: Label
+var _flash_rect: ColorRect
+
 @onready var background: TextureRect = $Background
 @onready var stage: Node2D = $Stage
 @onready var message: Label = $UI/MessageBox/Message
@@ -122,6 +139,13 @@ func _setup_presentation(map_id: String) -> void:
 	TouchControls.active_changed.connect(_on_touch_mode_changed)
 	get_tree().root.size_changed.connect(_layout_battle)
 	party_bar.sort_children.connect(_party_bar_to_bottom)
+	if _extras():
+		_combo_label = Label.new()
+		_combo_label.theme_type_variation = &"OutlineLabel"
+		_combo_label.add_theme_font_size_override("font_size", 16)
+		_combo_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+		_combo_label.visible = false
+		$UI.add_child(_combo_label)
 	_layout_battle()
 	_refresh()
 
@@ -158,6 +182,8 @@ func _layout_battle() -> void:
 
 	rating.position.x = roundf((vp.x - rating.size.x) / 2.0)
 	rating.position.y = roundf(vp.y * 0.28)
+	if _combo_label:
+		_combo_label.position = Vector2(msg_box.position.x + 4.0, msg_box.position.y + msg_box.size.y + 2.0)
 
 	blocks.size = vp
 	targets.size = vp
@@ -677,6 +703,10 @@ func _ask(target: Dictionary) -> void:
 
 func _damage(target: Dictionary, amount: int) -> int:
 	var dmg := maxi(1, amount - int(target["def"]))
+	var boosted := false
+	if _extras() and not target["ally"] and combo >= 2:
+		dmg += ceili(dmg * COMBO_STEP * mini(combo, COMBO_MAX))
+		boosted = true
 	var was_up := _hp(target) > 0
 	_set_hp(target, _hp(target) - dmg)
 	_flash(target["node"])
@@ -685,8 +715,17 @@ func _damage(target: Dictionary, amount: int) -> int:
 	var rtw := create_tween()
 	rtw.tween_property(node, "position:x", node.position.x + recoil_dir, 0.05)
 	rtw.tween_property(node, "position:x", node.position.x, 0.07)
-	_shake(2.5, 0.12)
-	_popup(target["node"].position + Vector2(0, -50), str(dmg))
+	var ko: bool = was_up and _hp(target) <= 0
+	_shake(4.0 if target["ally"] or ko else 2.5, 0.18 if ko else 0.12)
+	# A ! makes the number gold and bigger (see _popup): combo hits and finishing blows.
+	_popup(target["node"].position + Vector2(0, -50), str(dmg) + ("!" if boosted or (ko and not target["ally"]) else ""))
+	if _extras():
+		_burst(_middle(target), Color(1.0, 0.95, 0.6), 9.0 if dmg < 10 else 14.0)
+		if target["ally"]:
+			hurt += dmg
+			_combo_break()
+		elif ko:
+			_ko_flash()
 	if not target["ally"] and target["hp"] <= 0 and was_up:  # rewards once, not per extra hit
 		var e: Dictionary = Game.foe_info(target["type"])
 		var share := 2 if target.get("rematch", false) else 1
@@ -1021,42 +1060,255 @@ func _foe_turn(f: Dictionary) -> void:
 	if f.get("boss", false):
 		await _boss_turn(f)
 		return
-	var target: Dictionary = _alive(allies).pick_random()
-	var node: CharacterSprite = target["node"]
-	_say("%s charges at %s! Press {a} to jump!", [f["name"], target["name"]])
-	var badge := _show_badge(target, "jump")
+	await _foe_attack(f, _alive(allies).pick_random())
+
+
+# --- Enemy attacks ---------------------------------------------------------------
+# An enemy picks one of its "attacks" (Game.ENEMIES) each turn. All of them are
+# dodged the same way, by being in the air when the hit lands (so pressing too
+# early or too late both fail), but each has its own rhythm to read.
+
+const THROW_COLORS := {"shell_toss": Color(0.35, 0.8, 0.35), "shell_spin": Color(0.4, 0.6, 1.0),
+	"bone_toss": Color(0.95, 0.95, 0.9)}
+
+
+func _foe_attack(f: Dictionary, target: Dictionary) -> void:
+	var kinds: Array = Game.foe_info(f["type"]).get("attacks", ["charge"])
+	match kinds.pick_random():
+		"feint":
+			await _foe_feint(f, target)
+		"double":
+			await _foe_double(f, target)
+		"throw":
+			await _foe_throw(f, target)
+		_:
+			await _foe_charge(f, target)
+
+
+## The foe shakes in place before it moves.
+func _wind_up(f: Dictionary, times: int) -> void:
 	var fnode: CharacterSprite = f["node"]
-	for i in 6:
+	for i in times:
 		fnode.position.x = f["home"].x + (2.0 if i % 2 == 0 else -2.0)
 		await _wait(0.07)
 	fnode.position = f["home"]
-	# Whether the target is in the air at contact decides the dodge, so
-	# pressing too early or too late both fail.
+
+
+## The foe runs to `to` in `duration` while {a} jumps the target. True if the
+## target was in the air when it got there.
+func _rush(f: Dictionary, target: Dictionary, to: Vector2, duration: float) -> bool:
+	var node: CharacterSprite = target["node"]
+	var fnode: CharacterSprite = f["node"]
 	var start := fnode.position
-	var contact := Vector2(node.position.x + 8, node.position.y)
-	var t := 0.0
-	var duration := randf_range(0.55, 0.85)
-	while t < duration:
-		await get_tree().process_frame
-		t = minf(t + get_process_delta_time(), duration)
-		fnode.position = start.lerp(contact, t / duration)
-		fnode.move_velocity = Vector2.LEFT * 100
-		if Input.is_action_just_pressed("action"):
-			node.jump()
-	badge.queue_free()
-	if node.jump_height > 8.0:
+	hit_at = Time.get_ticks_msec() + int(duration * 1000.0)
+	await _dodge_window(duration, node, func(k: float):
+		fnode.position = start.lerp(to, k)
+		fnode.move_velocity = Vector2.LEFT * 100)
+	hit_at = -1
+	return node.jump_height > 8.0
+
+
+## A dodge or a hit at the end of a rush.
+func _land(f: Dictionary, target: Dictionary, dodged: bool, power: int) -> void:
+	if dodged:
 		_show_rating("Dodged!")
-		await _slide(fnode, contact + Vector2(-60, 0), 0.25)
 	else:
-		_damage(target, f["pow"])
+		_damage(target, power)
 		_foe_status(f, target)
-		await _slide(fnode, contact + Vector2(20, 0), 0.15)
+
+
+## Back home after an attack.
+func _foe_home(f: Dictionary) -> void:
+	var fnode: CharacterSprite = f["node"]
 	await _wait(0.2)
 	fnode.move_velocity = Vector2.RIGHT * 100
 	await _slide(fnode, f["home"], 0.4)
 	fnode.move_velocity = Vector2.ZERO
 	fnode.facing = Vector2.LEFT
 	await _wait(0.3)
+
+
+func _contact(target: Dictionary) -> Vector2:
+	return Vector2(target["node"].position.x + 8, target["node"].position.y)
+
+
+## Runs straight in.
+func _foe_charge(f: Dictionary, target: Dictionary) -> void:
+	_say("%s charges at %s! Press {a} to jump!", [f["name"], target["name"]])
+	var badge := _show_badge(target, "jump")
+	await _wind_up(f, 6)
+	var contact := _contact(target)
+	var dodged := await _rush(f, target, contact, randf_range(0.55, 0.85))
+	badge.queue_free()
+	_land(f, target, dodged, f["pow"])
+	await _slide(f["node"], contact + (Vector2(-60, 0) if dodged else Vector2(20, 0)), 0.25 if dodged else 0.15)
+	await _foe_home(f)
+
+
+## Creeps halfway, stops for a moment, then dashes: jump for the dash, not the creep.
+func _foe_feint(f: Dictionary, target: Dictionary) -> void:
+	_say("%s creeps toward %s... Wait for it, then {a}!", [f["name"], target["name"]])
+	var badge := _show_badge(target, "jump")
+	await _wind_up(f, 4)
+	var contact := _contact(target)
+	var fnode: CharacterSprite = f["node"]
+	var halfway: Vector2 = fnode.position.lerp(contact, 0.45)
+	await _dodge_window(0.4, target["node"], func(k: float):
+		fnode.position = f["home"].lerp(halfway, k)
+		fnode.move_velocity = Vector2.LEFT * 40)
+	fnode.move_velocity = Vector2.ZERO
+	await _dodge_window(randf_range(0.35, 0.8), target["node"])  # the pause
+	var dodged := await _rush(f, target, contact, randf_range(0.28, 0.4))
+	badge.queue_free()
+	_land(f, target, dodged, f["pow"])
+	await _slide(fnode, contact + (Vector2(-60, 0) if dodged else Vector2(20, 0)), 0.25 if dodged else 0.15)
+	await _foe_home(f)
+
+
+## Hits, hops back and hits again at once: jump each one.
+func _foe_double(f: Dictionary, target: Dictionary) -> void:
+	_say("%s attacks twice! Press {a} for each hit!", [f["name"]])
+	var badge := _show_badge(target, "jump")
+	await _wind_up(f, 6)
+	var contact := _contact(target)
+	var fnode: CharacterSprite = f["node"]
+	var power := ceili(f["pow"] * 0.7)
+	var dodged := await _rush(f, target, contact, randf_range(0.5, 0.7))
+	_land(f, target, dodged, power)
+	await _slide(fnode, contact + Vector2(48, 0), 0.22)
+	if _hp(target) > 0:
+		dodged = await _rush(f, target, contact, randf_range(0.3, 0.45))
+		_land(f, target, dodged, power)
+	badge.queue_free()
+	await _slide(fnode, contact + (Vector2(-60, 0) if dodged else Vector2(20, 0)), 0.25 if dodged else 0.15)
+	await _foe_home(f)
+
+
+## Sends something rolling along the ground: jump over it as it reaches you.
+func _foe_throw(f: Dictionary, target: Dictionary) -> void:
+	_say("%s throws something at %s! Press {a} to jump over it!", [f["name"], target["name"]])
+	var badge := _show_badge(target, "jump")
+	await _wind_up(f, 6)
+	var color: Color = THROW_COLORS.get(Game.foe_info(f["type"]).get("move", ""), Color(1.0, 0.55, 0.2))
+	var ball := _circle(6.0, color.darkened(0.55))
+	ball.add_child(_circle(4.5, color))
+	ball.z_index = 10
+	stage.add_child(ball)
+	var from: Vector2 = f["node"].position + Vector2(-14, -7)
+	var to: Vector2 = target["node"].position + Vector2(2, -7)
+	var duration := randf_range(0.6, 1.0)
+	_mirror_fx(["proj", roundi(from.x), roundi(from.y), roundi(to.x), roundi(to.y), color.to_html(false)])
+	hit_at = Time.get_ticks_msec() + int(duration * 1000.0)
+	await _dodge_window(duration, target["node"], func(k: float):
+		ball.position = from.lerp(to, k)
+		ball.rotation = -k * TAU * 3.0)
+	hit_at = -1
+	var dodged: bool = target["node"].jump_height > 8.0
+	badge.queue_free()
+	_land(f, target, dodged, f["pow"])
+	var t := create_tween()
+	t.tween_property(ball, "position", to + Vector2(-80, 0) if dodged else to + Vector2(10, -10), 0.25)
+	t.parallel().tween_property(ball, "modulate:a", 0.0, 0.25)
+	t.tween_callback(ball.queue_free)
+	await _wait(0.5)
+
+
+# --- Combo, grade and hit effects --------------------------------------------------
+
+## Combo, grade and the extra hit effects are on in normal and co-op battles,
+## not in PvP (pvp_battle.gd) or on a co-op partner's screen (coop_guest.gd,
+## which only shows the host's battle).
+func _extras() -> bool:
+	var path: String = get_script().resource_path
+	return not path.ends_with("pvp_battle.gd") and not path.ends_with("coop_guest.gd")
+
+
+func _count_rating(word: String) -> void:
+	if presses.has(word):
+		presses[word] += 1
+	if word == "Excellent" or word == "Dodged!":
+		_combo_up()
+	elif word == "Miss":
+		_combo_break()
+
+
+func _combo_up() -> void:
+	combo += 1
+	best_combo = maxi(best_combo, combo)
+	if combo % COMBO_SP_EVERY == 0 and Game.player["sp"] < Game.player["max_sp"]:
+		Game.player["sp"] += 1
+		_refresh()
+	_show_combo()
+
+
+func _combo_break() -> void:
+	if combo == 0:
+		return
+	combo = 0
+	_show_combo()
+
+
+func _show_combo() -> void:
+	if _combo_label == null:
+		return
+	_combo_label.visible = combo >= 2
+	_combo_label.text = "Combo x%d  +%d%% damage" % [combo, roundi(COMBO_STEP * 100.0 * mini(combo, COMBO_MAX))]
+	_combo_label.pivot_offset = Vector2(0, _combo_label.size.y / 2.0)
+	_combo_label.scale = Vector2(1.3, 1.3)
+	create_tween().tween_property(_combo_label, "scale", Vector2.ONE, 0.15)
+
+
+## The grade for a won battle: S for taking no damage and missing nothing,
+## A for barely a scratch, B for under 40% of your side's HP, C otherwise.
+func grade_for(hurt_share: float, misses: int) -> String:
+	if hurt_share <= 0.0 and misses == 0:
+		return "S"
+	if hurt_share <= 0.15 and misses <= 1:
+		return "A"
+	if hurt_share <= 0.4:
+		return "B"
+	return "C"
+
+
+## Grades the win and adds its bonus to the XP and coins (once).
+func _grade() -> void:
+	if grade != "":
+		return
+	var total := 0
+	for a in allies:
+		total += int(a["member"]["max_hp"])
+	grade = grade_for(float(hurt) / maxf(1.0, total), presses["Miss"])
+	var bonus: float = GRADE_BONUS[grade]
+	var xp_more := roundi(xp_earned * bonus)
+	var coins_more := roundi(coins_earned * bonus)
+	xp_earned += xp_more
+	coins_earned += coins_more
+	_show_rating("Rank %s!" % grade)
+	message.text = "Rank %s! Best combo x%d." % [grade, best_combo]
+	if xp_more > 0 or coins_more > 0:
+		message.text += " Bonus +%d XP +%d coins" % [xp_more, coins_more]
+	await _wait(1.6)
+
+
+## Time slows for a moment (an Excellent).
+func _slowmo(scale: float, seconds: float) -> void:
+	Engine.time_scale = scale
+	await get_tree().create_timer(seconds, true, false, true).timeout
+	Engine.time_scale = 1.0
+
+
+## A white flash over the screen when an enemy goes down.
+func _ko_flash() -> void:
+	if _flash_rect == null:
+		_flash_rect = ColorRect.new()
+		_flash_rect.color = Color(1, 1, 1)
+		_flash_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		$UI.add_child(_flash_rect)
+		$UI.move_child(_flash_rect, 0)
+	_flash_rect.size = get_viewport_rect().size
+	_flash_rect.modulate.a = 0.55
+	create_tween().tween_property(_flash_rect, "modulate:a", 0.0, 0.25)
+	_slowmo(0.4, 0.12)
 
 
 # --- Bosses ----------------------------------------------------------------------
@@ -1574,6 +1826,8 @@ func _boss_join(f: Dictionary) -> void:
 # --- Endings -------------------------------------------------------------------
 
 func _win() -> void:
+	if _extras():
+		await _grade()
 	var p: Dictionary = Game.player
 	p["coins"] += coins_earned
 	p["wins"] += 1
@@ -1624,6 +1878,7 @@ func _lose() -> void:
 
 
 func _leave(result: String) -> void:
+	Engine.time_scale = 1.0
 	BattleTransition.out_of_battle(get_tree(), Game.end_battle.bind(result))
 
 
@@ -1729,9 +1984,12 @@ func _shake(strength := 3.0, duration := 0.14) -> void:
 
 func _popup(pos: Vector2, text: String) -> void:
 	var l := Label.new()
-	l.text = text
+	var big := text.ends_with("!") and text.length() > 1 and text.left(1).is_valid_int()
+	l.text = text.trim_suffix("!") if big else text
 	l.theme_type_variation = &"OutlineLabel"
-	l.add_theme_font_size_override("font_size", 24)
+	l.add_theme_font_size_override("font_size", 32 if big else 24)
+	if big:
+		l.add_theme_color_override("font_color", Color(1.0, 0.82, 0.2))
 	l.position = pos - Vector2(10, 0)
 	l.pivot_offset = Vector2(10, 12)
 	l.scale = Vector2(1.4, 1.4)
@@ -1749,6 +2007,8 @@ func _popup(pos: Vector2, text: String) -> void:
 ## for anything else.
 func _show_rating(text: String) -> void:
 	var parts := text.split("  ", false, 1)
+	if _extras():
+		_count_rating(parts[0])
 	var art: Texture2D = RATING_ART.get(parts[0])
 	rating_art.texture = art
 	rating_art.visible = art != null
@@ -1771,6 +2031,8 @@ func _show_rating(text: String) -> void:
 	rating.scale = Vector2(0.4, 0.4)
 	if parts[0] == "Excellent":
 		_shake(4.5, 0.16)
+		if _extras():
+			_slowmo(0.35, 0.14)
 	_rating_tween = create_tween()
 	_rating_tween.tween_property(rating, "scale", Vector2(1.24, 1.24), 0.08)
 	_rating_tween.tween_property(rating, "scale", Vector2.ONE, 0.06)
