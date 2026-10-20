@@ -140,7 +140,8 @@ func _process(delta: float) -> void:
 	else:
 		_walk_hold -= delta
 	if _walk_hold > 0.0:
-		_anim_time += delta
+		var speed_mult := clampf(move_velocity.length() / 80.0, 0.8, 1.7)
+		_anim_time += delta * speed_mult
 	else:
 		_anim_time = 0.0
 

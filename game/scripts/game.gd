@@ -1545,6 +1545,7 @@ func _ready() -> void:
 	_add_action("talk", [KEY_X, KEY_K], [JOY_BUTTON_B])  # talk / ask, cancel in menus
 	_add_action("menu", [KEY_ENTER, KEY_ESCAPE], [JOY_BUTTON_START])
 	_add_action("chat", [KEY_T, KEY_SLASH], [])
+	_add_action("sprint", [KEY_SHIFT], [JOY_BUTTON_RIGHT_SHOULDER, JOY_BUTTON_X])
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
 

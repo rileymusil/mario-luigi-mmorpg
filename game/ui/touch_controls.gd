@@ -27,6 +27,7 @@ var active := false
 var stick: TouchStick
 var a_button: TouchButton
 var b_button: TouchButton
+var sprint_button: TouchButton
 var menu_button: TouchButton
 var fullscreen_button: TouchButton
 
@@ -47,13 +48,17 @@ func _ready() -> void:
 	stick = TouchStick.new()
 	a_button = TouchButton.new(&"action", A_ICON, ICON_SCALE, 24.0)
 	b_button = TouchButton.new(&"talk", B_ICON, ICON_SCALE, 22.0)
+	sprint_button = _panel_button(&"sprint", _label("RUN"))
+	var s_label: Label = sprint_button.get_child(0).get_child(0) as Label
+	if s_label:
+		s_label.add_theme_color_override("font_color", Color(1.0, 0.88, 0.35))
 	menu_button = _panel_button(&"menu", _label("MENU"))
 	# Browsers only allow full screen from a tap; iPhones don't allow it at all
 	# (Share > Add to Home Screen plays full screen there instead).
 	_can_fullscreen = OS.has_feature("web") and not OS.has_feature("web_ios")
 	fullscreen_button = _panel_button(&"", _fullscreen_icon())
 	fullscreen_button.pressed_down.connect(_toggle_fullscreen)
-	for c in [stick, a_button, b_button, menu_button, fullscreen_button]:
+	for c in [stick, a_button, b_button, sprint_button, menu_button, fullscreen_button]:
 		c.visible = false
 		_root.add_child(c)
 
@@ -124,7 +129,7 @@ func _set_active(on: bool) -> void:
 
 ## Lets go of every held button and the joystick.
 func release_all() -> void:
-	for c in [stick, a_button, b_button, menu_button, fullscreen_button]:
+	for c in [stick, a_button, b_button, sprint_button, menu_button, fullscreen_button]:
 		c.release()
 
 
@@ -146,6 +151,7 @@ func _process(delta: float) -> void:
 	var roaming: bool = playing and path == Game.WORLD_SCENE and not _any_visible(&"choice_menus")
 	_show(a_button, playing)
 	_show(b_button, playing)
+	_show(sprint_button, roaming)
 	_show(stick, roaming)
 	_show(menu_button, roaming)
 	_show(fullscreen_button, _can_fullscreen and active and not blocked and (roaming or path == Game.TITLE_SCENE))
@@ -184,6 +190,10 @@ func _layout(battle := false) -> void:
 		# Clear of the bottom bars (hint, chat), respecting safe area margins.
 		a_button.position = (Vector2(safe.end.x - 30, safe.end.y - 72) - a_button.size / 2.0).round()
 		b_button.position = (Vector2(safe.end.x - 70, safe.end.y - 46) - b_button.size / 2.0).round()
+		var sp_panel: Control = sprint_button.get_child(0)
+		sprint_button.size = sp_panel.get_combined_minimum_size()
+		sp_panel.size = sprint_button.size
+		sprint_button.position = Vector2(safe.end.x - 70 - sprint_button.size.x / 2.0, safe.end.y - 88).round()
 	# MENU and full screen line up from the top-right corner; a hidden one
 	# leaves no gap (the title shows full screen alone, in the corner).
 	var x := safe.end.x - 4.0

@@ -6,6 +6,7 @@ extends Node2D
 ## Game.player["map"]. Debug builds have a map editor on F2 (map_editor.gd).
 
 const PLAYER_SPEED := 80.0
+const SPRINT_SPEED := 135.0
 const FOLLOW_GAP := 18.0
 const ENEMY_SPEED := 28.0  # px/s while wandering
 const ENEMY_ROAM := 48.0   # how far from home an enemy wanders
@@ -409,7 +410,8 @@ func _process(delta: float) -> void:
 		return
 
 	var input := Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	var moved := _try_move(player, input * PLAYER_SPEED * delta)
+	var speed := SPRINT_SPEED if Input.is_action_pressed("sprint") else PLAYER_SPEED
+	var moved := _try_move(player, input * speed * delta)
 	player.move_velocity = moved / maxf(delta, 0.0001)
 
 	# Dynamic camera lead: smoothly tilts focus slightly ahead in movement direction

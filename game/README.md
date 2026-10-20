@@ -11,6 +11,7 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
 | Action | Keyboard | Gamepad | Touch screen |
 |---|---|---|---|
 | Move | Arrows / WASD | D-pad | Joystick (bottom left) |
+| Sprint / Run | Shift | RB / X | **RUN** button (above B) |
 | Jump, confirm, timed presses | Z, J or Space | A | Red **A** button |
 | Talk, ask, back | X or K | B | Green **B** button |
 | Menu | Enter or Esc | Start | **MENU** (top right) |
