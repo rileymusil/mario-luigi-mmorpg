@@ -423,17 +423,20 @@ func _items_command() -> Dictionary:
 ## Who item `id` could be used on right now (see Game.ITEMS).
 func _item_targets(id: String) -> Array:
 	var item: Dictionary = Game.ITEMS[id]
-	if item.has("sp"):
+	if item.has("damage") or item.get("target_all", false):
+		return _alive(foes)
+	if item.get("party_all", false):
+		return [allies[0]]
+	if item.has("sp") or item.get("sp_max", false):
 		var p: Dictionary = Game.player
 		return allies.filter(func(a): return _is_player(a) and _hp(a) > 0 and p["sp"] < p["max_sp"])
 	if item.has("revive"):
-		# Someone who left a co-op battle is hidden, and can't come back.
 		return allies.filter(func(a): return _hp(a) <= 0 and a["node"].visible)
 	if item.get("cure", false):
 		return _alive(allies).filter(func(a): return a.get("burn", 0) > 0 or a.get("dizzy", false))
-	if item.has("hp"):
+	if item.has("hp") or item.get("hp_max", false):
 		return _alive(allies).filter(func(a): return _hp(a) < a["member"]["max_hp"])
-	return _alive(allies)  # peppers
+	return _alive(allies)
 
 
 ## Picks an item from the list and who it's for, and uses it. False if the
@@ -461,7 +464,7 @@ func _item_turn(a: Dictionary) -> bool:
 		var id: String = ids[i]
 		var list := _item_targets(id)
 		var who = list[0]
-		if list.size() > 1:
+		if list.size() > 1 and not item.get("party_all", false) and not item.get("target_all", false):
 			who = await _pick(list, "Use the %s on who?" % Game.ITEMS[id]["name"],
 				func(t): return "%s %d/%d" % [t["name"], _hp(t), t["member"]["max_hp"]])
 			if who == null:
@@ -479,7 +482,40 @@ func _use_item(a: Dictionary, id: String, who: Dictionary) -> void:
 	message.text = "%s used the %s!" % [a["name"], item["name"]]
 	await _item_pop(who, id)
 	var text := ""
-	if item.has("hp"):
+	if item.get("party_all", false):
+		var heal: int = int(item.get("hp", 0))
+		for ally in _alive(allies):
+			var before := _hp(ally)
+			_set_hp(ally, before + heal)
+		text = "Party +%d HP!" % heal
+	elif item.has("damage"):
+		var dmg: int = int(item["damage"])
+		if item.get("target_all", false):
+			for foe in _alive(foes):
+				_damage(foe, dmg)
+				if item.get("burn", 0) > 0:
+					foe["burn"] = int(item["burn"])
+				if item.get("stun", false):
+					foe["stun"] = true
+			text = "%d DMG to all!" % dmg
+		else:
+			_damage(who, dmg)
+			text = "%d DMG!" % dmg
+	elif item.get("hp_max", false):
+		var before := _hp(who)
+		_set_hp(who, who["member"]["max_hp"])
+		text = "HP Max! (+%d)" % (_hp(who) - before)
+	elif item.get("sp_max", false):
+		var before: int = p["sp"]
+		p["sp"] = p["max_sp"]
+		text = "SP Max! (+%d)" % (p["sp"] - before)
+	elif item.has("hp") and item.has("sp"):
+		var before_hp := _hp(who)
+		_set_hp(who, before_hp + int(item["hp"]))
+		var before_sp: int = p["sp"]
+		p["sp"] = mini(p["max_sp"], p["sp"] + int(item["sp"]))
+		text = "+%d HP, +%d SP" % [int(item["hp"]), int(item["sp"])]
+	elif item.has("hp"):
 		var before := _hp(who)
 		_set_hp(who, before + int(item["hp"]))
 		text = "+%d HP" % (_hp(who) - before)
@@ -503,6 +539,9 @@ func _use_item(a: Dictionary, id: String, who: Dictionary) -> void:
 	elif item.has("def"):
 		who["def"] += int(item["def"])
 		text = "DEF +%d" % int(item["def"])
+	elif item.has("spd"):
+		who["spd"] = int(who.get("spd", 10)) + int(item["spd"])
+		text = "SPD +%d" % int(item["spd"])
 	_refresh()
 	_show_rating(text)
 	await _wait(0.9)
@@ -707,6 +746,10 @@ func _damage(target: Dictionary, amount: int) -> int:
 	if _extras() and not target["ally"] and combo >= 2:
 		dmg += ceili(dmg * COMBO_STEP * mini(combo, COMBO_MAX))
 		boosted = true
+	if _extras() and not target["ally"] and randf() < 0.14:
+		dmg = int(dmg * 1.5) + 1
+		boosted = true
+		_show_rating("Lucky!")
 	var was_up := _hp(target) > 0
 	_set_hp(target, _hp(target) - dmg)
 	_flash(target["node"])
@@ -1111,7 +1154,15 @@ func _rush(f: Dictionary, target: Dictionary, to: Vector2, duration: float) -> b
 ## A dodge or a hit at the end of a rush.
 func _land(f: Dictionary, target: Dictionary, dodged: bool, power: int) -> void:
 	if dodged:
-		_show_rating("Dodged!")
+		var node: CharacterSprite = target["node"]
+		if node.jump_height > 10.0:
+			var counter_dmg: int = maxi(2, int(target.get("pow", 5) * 0.8))
+			_damage(f, counter_dmg)
+			_combo_hit()
+			_show_rating("Counter! %d" % counter_dmg)
+			_shake(2.5, 0.12)
+		else:
+			_show_rating("Dodged!")
 	else:
 		_damage(target, power)
 		_foe_status(f, target)

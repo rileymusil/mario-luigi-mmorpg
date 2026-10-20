@@ -1,407 +1,1223 @@
 {
   "palace_guard": {
     "branches": [
-      {"if": {"side": "evil"}, "say": ["Halt! We know one of Bowser's lot when we see one.", "...Fine, go in. But the whole castle guard will be watching you, {character}!"]},
-      {"say": ["Welcome to Beanbean Castle, {name}! Walk up the steps to go in.", "Queen Bean holds court in the throne room, through the great hall."]}
+      {
+        "if": {
+          "side": "evil"
+        },
+        "say": [
+          "Halt! We know one of Bowser's lot when we see one.",
+          "...Fine, go in. But the whole castle guard will be watching you, {character}!"
+        ]
+      },
+      {
+        "say": [
+          "Welcome to Beanbean Castle, {name}! Walk up the steps to go in.",
+          "Queen Bean holds court in the throne room, through the great hall."
+        ]
+      }
     ]
   },
   "town_gate": {
     "branches": [
-      {"if": {"min_level": 8}, "say": ["You look tough! Head east through the Outskirts to Stardust Fields.", "Past the fields is Hoohoo Village. Folks say the view from the deck is amazing."]},
-      {"say": ["Both town gates lead out to the Beanbean Outskirts.", "Towns are safe. Out there, monsters roam, and Bowser's side can challenge good players to a duel!"]}
+      {
+        "if": {
+          "min_level": 8
+        },
+        "say": [
+          "You look tough! Head east through the Outskirts to Stardust Fields.",
+          "Past the fields is Hoohoo Village. Folks say the view from the deck is amazing."
+        ]
+      },
+      {
+        "say": [
+          "Both town gates lead out to the Beanbean Outskirts.",
+          "Towns are safe. Out there, monsters roam, and Bowser's side can challenge good players to a duel!"
+        ]
+      }
     ]
   },
   "town_kid": {
     "branches": [
-      {"random": true, "say": [
-        "Jump on a monster before it touches you and you get the first hit!",
-        "In battle, press Z right as you land a hit for extra damage!",
-        "I saw a Koopa Troop near the east bridge. Bowser's Castle is over there!",
-        "Mushrooms heal 10 HP. My mom always makes me carry three."
-      ]}
+      {
+        "random": true,
+        "say": [
+          "Jump on a monster before it touches you and you get the first hit!",
+          "In battle, press Z right as you land a hit for extra damage!",
+          "I saw a Koopa Troop near the east bridge. Bowser's Castle is over there!",
+          "Mushrooms heal 10 HP. My mom always makes me carry three."
+        ]
+      }
     ]
   },
   "town_girl": {
     "branches": [
-      {"say": ["The Mushroom Shop is right over there!", "Always carry a few Mushrooms before you head out of town!"]}
+      {
+        "say": [
+          "The Mushroom Shop is right over there!",
+          "Always carry a few Mushrooms before you head out of town!"
+        ]
+      }
     ]
   },
   "toadsworth": {
     "branches": [
-      {"if": {"side": "evil"}, "say": ["Wh-what?! A villain in Castle Town? Guards! GUARDS!", "...Oh dear, they're on their tea break."]},
-      {"say": ["Goodness me! I've come all the way from the Mushroom Kingdom.", "If you're worn out, Dr. Toad's clinic in the south-east corner of town will patch you right up!"]}
+      {
+        "if": {
+          "side": "evil"
+        },
+        "say": [
+          "Wh-what?! A villain in Castle Town? Guards! GUARDS!",
+          "...Oh dear, they're on their tea break."
+        ]
+      },
+      {
+        "say": [
+          "Goodness me! I've come all the way from the Mushroom Kingdom.",
+          "If you're worn out, Dr. Toad's clinic in the south-east corner of town will patch you right up!"
+        ]
+      }
     ]
   },
   "town_gossip": {
     "branches": [
-      {"random": true, "say": [
-        "Have you tried the Starbeans Cafe in the south of town? A cup of bean coffee perks you right up!",
-        "The Elder lives in the house just west of here. He lets tired travellers rest by his fire.",
-        "The Toads in the square are looking for adventure. Ask one to join you!",
-        "Town Hall has two doors, up on the north-east side. The Mayor loves visitors."
-      ]}
+      {
+        "random": true,
+        "say": [
+          "Have you tried the Starbeans Cafe in the south of town? A cup of bean coffee perks you right up!",
+          "The Elder lives in the house just west of here. He lets tired travellers rest by his fire.",
+          "The Toads in the square are looking for adventure. Ask one to join you!",
+          "Town Hall has two doors, up on the north-east side. The Mayor loves visitors."
+        ]
+      }
     ]
   },
-
   "koopa_guard": {
     "branches": [
-      {"if": {"side": "good"}, "say": ["Hey! What's a goody-goody like you doing in Bowser's Castle?", "...Don't touch anything."]},
-      {"say": ["Welcome home, {name}! King Bowser's castle is your castle.", "Want minions? In battle, ask a weakened enemy to join your side!"]}
+      {
+        "if": {
+          "side": "good"
+        },
+        "say": [
+          "Hey! What's a goody-goody like you doing in Bowser's Castle?",
+          "...Don't touch anything."
+        ]
+      },
+      {
+        "say": [
+          "Welcome home, {name}! King Bowser's castle is your castle.",
+          "Want minions? In battle, ask a weakened enemy to join your side!"
+        ]
+      }
     ]
   },
   "koopa_shop": {
     "name": "Koopa Troop",
     "branches": [
-      {"if": {"side": "good"},
-       "say": ["Heh. A hero wants to shop at Bowser's place? Fine, but heroes pay extra."],
-       "choices": [{"text": "Shop", "do": "shop"}, {"text": "No thanks"}],
-       "markup": 1.5,
-       "shop": [
-         {"item": "mushroom", "thanks": "Pleasure doing business. Now scram!"},
-         {"item": "mushroom", "count": 3, "price": 33, "thanks": "Pleasure doing business. Now scram!"},
-         {"item": "super_mushroom", "thanks": "Pleasure doing business. Now scram!"},
-         {"item": "syrup", "thanks": "Pleasure doing business. Now scram!"},
-         {"item": "red_pepper", "thanks": "Pleasure doing business. Now scram!"},
-         {"item": "koopa_pants", "thanks": "Pleasure doing business. Now scram!"},
-         {"item": "spiny_badge", "thanks": "Pleasure doing business. Now scram!"}
-       ]},
-      {"say": ["Psst. Bowser's supply stash. Cheap. Don't tell the boss."],
-       "choices": [{"text": "Shop", "do": "shop"}, {"text": "No thanks"}],
-       "shop": [
-         {"item": "mushroom", "thanks": "Heh heh. Eat it before the boss sees!"},
-         {"item": "mushroom", "count": 3, "price": 21, "thanks": "Heh heh. Eat it before the boss sees!"},
-         {"item": "super_mushroom", "thanks": "Heh heh. Eat it before the boss sees!"},
-         {"item": "syrup", "thanks": "Heh heh. Drink it before the boss sees!"},
-         {"item": "red_pepper", "thanks": "Heh heh. Spicy!"},
-         {"item": "thin_pants", "thanks": "Heh heh. Fell off a supply cart."},
-         {"item": "power_badge", "thanks": "Heh heh. Fell off a supply cart."},
-         {"item": "koopa_pants", "thanks": "Heh heh. Standard Koopa Troop issue."},
-         {"item": "spiny_badge", "thanks": "Heh heh. The boss's favourite."}
-       ]}
+      {
+        "if": {
+          "side": "good"
+        },
+        "say": [
+          "Heh. A hero wants to shop at Bowser's place? Fine, but heroes pay extra."
+        ],
+        "choices": [
+          {
+            "text": "Shop",
+            "do": "shop"
+          },
+          {
+            "text": "No thanks"
+          }
+        ],
+        "markup": 1.5,
+        "shop": [
+          {
+            "item": "mushroom",
+            "thanks": "Pleasure doing business. Now scram!"
+          },
+          {
+            "item": "mushroom",
+            "count": 3,
+            "price": 33,
+            "thanks": "Pleasure doing business. Now scram!"
+          },
+          {
+            "item": "super_mushroom",
+            "thanks": "Pleasure doing business. Now scram!"
+          },
+          {
+            "item": "syrup",
+            "thanks": "Pleasure doing business. Now scram!"
+          },
+          {
+            "item": "red_pepper",
+            "thanks": "Pleasure doing business. Now scram!"
+          },
+          {
+            "item": "koopa_pants",
+            "thanks": "Pleasure doing business. Now scram!"
+          },
+          {
+            "item": "spiny_badge",
+            "thanks": "Pleasure doing business. Now scram!"
+          },
+          {
+            "item": "bob_omb_item"
+          },
+          {
+            "item": "fire_flower"
+          },
+          {
+            "item": "max_mushroom"
+          }
+        ]
+      },
+      {
+        "say": [
+          "Psst. Bowser's supply stash. Cheap. Don't tell the boss."
+        ],
+        "choices": [
+          {
+            "text": "Shop",
+            "do": "shop"
+          },
+          {
+            "text": "No thanks"
+          }
+        ],
+        "shop": [
+          {
+            "item": "mushroom",
+            "thanks": "Heh heh. Eat it before the boss sees!"
+          },
+          {
+            "item": "mushroom",
+            "count": 3,
+            "price": 21,
+            "thanks": "Heh heh. Eat it before the boss sees!"
+          },
+          {
+            "item": "super_mushroom",
+            "thanks": "Heh heh. Eat it before the boss sees!"
+          },
+          {
+            "item": "syrup",
+            "thanks": "Heh heh. Drink it before the boss sees!"
+          },
+          {
+            "item": "red_pepper",
+            "thanks": "Heh heh. Spicy!"
+          },
+          {
+            "item": "thin_pants",
+            "thanks": "Heh heh. Fell off a supply cart."
+          },
+          {
+            "item": "power_badge",
+            "thanks": "Heh heh. Fell off a supply cart."
+          },
+          {
+            "item": "koopa_pants",
+            "thanks": "Heh heh. Standard Koopa Troop issue."
+          },
+          {
+            "item": "spiny_badge",
+            "thanks": "Heh heh. The boss's favourite."
+          },
+          {
+            "item": "bob_omb_item"
+          },
+          {
+            "item": "fire_flower"
+          },
+          {
+            "item": "max_mushroom"
+          }
+        ]
+      }
     ]
   },
   "bowser_gatekeeper": {
     "branches": [
-      {"if": {"side": "good"}, "say": ["Border check! ...A hero, huh? Bowser won't like this.", "Move along before he wakes up from his nap."]},
-      {"say": ["Cross the bridge south to reach the Beanbean Outskirts.", "Castle Town is to the south-west. Stardust Fields lies to the east, past the cliffs."]}
+      {
+        "if": {
+          "side": "good"
+        },
+        "say": [
+          "Border check! ...A hero, huh? Bowser won't like this.",
+          "Move along before he wakes up from his nap."
+        ]
+      },
+      {
+        "say": [
+          "Cross the bridge south to reach the Beanbean Outskirts.",
+          "Castle Town is to the south-west. Stardust Fields lies to the east, past the cliffs."
+        ]
+      }
     ]
   },
-
   "elder_rest": {
     "branches": [
-      {"if": {"side": "evil"}, "say": ["Even Bowser's folk get tired, I suppose. Sit by the fire a while?"],
-       "choices": [{"text": "Rest", "do": "heal", "done": "You rested by the fire. HP and SP are full!"}, {"text": "No thanks"}]},
-      {"say": ["Ho ho, a traveller! You look tired. Sit by the fire a while?"],
-       "choices": [{"text": "Rest", "do": "heal", "done": "You rested by the fire. HP and SP are full!"}, {"text": "No thanks"}]}
+      {
+        "if": {
+          "side": "evil"
+        },
+        "say": [
+          "Even Bowser's folk get tired, I suppose. Sit by the fire a while?"
+        ],
+        "choices": [
+          {
+            "text": "Rest",
+            "do": "heal",
+            "done": "You rested by the fire. HP and SP are full!"
+          },
+          {
+            "text": "No thanks"
+          }
+        ]
+      },
+      {
+        "say": [
+          "Ho ho, a traveller! You look tired. Sit by the fire a while?"
+        ],
+        "choices": [
+          {
+            "text": "Rest",
+            "do": "heal",
+            "done": "You rested by the fire. HP and SP are full!"
+          },
+          {
+            "text": "No thanks"
+          }
+        ]
+      }
     ]
   },
   "house_bean": {
     "branches": [
-      {"random": true, "say": [
-        "This is my house! Please wipe your feet on the mat.",
-        "My cousin lives in Hoohoo Village, past Stardust Fields. He says the monsters there are tough!"
-      ]}
+      {
+        "random": true,
+        "say": [
+          "This is my house! Please wipe your feet on the mat.",
+          "My cousin lives in Hoohoo Village, past Stardust Fields. He says the monsters there are tough!"
+        ]
+      }
     ]
   },
   "lodge_toad": {
     "branches": [
-      {"if": {"side": "evil"}, "say": ["A-are you here to cause trouble? This is a Toad lodge!"]},
-      {"if": {"party_full": true}, "say": ["You've got a full party! New friends you meet will wait for you here in town, and you can swap them in from Party in the menu."]},
-      {"say": ["We Toads came over from the Mushroom Kingdom to help out.", "A Toad and a Pianta are waiting in the town square. Ask them to join you!"]}
+      {
+        "if": {
+          "side": "evil"
+        },
+        "say": [
+          "A-are you here to cause trouble? This is a Toad lodge!"
+        ]
+      },
+      {
+        "if": {
+          "party_full": true
+        },
+        "say": [
+          "You've got a full party! New friends you meet will wait for you here in town, and you can swap them in from Party in the menu."
+        ]
+      },
+      {
+        "say": [
+          "We Toads came over from the Mushroom Kingdom to help out.",
+          "A Toad and a Pianta are waiting in the town square. Ask them to join you!"
+        ]
+      }
     ]
   },
   "dr_toad": {
     "branches": [
-      {"say": ["Welcome to my clinic! Let me take a look at you."],
-       "choices": [{"text": "Get healed", "do": "heal", "done": "Dr. Toad patched you up. HP and SP are full!"}, {"text": "I'm fine"}]}
+      {
+        "say": [
+          "Welcome to my clinic! Let me take a look at you."
+        ],
+        "choices": [
+          {
+            "text": "Get healed",
+            "do": "heal",
+            "done": "Dr. Toad patched you up. HP and SP are full!"
+          },
+          {
+            "text": "I'm fine"
+          }
+        ]
+      }
     ]
   },
   "mayor": {
     "name": "Mayor",
     "branches": [
-      {"if": {"side": "evil"}, "say": ["Ahem. Even visitors from Bowser's Castle must follow the town rules.", "No fighting in town! ...Please."]},
-      {"if": {"min_level": 8}, "say": ["{name}! The whole town is talking about you.", "Hoohoo Village, past Stardust Fields, could use a hero like you."]},
-      {"say": ["Welcome to Town Hall! Castle Town is the heart of the Beanbean Kingdom.", "The castle is up north, the shops are around the square, and the Outskirts are past the gates."]}
+      {
+        "if": {
+          "side": "evil"
+        },
+        "say": [
+          "Ahem. Even visitors from Bowser's Castle must follow the town rules.",
+          "No fighting in town! ...Please."
+        ]
+      },
+      {
+        "if": {
+          "min_level": 8
+        },
+        "say": [
+          "{name}! The whole town is talking about you.",
+          "Hoohoo Village, past Stardust Fields, could use a hero like you."
+        ]
+      },
+      {
+        "say": [
+          "Welcome to Town Hall! Castle Town is the heart of the Beanbean Kingdom.",
+          "The castle is up north, the shops are around the square, and the Outskirts are past the gates."
+        ]
+      }
     ]
   },
   "town_hall_kid": {
     "branches": [
-      {"say": ["I'm waiting for my mom. She's been talking to the Mayor for HOURS."]}
+      {
+        "say": [
+          "I'm waiting for my mom. She's been talking to the Mayor for HOURS."
+        ]
+      }
     ]
   },
   "mushroom_shop": {
     "name": "Shopkeeper",
     "branches": [
-      {"if": {"side": "evil"},
-       "say": ["Oh! One of Bowser's... Well, your coins are still coins. But it costs more for you!"],
-       "choices": [{"text": "Shop", "do": "shop"}, {"text": "Just looking"}],
-       "markup": 1.5,
-       "shop": [
-         {"item": "mushroom"},
-         {"item": "mushroom", "count": 3, "price": 33},
-         {"item": "super_mushroom"},
-         {"item": "syrup"},
-         {"item": "refreshing_herb"},
-         {"item": "one_up"}
-       ]},
-      {"say": ["Welcome to the Mushroom Shop! What can I get you?"],
-       "choices": [{"text": "Shop", "do": "shop"}, {"text": "Just looking"}],
-       "shop": [
-         {"item": "mushroom", "thanks": "Thank you! Use it from the Items menu when your HP is low."},
-         {"item": "mushroom", "count": 3, "price": 21, "thanks": "Thank you! Use them from the Items menu when your HP is low."},
-         {"item": "super_mushroom", "thanks": "Thank you! That one heals a lot."},
-         {"item": "syrup", "thanks": "Thank you! Syrup brings back SP for your special moves."},
-         {"item": "refreshing_herb", "thanks": "Thank you! It cures burns and dizziness in battle."},
-         {"item": "one_up", "thanks": "Thank you! Use it in battle when a partner is down."}
-       ]}
+      {
+        "if": {
+          "side": "evil"
+        },
+        "say": [
+          "Oh! One of Bowser's... Well, your coins are still coins. But it costs more for you!"
+        ],
+        "choices": [
+          {
+            "text": "Shop",
+            "do": "shop"
+          },
+          {
+            "text": "Just looking"
+          }
+        ],
+        "markup": 1.5,
+        "shop": [
+          {
+            "item": "mushroom"
+          },
+          {
+            "item": "mushroom",
+            "count": 3,
+            "price": 33
+          },
+          {
+            "item": "super_mushroom"
+          },
+          {
+            "item": "syrup"
+          },
+          {
+            "item": "refreshing_herb"
+          },
+          {
+            "item": "one_up"
+          },
+          {
+            "item": "nut"
+          },
+          {
+            "item": "chuckola_cola"
+          },
+          {
+            "item": "max_mushroom"
+          },
+          {
+            "item": "max_syrup"
+          }
+        ]
+      },
+      {
+        "say": [
+          "Welcome to the Mushroom Shop! What can I get you?"
+        ],
+        "choices": [
+          {
+            "text": "Shop",
+            "do": "shop"
+          },
+          {
+            "text": "Just looking"
+          }
+        ],
+        "shop": [
+          {
+            "item": "mushroom",
+            "thanks": "Thank you! Use it from the Items menu when your HP is low."
+          },
+          {
+            "item": "mushroom",
+            "count": 3,
+            "price": 21,
+            "thanks": "Thank you! Use them from the Items menu when your HP is low."
+          },
+          {
+            "item": "super_mushroom",
+            "thanks": "Thank you! That one heals a lot."
+          },
+          {
+            "item": "syrup",
+            "thanks": "Thank you! Syrup brings back SP for your special moves."
+          },
+          {
+            "item": "refreshing_herb",
+            "thanks": "Thank you! It cures burns and dizziness in battle."
+          },
+          {
+            "item": "one_up",
+            "thanks": "Thank you! Use it in battle when a partner is down."
+          },
+          {
+            "item": "nut"
+          },
+          {
+            "item": "chuckola_cola"
+          },
+          {
+            "item": "max_mushroom"
+          },
+          {
+            "item": "max_syrup"
+          }
+        ]
+      }
     ]
   },
   "badge_shop": {
     "name": "Shopkeeper",
     "branches": [
-      {"if": {"side": "evil"},
-       "say": ["Welcome to the Badge Shop! Pants, badges and battle supplies.", "Bowser's folk pay a little extra, mind."],
-       "choices": [{"text": "Shop", "do": "shop"}, {"text": "Just looking"}],
-       "markup": 1.5,
-       "shop": [
-         {"item": "thin_pants"},
-         {"item": "work_pants"},
-         {"item": "power_badge"},
-         {"item": "guard_badge"},
-         {"item": "heart_badge"},
-         {"item": "sp_badge"},
-         {"item": "red_pepper"},
-         {"item": "green_pepper"},
-         {"item": "refreshing_herb"},
-         {"item": "syrup"},
-         {"item": "super_syrup"}
-       ]},
-      {"say": ["Welcome to the Badge Shop! The new delivery is in: pants and badges!", "Wear one pair of pants and one badge at a time. Put them on from Gear in the menu."],
-       "choices": [{"text": "Shop", "do": "shop"}, {"text": "Just looking"}],
-       "shop": [
-         {"item": "thin_pants", "thanks": "Thank you! Light and comfy."},
-         {"item": "work_pants", "thanks": "Thank you! Those will last."},
-         {"item": "power_badge", "thanks": "Thank you! Hit 'em hard."},
-         {"item": "guard_badge", "thanks": "Thank you! Stay safe out there."},
-         {"item": "heart_badge", "thanks": "Thank you! Full of pep."},
-         {"item": "sp_badge", "thanks": "Thank you! More special moves for you."},
-         {"item": "red_pepper", "thanks": "Spicy! Eat it in battle to power up."},
-         {"item": "green_pepper", "thanks": "Crunchy! Eat it in battle to toughen up."},
-         {"item": "refreshing_herb"},
-         {"item": "syrup"},
-         {"item": "super_syrup"}
-       ]}
+      {
+        "if": {
+          "side": "evil"
+        },
+        "say": [
+          "Welcome to the Badge Shop! Pants, badges and battle supplies.",
+          "Bowser's folk pay a little extra, mind."
+        ],
+        "choices": [
+          {
+            "text": "Shop",
+            "do": "shop"
+          },
+          {
+            "text": "Just looking"
+          }
+        ],
+        "markup": 1.5,
+        "shop": [
+          {
+            "item": "thin_pants"
+          },
+          {
+            "item": "work_pants"
+          },
+          {
+            "item": "power_badge"
+          },
+          {
+            "item": "guard_badge"
+          },
+          {
+            "item": "heart_badge"
+          },
+          {
+            "item": "sp_badge"
+          },
+          {
+            "item": "red_pepper"
+          },
+          {
+            "item": "green_pepper"
+          },
+          {
+            "item": "refreshing_herb"
+          },
+          {
+            "item": "syrup"
+          },
+          {
+            "item": "super_syrup"
+          },
+          {
+            "item": "blue_pepper"
+          },
+          {
+            "item": "fire_flower"
+          },
+          {
+            "item": "ice_flower"
+          },
+          {
+            "item": "bob_omb_item"
+          }
+        ]
+      },
+      {
+        "say": [
+          "Welcome to the Badge Shop! The new delivery is in: pants and badges!",
+          "Wear one pair of pants and one badge at a time. Put them on from Gear in the menu."
+        ],
+        "choices": [
+          {
+            "text": "Shop",
+            "do": "shop"
+          },
+          {
+            "text": "Just looking"
+          }
+        ],
+        "shop": [
+          {
+            "item": "thin_pants",
+            "thanks": "Thank you! Light and comfy."
+          },
+          {
+            "item": "work_pants",
+            "thanks": "Thank you! Those will last."
+          },
+          {
+            "item": "power_badge",
+            "thanks": "Thank you! Hit 'em hard."
+          },
+          {
+            "item": "guard_badge",
+            "thanks": "Thank you! Stay safe out there."
+          },
+          {
+            "item": "heart_badge",
+            "thanks": "Thank you! Full of pep."
+          },
+          {
+            "item": "sp_badge",
+            "thanks": "Thank you! More special moves for you."
+          },
+          {
+            "item": "red_pepper",
+            "thanks": "Spicy! Eat it in battle to power up."
+          },
+          {
+            "item": "green_pepper",
+            "thanks": "Crunchy! Eat it in battle to toughen up."
+          },
+          {
+            "item": "refreshing_herb"
+          },
+          {
+            "item": "syrup"
+          },
+          {
+            "item": "super_syrup"
+          },
+          {
+            "item": "blue_pepper"
+          },
+          {
+            "item": "fire_flower"
+          },
+          {
+            "item": "ice_flower"
+          },
+          {
+            "item": "bob_omb_item"
+          }
+        ]
+      }
     ]
   },
   "cafe_barista": {
     "name": "Barista",
     "branches": [
-      {"say": ["Welcome to Starbeans Cafe! A cup of bean coffee will perk you right up. On the house!"],
-       "choices": [{"text": "Have a coffee", "do": "heal", "done": "Mmm, bean coffee! HP and SP are full again!"}, {"text": "Maybe later"}]}
+      {
+        "say": [
+          "Welcome to Starbeans Cafe! A cup of bean coffee will perk you right up. On the house!"
+        ],
+        "choices": [
+          {
+            "text": "Have a coffee",
+            "do": "heal",
+            "done": "Mmm, bean coffee! HP and SP are full again!"
+          },
+          {
+            "text": "Maybe later"
+          }
+        ]
+      }
     ]
   },
   "cafe_customer": {
     "branches": [
-      {"random": true, "say": [
-        "I come here every day. The beans are grown out in Stardust Fields!",
-        "Shh, I'm people-watching. That one's a hero. That one's... a Koopa?"
-      ]}
+      {
+        "random": true,
+        "say": [
+          "I come here every day. The beans are grown out in Stardust Fields!",
+          "Shh, I'm people-watching. That one's a hero. That one's... a Koopa?"
+        ]
+      }
     ]
   },
   "castle_guard": {
     "branches": [
-      {"if": {"side": "evil"}, "say": ["We've got our eyes on you, {character}. One wrong move..."]},
-      {"say": ["The throne room is up through the arch. Mind your manners in front of Her Majesty!"]}
+      {
+        "if": {
+          "side": "evil"
+        },
+        "say": [
+          "We've got our eyes on you, {character}. One wrong move..."
+        ]
+      },
+      {
+        "say": [
+          "The throne room is up through the arch. Mind your manners in front of Her Majesty!"
+        ]
+      }
     ]
   },
   "lady_lima": {
     "branches": [
-      {"if": {"side": "evil"}, "say": ["Hmph! Bowser's lackeys are not welcome in this castle!", "...But Queen Bean insists that every visitor be treated politely. Behave yourself."]},
-      {"say": ["I am Lady Lima, adviser to Queen Bean.", "The kingdom welcomes travellers. Do be careful out in the Outskirts and Stardust Fields."]}
+      {
+        "if": {
+          "side": "evil"
+        },
+        "say": [
+          "Hmph! Bowser's lackeys are not welcome in this castle!",
+          "...But Queen Bean insists that every visitor be treated politely. Behave yourself."
+        ]
+      },
+      {
+        "say": [
+          "I am Lady Lima, adviser to Queen Bean.",
+          "The kingdom welcomes travellers. Do be careful out in the Outskirts and Stardust Fields."
+        ]
+      }
     ]
   },
   "queen_bean": {
     "branches": [
-      {"if": {"side": "evil"}, "say": ["WHAT?! One of Bowser's minions in MY throne room?!", "...Very well. Even villains may visit. But no funny business!"]},
-      {"if": {"min_level": 10}, "say": ["{name}! Word of your deeds has reached my throne.", "The Beanbean Kingdom thanks you. Keep my people safe!"]},
-      {"say": ["Welcome to Beanbean Castle, {name}!", "Monsters roam the Outskirts and Stardust Fields. Help my people, and grow strong!"]}
+      {
+        "if": {
+          "side": "evil"
+        },
+        "say": [
+          "WHAT?! One of Bowser's minions in MY throne room?!",
+          "...Very well. Even villains may visit. But no funny business!"
+        ]
+      },
+      {
+        "if": {
+          "min_level": 10
+        },
+        "say": [
+          "{name}! Word of your deeds has reached my throne.",
+          "The Beanbean Kingdom thanks you. Keep my people safe!"
+        ]
+      },
+      {
+        "say": [
+          "Welcome to Beanbean Castle, {name}!",
+          "Monsters roam the Outskirts and Stardust Fields. Help my people, and grow strong!"
+        ]
+      }
     ]
   },
   "throne_guard": {
     "branches": [
-      {"say": ["Her Majesty loves visitors. Just don't stare at her crown. It's very shiny."]}
+      {
+        "say": [
+          "Her Majesty loves visitors. Just don't stare at her crown. It's very shiny."
+        ]
+      }
     ]
   },
-
   "border_bro": {
     "branches": [
-      {"if": {"side": "evil"}, "say": ["Border check! Bowser's folk, eh? Hoohoo Village is a peaceful place.", "Behave, or you'll answer to the Border Bros!"]},
-      {"say": ["Border check! ...All clear. Hoohoo Village is just up this path.", "There's another way in from the east side of the fields, too."]}
+      {
+        "if": {
+          "side": "evil"
+        },
+        "say": [
+          "Border check! Bowser's folk, eh? Hoohoo Village is a peaceful place.",
+          "Behave, or you'll answer to the Border Bros!"
+        ]
+      },
+      {
+        "say": [
+          "Border check! ...All clear. Hoohoo Village is just up this path.",
+          "There's another way in from the east side of the fields, too."
+        ]
+      }
     ]
   },
   "stardust_traveler": {
     "branches": [
-      {"say": ["Hoo! Stardust Fields. The monsters here are tougher than in the Outskirts.", "Follow the path north to reach Hoohoo Village. It's a town, so you'll be safe there."]}
+      {
+        "say": [
+          "Hoo! Stardust Fields. The monsters here are tougher than in the Outskirts.",
+          "Follow the path north to reach Hoohoo Village. It's a town, so you'll be safe there."
+        ]
+      }
     ]
   },
   "hoohoo_greeter": {
     "branches": [
-      {"say": ["Hoohoo! Welcome to Hoohoo Village, home of the finest stone carvers in the kingdom!", "Rest in our huts if you're tired. Hoo!"]}
+      {
+        "say": [
+          "Hoohoo! Welcome to Hoohoo Village, home of the finest stone carvers in the kingdom!",
+          "Rest in our huts if you're tired. Hoo!"
+        ]
+      }
     ]
   },
   "hoohoo_deck": {
     "branches": [
-      {"random": true, "say": [
-        "Hoo! The view from this deck is the best in the village.",
-        "Hoohoo Mountain is just up there. Hoo... it's a long climb."
-      ]}
+      {
+        "random": true,
+        "say": [
+          "Hoo! The view from this deck is the best in the village.",
+          "Hoohoo Mountain is just up there. Hoo... it's a long climb."
+        ]
+      }
     ]
   },
   "hoohoo_mountain": {
     "branches": [
-      {"say": ["Sorry, hoo! The path up Hoohoo Mountain is closed until the rockslides are cleared."]}
+      {
+        "say": [
+          "Sorry, hoo! The path up Hoohoo Mountain is closed until the rockslides are cleared."
+        ]
+      }
     ]
   },
   "hoohoo_cave": {
     "branches": [
-      {"say": ["That cave runs deep under the mountain. Much too dangerous! It's blocked off for now, hoo."]}
+      {
+        "say": [
+          "That cave runs deep under the mountain. Much too dangerous! It's blocked off for now, hoo."
+        ]
+      }
     ]
   },
   "hut_rest": {
     "branches": [
-      {"say": ["Hoohoo! Tired from your trip? Have a rest."],
-       "choices": [{"text": "Rest", "do": "heal", "done": "You had a good rest. HP and SP are full!"}, {"text": "No thanks"}]}
+      {
+        "say": [
+          "Hoohoo! Tired from your trip? Have a rest."
+        ],
+        "choices": [
+          {
+            "text": "Rest",
+            "do": "heal",
+            "done": "You had a good rest. HP and SP are full!"
+          },
+          {
+            "text": "No thanks"
+          }
+        ]
+      }
     ]
   },
   "hoohoo_shop": {
     "name": "Hoohoo Trader",
     "branches": [
-      {"if": {"side": "evil"},
-       "say": ["Hoo... a Koopa customer. Fine, fine. Mountain prices for mountain goods, plus a little extra for you!"],
-       "choices": [{"text": "Shop", "do": "shop"}, {"text": "No thanks"}],
-       "markup": 1.5,
-       "shop": [
-         {"item": "super_mushroom"},
-         {"item": "ultra_mushroom"},
-         {"item": "super_syrup"},
-         {"item": "one_up"},
-         {"item": "refreshing_herb"},
-         {"item": "red_pepper"},
-         {"item": "green_pepper"},
-         {"item": "heart_jeans"},
-         {"item": "mountain_pants"},
-         {"item": "great_badge"}
-       ]},
-      {"say": ["Hoohoo! The monsters out in Stardust Fields are tough. Stock up before you head out!"],
-       "choices": [{"text": "Shop", "do": "shop"}, {"text": "No thanks"}],
-       "shop": [
-         {"item": "super_mushroom", "thanks": "Hoo! Good choice."},
-         {"item": "ultra_mushroom", "thanks": "Hoo! The best Mushroom in the kingdom."},
-         {"item": "super_syrup", "thanks": "Hoo! Sweet stuff."},
-         {"item": "one_up", "thanks": "Hoo! For when a friend goes down."},
-         {"item": "refreshing_herb", "thanks": "Hoo! Picked fresh on the mountain."},
-         {"item": "red_pepper", "thanks": "Hoo! Spicy!"},
-         {"item": "green_pepper", "thanks": "Hoo! Crunchy!"},
-         {"item": "heart_jeans", "thanks": "Hoo! Made with love."},
-         {"item": "mountain_pants", "thanks": "Hoo! Woven on the mountain. Nothing gets through those."},
-         {"item": "great_badge", "thanks": "Hoo! Our finest badge. Wear it with pride."}
-       ]}
+      {
+        "if": {
+          "side": "evil"
+        },
+        "say": [
+          "Hoo... a Koopa customer. Fine, fine. Mountain prices for mountain goods, plus a little extra for you!"
+        ],
+        "choices": [
+          {
+            "text": "Shop",
+            "do": "shop"
+          },
+          {
+            "text": "No thanks"
+          }
+        ],
+        "markup": 1.5,
+        "shop": [
+          {
+            "item": "super_mushroom"
+          },
+          {
+            "item": "ultra_mushroom"
+          },
+          {
+            "item": "super_syrup"
+          },
+          {
+            "item": "one_up"
+          },
+          {
+            "item": "refreshing_herb"
+          },
+          {
+            "item": "red_pepper"
+          },
+          {
+            "item": "green_pepper"
+          },
+          {
+            "item": "heart_jeans"
+          },
+          {
+            "item": "mountain_pants"
+          },
+          {
+            "item": "great_badge"
+          },
+          {
+            "item": "super_nut"
+          },
+          {
+            "item": "max_mushroom"
+          },
+          {
+            "item": "one_up_super"
+          },
+          {
+            "item": "blue_pepper"
+          },
+          {
+            "item": "fire_flower"
+          }
+        ]
+      },
+      {
+        "say": [
+          "Hoohoo! The monsters out in Stardust Fields are tough. Stock up before you head out!"
+        ],
+        "choices": [
+          {
+            "text": "Shop",
+            "do": "shop"
+          },
+          {
+            "text": "No thanks"
+          }
+        ],
+        "shop": [
+          {
+            "item": "super_mushroom",
+            "thanks": "Hoo! Good choice."
+          },
+          {
+            "item": "ultra_mushroom",
+            "thanks": "Hoo! The best Mushroom in the kingdom."
+          },
+          {
+            "item": "super_syrup",
+            "thanks": "Hoo! Sweet stuff."
+          },
+          {
+            "item": "one_up",
+            "thanks": "Hoo! For when a friend goes down."
+          },
+          {
+            "item": "refreshing_herb",
+            "thanks": "Hoo! Picked fresh on the mountain."
+          },
+          {
+            "item": "red_pepper",
+            "thanks": "Hoo! Spicy!"
+          },
+          {
+            "item": "green_pepper",
+            "thanks": "Hoo! Crunchy!"
+          },
+          {
+            "item": "heart_jeans",
+            "thanks": "Hoo! Made with love."
+          },
+          {
+            "item": "mountain_pants",
+            "thanks": "Hoo! Woven on the mountain. Nothing gets through those."
+          },
+          {
+            "item": "great_badge",
+            "thanks": "Hoo! Our finest badge. Wear it with pride."
+          },
+          {
+            "item": "super_nut"
+          },
+          {
+            "item": "max_mushroom"
+          },
+          {
+            "item": "one_up_super"
+          },
+          {
+            "item": "blue_pepper"
+          },
+          {
+            "item": "fire_flower"
+          }
+        ]
+      }
     ]
   },
   "hut_lore": {
     "branches": [
-      {"random": true, "say": [
-        "Long ago, a great treasure called the Beanstar was hidden somewhere in this kingdom... or so they say. Hoo!",
-        "Our blocks are carved from Hoohoo Mountain stone. Strong as anything!",
-        "Have you met the Border Bros? They check everyone who comes through the fields."
-      ]}
+      {
+        "random": true,
+        "say": [
+          "Long ago, a great treasure called the Beanstar was hidden somewhere in this kingdom... or so they say. Hoo!",
+          "Our blocks are carved from Hoohoo Mountain stone. Strong as anything!",
+          "Have you met the Border Bros? They check everyone who comes through the fields."
+        ]
+      }
     ]
   },
   "meadow_bean": {
     "branches": [
-      {"if": {"side": "evil"}, "say": ["Eek! One of Bowser's lot, out here in the meadow?", "Just... don't trample the flowers, {character}."]},
-      {"random": true, "say": [
-        "Nobody knows who put up the stone ring. The trees grew round it all by themselves!",
-        "The bridge north crosses over to Stardust Fields. Watch your step on the way.",
-        "Follow the flower beds south and you'll end up in the woods."
-      ]}
+      {
+        "if": {
+          "side": "evil"
+        },
+        "say": [
+          "Eek! One of Bowser's lot, out here in the meadow?",
+          "Just... don't trample the flowers, {character}."
+        ]
+      },
+      {
+        "random": true,
+        "say": [
+          "Nobody knows who put up the stone ring. The trees grew round it all by themselves!",
+          "The bridge north crosses over to Stardust Fields. Watch your step on the way.",
+          "Follow the flower beds south and you'll end up in the woods."
+        ]
+      }
     ]
   },
   "beach_toad": {
     "branches": [
-      {"say": ["Ahh, sea air! I came all the way from the Mushroom Kingdom for this beach.", "The high ground behind me? Way too steep to climb. I've tried."]}
+      {
+        "say": [
+          "Ahh, sea air! I came all the way from the Mushroom Kingdom for this beach.",
+          "The high ground behind me? Way too steep to climb. I've tried."
+        ]
+      }
     ]
   },
   "dusk_guard": {
     "branches": [
-      {"if": {"side": "evil"}, "say": ["Even Bowser's troops steer clear of this place after dark.", "The Gloombas here hit hard. Come back at level 10 or so, {character}."]},
-      {"random": true, "say": [
-        "Halt! The Twilight Meadow is no place for beginners. The monsters here are much stronger. Level 10 at least, I'd say!",
-        "South of here, the woods are dark as night. Only the toughest heroes, level 18 and up, come back from the Shadow Woods.",
-        "Seen a Gold Goomba? They say they're tough as nails, but they carry a fortune in coins.",
-        "Past the Shadow Woods' east path lies Teehee Valley. Only heroes of level 30 or more should go there."
-      ]}
+      {
+        "if": {
+          "side": "evil"
+        },
+        "say": [
+          "Even Bowser's troops steer clear of this place after dark.",
+          "The Gloombas here hit hard. Come back at level 10 or so, {character}."
+        ]
+      },
+      {
+        "random": true,
+        "say": [
+          "Halt! The Twilight Meadow is no place for beginners. The monsters here are much stronger. Level 10 at least, I'd say!",
+          "South of here, the woods are dark as night. Only the toughest heroes, level 18 and up, come back from the Shadow Woods.",
+          "Seen a Gold Goomba? They say they're tough as nails, but they carry a fortune in coins.",
+          "Past the Shadow Woods' east path lies Teehee Valley. Only heroes of level 30 or more should go there."
+        ]
+      }
     ]
   },
   "woods_kid": {
     "branches": [
-      {"random": true, "say": [
-        "Shh! I'm hiding from my big brother. He'll never find me in the woods!",
-        "The streams are too wide to jump. Use the bridges!",
-        "There's a walled garden in the middle of the woods, but I've never found the way in.",
-        "Don't cross the big bridge to the east! The meadow over there is always at sunset, and the monsters are huge."
-      ]}
+      {
+        "random": true,
+        "say": [
+          "Shh! I'm hiding from my big brother. He'll never find me in the woods!",
+          "The streams are too wide to jump. Use the bridges!",
+          "There's a walled garden in the middle of the woods, but I've never found the way in.",
+          "Don't cross the big bridge to the east! The meadow over there is always at sunset, and the monsters are huge."
+        ]
+      }
     ]
   },
   "pier_shop": {
     "name": "Pier Shopkeeper",
     "branches": [
-      {"if": {"side": "evil"}, "say": ["A Koopa at my rest stop? Prices just went up, pal."],
-       "choices": [{"text": "Shop", "do": "shop"}, {"text": "No thanks"}], "markup": 1.5,
-       "shop": [{"item": "mushroom"}, {"item": "syrup"}, {"item": "super_mushroom"}, {"item": "red_pepper"}, {"item": "green_pepper"}]},
-      {"say": ["Welcome to the pier rest stop! Snacks for the road?"],
-       "choices": [{"text": "Shop", "do": "shop"}, {"text": "No thanks"}],
-       "shop": [
-         {"item": "mushroom", "thanks": "Enjoy the view!"},
-         {"item": "syrup", "thanks": "Enjoy the view!"},
-         {"item": "super_mushroom", "thanks": "Good pick for the woods."},
-         {"item": "red_pepper", "thanks": "Spicy! Careful with that."},
-         {"item": "green_pepper", "thanks": "Crunchy and tough!"}
-       ]}
+      {
+        "if": {
+          "side": "evil"
+        },
+        "say": [
+          "A Koopa at my rest stop? Prices just went up, pal."
+        ],
+        "choices": [
+          {
+            "text": "Shop",
+            "do": "shop"
+          },
+          {
+            "text": "No thanks"
+          }
+        ],
+        "markup": 1.5,
+        "shop": [
+          {
+            "item": "mushroom"
+          },
+          {
+            "item": "syrup"
+          },
+          {
+            "item": "super_mushroom"
+          },
+          {
+            "item": "red_pepper"
+          },
+          {
+            "item": "green_pepper"
+          }
+        ]
+      },
+      {
+        "say": [
+          "Welcome to the pier rest stop! Snacks for the road?"
+        ],
+        "choices": [
+          {
+            "text": "Shop",
+            "do": "shop"
+          },
+          {
+            "text": "No thanks"
+          }
+        ],
+        "shop": [
+          {
+            "item": "mushroom",
+            "thanks": "Enjoy the view!"
+          },
+          {
+            "item": "syrup",
+            "thanks": "Enjoy the view!"
+          },
+          {
+            "item": "super_mushroom",
+            "thanks": "Good pick for the woods."
+          },
+          {
+            "item": "red_pepper",
+            "thanks": "Spicy! Careful with that."
+          },
+          {
+            "item": "green_pepper",
+            "thanks": "Crunchy and tough!"
+          }
+        ]
+      }
     ]
   },
   "pier_rest": {
     "branches": [
-      {"say": ["The sea breeze does wonders. Sit a while?"], "choices": [{"text": "Rest", "do": "heal", "done": "You rested on the pier. HP and SP are full!"}, {"text": "No thanks"}]}
+      {
+        "say": [
+          "The sea breeze does wonders. Sit a while?"
+        ],
+        "choices": [
+          {
+            "text": "Rest",
+            "do": "heal",
+            "done": "You rested on the pier. HP and SP are full!"
+          },
+          {
+            "text": "No thanks"
+          }
+        ]
+      }
     ]
   },
   "pier_fisher": {
     "name": "Fisher Toad",
     "branches": [
-      {"say": ["The Cheep Cheeps are biting today!", "Want to try? Wait for the float to dip, then reel in quick. The faster you are, the better the catch."], "choices": [{"text": "Fish!", "do": "fish"}, {"text": "No thanks"}]}
+      {
+        "say": [
+          "The Cheep Cheeps are biting today!",
+          "Want to try? Wait for the float to dip, then reel in quick. The faster you are, the better the catch."
+        ],
+        "choices": [
+          {
+            "text": "Fish!",
+            "do": "fish"
+          },
+          {
+            "text": "No thanks"
+          }
+        ]
+      }
     ]
   },
   "jump_rope": {
     "name": "Beanish Kid",
     "branches": [
-      {"say": ["Wanna play jump rope? We turn, you jump!", "It gets faster and faster. Reach 20, 40 or 60 jumps for a prize!"], "choices": [{"text": "Let's go!", "do": "jump_rope"}, {"text": "Maybe later"}]}
+      {
+        "say": [
+          "Wanna play jump rope? We turn, you jump!",
+          "It gets faster and faster. Reach 20, 40 or 60 jumps for a prize!"
+        ],
+        "choices": [
+          {
+            "text": "Let's go!",
+            "do": "jump_rope"
+          },
+          {
+            "text": "Maybe later"
+          }
+        ]
+      }
     ]
   },
   "tower_rest": {
     "name": "Tower Toad",
     "branches": [
-      {"say": ["Phew, you made it this far! This tower is full of the toughest bosses around.", "Want to catch your breath before the next fight?"], "choices": [{"text": "Rest", "do": "heal", "done": "You had a good rest. HP and SP are full!"}, {"text": "No thanks"}]}
+      {
+        "say": [
+          "Phew, you made it this far! This tower is full of the toughest bosses around.",
+          "Want to catch your breath before the next fight?"
+        ],
+        "choices": [
+          {
+            "text": "Rest",
+            "do": "heal",
+            "done": "You had a good rest. HP and SP are full!"
+          },
+          {
+            "text": "No thanks"
+          }
+        ]
+      }
     ]
   },
   "ruins_explorer": {
     "name": "Explorer Toad",
     "branches": [
-      {"random": true, "say": [
-        "Behind that gate are the Teehee Ruins! Smash the rocks, hit the switches, find the keys... and a big prize waits at the top.",
-        "Hit a switch and watch the planks move. Some switches move more than one gate, so think before you swing!",
-        "The ? blocks in the ruins hold Ruins Keys. The stone faces won't budge without one.",
-        "The prize at the top of the ruins fills up again every day. Leave the ruins and the puzzles start over."
-      ]}
+      {
+        "random": true,
+        "say": [
+          "Behind that gate are the Teehee Ruins! Smash the rocks, hit the switches, find the keys... and a big prize waits at the top.",
+          "Hit a switch and watch the planks move. Some switches move more than one gate, so think before you swing!",
+          "The ? blocks in the ruins hold Ruins Keys. The stone faces won't budge without one.",
+          "The prize at the top of the ruins fills up again every day. Leave the ruins and the puzzles start over."
+        ]
+      }
     ]
   }
 }

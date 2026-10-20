@@ -47,7 +47,7 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
     | Shadow Mario | Shadow Drain | Steals HP. |
 
     The enemy box lists burn, stun and lowered DEF next to each enemy.
-  - *Enemy turns*: press Z so whoever is attacked is in the air when it hits.
+  - *Enemy turns*: press Z so whoever is attacked is in the air when it hits. If your jump is high and descends right onto the rushing enemy, you trigger a **Counter Stomp**, dealing counter damage and boosting your combo meter!
     Enemies have their own mix of attacks ("attacks" in `ENEMIES`): a *charge*, a *feint* (creeps halfway, stops, then dashes: jump for the dash), a *double* (two hits in a row, jump each) and a *throw* (something rolls along the ground at you).
   - *Combo*: every Excellent and every dodge adds to your combo; a Miss or a hit taken ends it. From x2 your hits do 10% more damage per step (up to +50%, the number pops gold), and every 3rd step gives back 1 SP.
   - *Rank*: a won battle is ranked S (no damage taken, no Misses), A (barely a scratch), B (under 40% of your side's HP lost) or C, for +50%, +25%, +10% or no extra XP and coins. Not in PvP.
@@ -136,11 +136,15 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
 
   | Item | Does | Price |
   |---|---|---|
-  | Mushroom / Super Mushroom / Ultra Mushroom | Heals one ally 10 / 25 / 50 HP. | 8 / 20 / 40 |
-  | Syrup / Super Syrup | Refills 10 / 25 of your SP. | 10 / 25 |
-  | 1-Up Mushroom | Battle: revives a fallen ally with half their HP. | 30 |
-  | Refreshing Herb | Battle: cures a burn or dizziness (Dry Bones can burn you; Beanies and Shy Guys can make you dizzy, losing a turn). | 12 |
-  | Red Pepper / Green Pepper | Battle: one ally's POW / DEF +3 until the battle ends. | 18 |
+  | Mushroom / Super / Ultra / Max Mushroom | Heals one ally 10 / 25 / 50 HP or fully restores HP. | 8 / 20 / 40 / 75 |
+  | Syrup / Super / Max Syrup | Refills 10 / 25 / Full of your SP. | 10 / 25 / 60 |
+  | Nut / Super Nut | Restores 20 / 45 HP to the **entire party** at once. | 32 / 65 |
+  | Chuckola Cola | Restores 30 HP and 15 SP. | 42 |
+  | 1-Up Mushroom / 1-Up Super | Battle: revives a fallen ally with 50% / 100% full HP. | 30 / 70 |
+  | Refreshing Herb | Battle: cures a burn or dizziness. | 12 |
+  | Red / Green / Blue Pepper | Battle: POW +3 / DEF +3 / SPD +6 (boosts speed & Lucky strike chance). | 18 / 18 / 24 |
+  | Fire Flower / Ice Flower | Battle: 20 Fire damage + burns all foes / 18 Ice damage + stuns all foes. | 35 / 38 |
+  | Bob-omb | Battle: 35 explosive damage to all enemies. | 50 |
 
   Beaten enemies drop coins, and sometimes an item. In a partner's co-op battle you can use HP and SP items and Red Peppers on yourself; the rest are greyed out there.
 - **Grow.** XP and levels (cap 50), coins, items. Losing sends you home with a few coins lost.

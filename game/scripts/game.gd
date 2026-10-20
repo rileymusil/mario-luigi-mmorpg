@@ -375,20 +375,36 @@ const ITEMS := {
 	"mushroom": {"name": "Mushroom", "price": 8, "hp": 10, "info": "Restores 10 HP."},
 	"super_mushroom": {"name": "Super Mushroom", "price": 20, "hp": 25, "info": "Restores 25 HP."},
 	"ultra_mushroom": {"name": "Ultra Mushroom", "price": 40, "hp": 50, "info": "Restores 50 HP."},
+	"max_mushroom": {"name": "Max Mushroom", "price": 75, "hp_max": true, "info": "Fully restores one ally's HP."},
 	"syrup": {"name": "Syrup", "price": 10, "sp": 10, "info": "Restores 10 SP."},
 	"super_syrup": {"name": "Super Syrup", "price": 25, "sp": 25, "info": "Restores 25 SP."},
+	"max_syrup": {"name": "Max Syrup", "price": 60, "sp_max": true, "info": "Fully restores party SP pool."},
+	"nut": {"name": "Nut", "price": 32, "hp": 20, "party_all": true, "info": "Restores 20 HP to the entire party."},
+	"super_nut": {"name": "Super Nut", "price": 65, "hp": 45, "party_all": true, "info": "Restores 45 HP to the entire party."},
+	"chuckola_cola": {"name": "Chuckola Cola", "price": 42, "hp": 30, "sp": 15, "info": "Restores 30 HP and 15 SP."},
 	"one_up": {"name": "1-Up Mushroom", "price": 30, "revive": 0.5, "battle": true,
 		"info": "Revives a fallen ally with half HP."},
+	"one_up_super": {"name": "1-Up Super", "price": 70, "revive": 1.0, "battle": true,
+		"info": "Revives a fallen ally with full HP."},
 	"refreshing_herb": {"name": "Refreshing Herb", "price": 12, "cure": true, "battle": true,
 		"info": "Cures burns and dizziness."},
 	"red_pepper": {"name": "Red Pepper", "price": 18, "pow": 3, "battle": true,
 		"info": "POW +3 until the battle ends."},
 	"green_pepper": {"name": "Green Pepper", "price": 18, "def": 3, "battle": true,
 		"info": "DEF +3 until the battle ends."},
+	"blue_pepper": {"name": "Blue Pepper", "price": 24, "spd": 6, "battle": true,
+		"info": "SPD +6 and raises Lucky dodge chance."},
+	"fire_flower": {"name": "Fire Flower", "price": 35, "damage": 20, "target_all": true, "burn": 3, "battle": true,
+		"info": "Deals 20 Fire damage to all foes & burns."},
+	"ice_flower": {"name": "Ice Flower", "price": 38, "damage": 18, "target_all": true, "stun": true, "battle": true,
+		"info": "Deals 18 Ice damage to all foes & stuns."},
+	"bob_omb_item": {"name": "Bob-omb", "price": 50, "damage": 35, "target_all": true, "battle": true,
+		"info": "Mega blast dealing 35 damage to all foes."},
 }
 ## Menus list items in this order.
-const ITEM_ORDER := ["mushroom", "super_mushroom", "ultra_mushroom", "syrup", "super_syrup", "one_up",
-	"refreshing_herb", "red_pepper", "green_pepper"]
+const ITEM_ORDER := ["mushroom", "super_mushroom", "ultra_mushroom", "max_mushroom", "syrup", "super_syrup", "max_syrup",
+	"nut", "super_nut", "chuckola_cola", "one_up", "one_up_super", "refreshing_herb", "red_pepper", "green_pepper", "blue_pepper",
+	"fire_flower", "ice_flower", "bob_omb_item"]
 const MAX_ITEM := 99  # most of one item you can carry
 
 ## Equipment: one pair of pants and one badge at a time, like Superstar

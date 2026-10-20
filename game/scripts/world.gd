@@ -1319,22 +1319,31 @@ func _gear_menu() -> void:
 	items_screen.set_tab("ITEMS")
 
 
-## Uses an item outside battle (HP and SP items).
+## Uses an item outside battle (HP, SP, and restorative items).
 func _use_item(id: String) -> void:
 	var item: Dictionary = Game.ITEMS[id]
 	var p: Dictionary = Game.player
 	var you := Game.character_name()
-	if item.has("sp"):
+	if item.get("party_all", false):
+		var heal: int = int(item.get("hp", 0))
+		p["hp"] = mini(p["max_hp"], p["hp"] + heal)
+		for mem in p["party"]:
+			mem["hp"] = mini(mem["max_hp"], mem["hp"] + heal)
+		Game.add_item(id, -1)
+		Game.save()
+		await say("Party shared the %s! Everyone restored +%d HP." % [item["name"], heal])
+		return
+	if item.get("sp_max", false) or (item.has("sp") and not item.has("hp")):
 		if p["sp"] >= p["max_sp"]:
 			await say("Your SP is already full.")
 			return
 		var before: int = p["sp"]
-		p["sp"] = mini(p["max_sp"], p["sp"] + int(item["sp"]))
+		p["sp"] = p["max_sp"] if item.get("sp_max", false) else mini(p["max_sp"], p["sp"] + int(item["sp"]))
 		Game.add_item(id, -1)
 		Game.save()
 		await say("%s had %s. +%d SP" % [you, Game.with_article(item["name"]), p["sp"] - before])
 		return
-	if not item.has("hp"):
+	if not item.has("hp") and not item.get("hp_max", false):
 		return
 	# You and your partners: whoever isn't at full HP can have it.
 	var who: Array = [p]
@@ -1353,14 +1362,19 @@ func _use_item(id: String) -> void:
 		if t < 0:
 			return
 	var m: Dictionary = who[t]
-	if m["hp"] >= m["max_hp"]:
+	if m["hp"] >= m["max_hp"] and not item.has("sp"):
 		await say("Your HP is already full." if t == 0 else "%s's HP is already full." % names[t])
 		return
 	var before: int = m["hp"]
-	m["hp"] = mini(m["max_hp"], m["hp"] + int(item["hp"]))
+	if item.get("hp_max", false):
+		m["hp"] = m["max_hp"]
+	elif item.has("hp"):
+		m["hp"] = mini(m["max_hp"], m["hp"] + int(item["hp"]))
+	if item.has("sp"):
+		p["sp"] = mini(p["max_sp"], p["sp"] + int(item["sp"]))
 	Game.add_item(id, -1)
 	Game.save()
-	await say("%s ate %s. +%d HP" % [names[t], Game.with_article(item["name"]), m["hp"] - before])
+	await say("%s enjoyed %s. +%d HP%s" % [names[t], Game.with_article(item["name"]), m["hp"] - before, " and restored SP!" if item.has("sp") else "."])
 
 
 ## The Party page: send someone home, or (at your home base) take someone
