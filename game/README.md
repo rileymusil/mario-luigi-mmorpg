@@ -22,6 +22,7 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
 **Phones and tablets.** Hold the phone sideways. The on-screen controls show on touch screens (or after your first touch) and hide when you press a key; several fingers work at once, so you can walk and jump together. Only the buttons that make sense show: none on the title screen (tap the menus), A and B in battle, all of them while walking around, and none while someone is talking. On Android, the corners button next to MENU goes full screen and keeps the game sideways; on iPhone, use Share > Add to Home Screen to play full screen. Typing (your username, or chat with the Chat button under MENU) opens the browser's own text box, so the phone's keyboard comes up.
 
 ## What you can do
+- **Invite & Share with Friends.** Pick **Invite** from the pause menu (Enter) or your Friends list to copy an instant party join link (`https://rileymusil.github.io/mario-luigi-mmorpg/?invite=<you>&zone=<map>`) straight to your clipboard to send to friends across Discord, WhatsApp, or text!
 - **Pick a side and a character** (seven good, five evil; the card on the right shows stats and the signature move).
   Good: Mario, Luigi, Princess Peach, Professor E. Gadd, Waluigi, Rosalina, Toadette.
   Evil: Bowser, Rookie Bowser, Grodus, the Koopa Bros., Shadow Mario.

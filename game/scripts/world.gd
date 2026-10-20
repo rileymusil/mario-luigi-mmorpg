@@ -1071,7 +1071,7 @@ func _pause_menu() -> void:
 	var other := "Evil" if p["side"] == "good" else "Good"
 	while true:
 		pause_screen.open(p, Game.character_name(), map_info["name"])
-		var options := ["Items", "Gear", "Storage", "Party", "Quests", "Friends", "Leaders", "Players", "Account", "Go %s" % other, "Save", "Quit", "Close"]
+		var options := ["Items", "Gear", "Storage", "Party", "Quests", "Friends", "Leaders", "Players", "Invite", "Account", "Go %s" % other, "Save", "Quit", "Close"]
 		pause_screen.menu.max_rows = 7  # the rest scroll; more would run into the place strip
 		var i := await pause_screen.menu.choose(options, "", true)
 		pause_screen.menu.max_rows = 0
@@ -1117,6 +1117,10 @@ func _pause_menu() -> void:
 				pause_screen.close()
 				player_lookup_screen.open()
 				await player_lookup_screen.closed
+				continue
+			"Invite":
+				pause_screen.close()
+				await _invite_share()
 				continue
 			"Account":
 				pause_screen.close()
@@ -1351,6 +1355,17 @@ func _storage_menu() -> void:
 				await say("Stored 1 %s in your trunk." % Game.ITEMS[id]["name"])
 		else:
 			break
+
+
+## Copies a direct shareable invite link with current character and zone to clipboard.
+func _invite_share() -> void:
+	var char_name: String = Game.character_name()
+	var zone_name: String = str(map_info.get("name", "Castle Town")).replace(" ", "")
+	var url := "https://rileymusil.github.io/mario-luigi-mmorpg/?invite=%s&zone=%s" % [char_name, zone_name]
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("navigator.clipboard ? navigator.clipboard.writeText('%s') : null" % url)
+	DisplayServer.clipboard_set(url)
+	await say("Copied invite link to clipboard!\n%s\nSend it to a friend to jump in together!" % url)
 
 
 ## Uses an item outside battle (HP, SP, and restorative items).
