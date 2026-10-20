@@ -1071,7 +1071,7 @@ func _pause_menu() -> void:
 	var other := "Evil" if p["side"] == "good" else "Good"
 	while true:
 		pause_screen.open(p, Game.character_name(), map_info["name"])
-		var options := ["Items", "Gear", "Party", "Quests", "Friends", "Leaders", "Players", "Account", "Go %s" % other, "Save", "Quit", "Close"]
+		var options := ["Items", "Gear", "Storage", "Party", "Quests", "Friends", "Leaders", "Players", "Account", "Go %s" % other, "Save", "Quit", "Close"]
 		pause_screen.menu.max_rows = 7  # the rest scroll; more would run into the place strip
 		var i := await pause_screen.menu.choose(options, "", true)
 		pause_screen.menu.max_rows = 0
@@ -1084,6 +1084,10 @@ func _pause_menu() -> void:
 			"Gear":
 				pause_screen.close()
 				await _gear_menu()
+				continue
+			"Storage":
+				pause_screen.close()
+				await _storage_menu()
 				continue
 			"Party":
 				pause_screen.close()
@@ -1317,6 +1321,36 @@ func _gear_menu() -> void:
 		_update_hud()
 	items_screen.close()
 	items_screen.set_tab("ITEMS")
+
+
+## The Storage Trunk menu: deposit and withdraw items to keep your bag tidy.
+func _storage_menu() -> void:
+	while true:
+		var mode := await pause_screen.menu.choose(["Withdraw", "Deposit", "Back"], "Storage Trunk", true)
+		if mode == 0:
+			var stored := Game.stored_items()
+			if stored.is_empty():
+				await say("Your storage trunk is empty.")
+				continue
+			var labels := stored.map(func(id): return "%s x%d" % [Game.ITEMS[id]["name"], Game.storage_count(id)])
+			var pick := await pause_screen.menu.choose(labels, "Withdraw Item", true)
+			if pick >= 0:
+				var id: String = stored[pick]
+				Game.withdraw_storage(id, 1)
+				await say("Withdrew 1 %s from storage." % Game.ITEMS[id]["name"])
+		elif mode == 1:
+			var carried := Game.owned_items()
+			if carried.is_empty():
+				await say("You aren't carrying any items to deposit.")
+				continue
+			var labels := carried.map(func(id): return "%s x%d" % [Game.ITEMS[id]["name"], Game.item_count(id)])
+			var pick := await pause_screen.menu.choose(labels, "Deposit Item", true)
+			if pick >= 0:
+				var id: String = carried[pick]
+				Game.deposit_storage(id, 1)
+				await say("Stored 1 %s in your trunk." % Game.ITEMS[id]["name"])
+		else:
+			break
 
 
 ## Uses an item outside battle (HP, SP, and restorative items).

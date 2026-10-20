@@ -79,7 +79,17 @@ https://rileymusil.github.io/mario-luigi-mmorpg/ (every push to `main` redeploys
   | Shy Guy | Shy Spin | Up to 2 hits. |
   | Buzzy Beetle | Shell Spin | Tackle; Excellent lowers DEF by 1. |
   | Dry Bones | Bone Toss | Throw. |
-  - Pick a command block over whoever's turn it is (arrows and Z, point and click, or tap it), then a target (X, B, a right click or a tap on nobody goes back). Timed-press hints name the A button when you play by touch. Each map has its own battle background.
+  - Command blocks over whoever's turn it is offer full tactical combat choices:
+  - **Jump**: Stomp! Press Z as you land for a 2nd hit.
+  - **Special**: Signature elemental power (Fire Jump, Thunderhand, Peach Heart, Fire Breath, etc.).
+  - **Bros. Strike**: Dual team attack with your partner! (8 SP). Mario leaps first, followed by your partner smashing down with timed hits.
+  - **Guard**: Take a defensive stance. Halves damage from incoming hits and restores +4 SP.
+  - **Scan**: Analyzes the targeted foe, displaying their exact HP, DEF, POW, and attacks.
+  - **Items**: Use curative items, nuts, tonics, or throw offensive Fire/Ice Flowers and Bob-ombs.
+  - **Switch**: Tag in another partner from reserve during battle!
+  - **Ask to join** (Evil side): Invite enemies to join your party.
+  - **Run**: Attempt to escape (except in boss battles).
+- Pick a command block over whoever's turn it is (arrows and Z, point and click, or tap it), then a target (X, B, a right click or a tap on nobody goes back). Timed-press hints name the A button when you play by touch. Each map has its own battle background.
 - **Bosses.** 44 bosses stand in the world and in the Boss Tower; talk to one (X) and pick *Fight!* (the line says the suggested level). They have lots of HP, no running away, and three attacks, each with its own timed press: **jump** (Z, A on touch) over a dash, out from under a slam, a dive or something falling, over each thing rolling along the ground (they come at an uneven rhythm), or as a burrowing boss bursts out under you (watch for the fake rumble); and **hammer back** (Z just before it hits) anything thrown at you, which sends it into the boss. Some bring a helper or call one in. At half HP a boss changes phase: it gets stronger and faster and its third attack joins in (Fawful even changes form). A beaten boss stays beaten in your save; talk to it again for a rematch (half the XP and coins, a smaller item). Bosses are solid: walk round them.
 
   **The Boss Tower** is through the castle door in Bowser's Castle. Each of its five floors has four bosses round the walls, and its stairs stay sealed until you've beaten all of them; Fawful, Smorg and Cackletta's Soul wait at the summit. A Toad on 1F, 3F and 5F lets you rest.

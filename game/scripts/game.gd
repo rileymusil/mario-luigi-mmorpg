@@ -1666,6 +1666,54 @@ func owned_items() -> Array:
 	return ITEM_ORDER.filter(func(id): return item_count(id) > 0)
 
 
+## Sorted items: "category" (default ITEM_ORDER), "count" (most first), "name" (alphabetical)
+func sorted_items(mode := "category") -> Array:
+	var list := owned_items()
+	match mode:
+		"count":
+			list.sort_custom(func(a, b): return item_count(a) > item_count(b))
+		"name":
+			list.sort_custom(func(a, b): return ITEMS[a]["name"] < ITEMS[b]["name"])
+	return list
+
+
+## Storage Trunk support:
+func storage_count(id: String) -> int:
+	return int(player.get("storage", {}).get(id, 0))
+
+
+func deposit_storage(id: String, amount := 1) -> int:
+	var can_take := mini(amount, item_count(id))
+	if can_take <= 0:
+		return 0
+	if not player.has("storage"):
+		player["storage"] = {}
+	player["storage"][id] = storage_count(id) + can_take
+	add_item(id, -can_take)
+	save()
+	return can_take
+
+
+func withdraw_storage(id: String, amount := 1) -> int:
+	var had: int = storage_count(id)
+	var can_take := mini(amount, had)
+	if can_take <= 0:
+		return 0
+	var now := had - can_take
+	if now == 0:
+		player["storage"].erase(id)
+	else:
+		player["storage"][id] = now
+	add_item(id, can_take)
+	save()
+	return can_take
+
+
+func stored_items() -> Array:
+	var st: Dictionary = player.get("storage", {})
+	return ITEM_ORDER.filter(func(id): return int(st.get(id, 0)) > 0)
+
+
 ## What you can sell: items, then gear you carry but don't wear.
 func sellable() -> Array:
 	return owned_items() + GEAR_ORDER.filter(func(id): return item_count(id) > 0)

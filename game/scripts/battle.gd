@@ -323,23 +323,55 @@ func _run_battle() -> void:
 ## The command blocks for this ally: {id, label, icon, enabled, info}.
 func _commands_for(a: Dictionary) -> Array:
 	var p: Dictionary = Game.player
+	var reserve: Array = p["party"].filter(func(m):
+		for ally in allies:
+			if ally.get("member") == m:
+				return false
+		return true
+	)
+	var can_switch: bool = not reserve.is_empty() and allies.size() > 1
+
 	if not _is_player(a):
 		var commands := []
-		for id in Game.member_moves(a["member"]):  # a second move from level 5
+		for id in Game.member_moves(a["member"]):
 			var move: Dictionary = Game.MOVES[id]
 			commands.append({"id": "move:" + id, "label": move["name"], "icon": "hammer" if commands.is_empty() else "burst",
 				"info": move["info"]})
-		return commands + [_items_command(), _run_command()]
+		commands.append({"id": "guard", "label": "Guard", "icon": "guard",
+			"info": "Take a defensive stance: halve damage taken & restore 4 SP."})
+		commands.append(_items_command())
+		if can_switch:
+			commands.append({"id": "switch", "label": "Switch", "icon": "switch",
+				"info": "Tag in another partner from reserve."})
+		commands.append(_run_command())
+		return commands
+
 	var sp: Dictionary = Game.SPECIALS[Game.CHARACTERS[p["character"]]["special"]]
-	return [
+	var has_partner: bool = allies.size() > 1 and _alive(allies).size() > 1
+	var commands: Array = [
 		{"id": "jump", "label": "Jump", "icon": "jump", "info": "Stomp! Press {a} as you land for a 2nd hit."},
 		{"id": "special", "label": "%s (%d SP)" % [sp["name"], sp["sp"]], "icon": "burst",
 			"enabled": p["sp"] >= sp["sp"], "info": sp["info"]},
-		_items_command(),
-		{"id": "ask", "label": "Ask to join", "icon": "hand", "enabled": p["side"] == "evil" and Game.can_recruit(),
-			"info": "Evil only: ask an enemy to join your party." if p["side"] == "good" else "Weaker enemies say yes more often."},
-		_run_command(),
 	]
+	if has_partner:
+		commands.append({
+			"id": "team", "label": "Bros. Strike (8 SP)", "icon": "burst",
+			"enabled": p["sp"] >= 8,
+			"info": "Dual team attack with your partner! Massive damage & combo boost."
+		})
+	commands.append({"id": "guard", "label": "Guard", "icon": "guard",
+		"info": "Take a defensive stance: halve incoming damage & restore 4 SP."})
+	commands.append({"id": "scan", "label": "Scan", "icon": "scan",
+		"info": "Analyze enemy HP meter, vulnerabilities, and attacks."})
+	commands.append(_items_command())
+	if can_switch:
+		commands.append({"id": "switch", "label": "Switch", "icon": "switch",
+			"info": "Tag in another partner from reserve."})
+	if p["side"] == "evil" and Game.can_recruit():
+		commands.append({"id": "ask", "label": "Ask to join", "icon": "hand",
+			"info": "Ask an enemy to join your evil army."})
+	commands.append(_run_command())
+	return commands
 
 
 ## No running from a boss.
@@ -371,6 +403,33 @@ func _ally_turn(a: Dictionary) -> String:
 			if not await _item_turn(a):
 				continue  # X backs out to the blocks
 			return ""
+		if choice == "guard":
+			a["guarding"] = true
+			var p_ref: Dictionary = Game.player
+			p_ref["sp"] = mini(p_ref["max_sp"], p_ref["sp"] + 4)
+			_refresh()
+			message.text = "%s guards! (+4 SP, damage halved)" % a["name"]
+			_show_rating("Guarded! +4 SP")
+			_burst(_middle(a), Color(0.4, 0.7, 1.0), 10.0)
+			await _wait(0.9)
+			return ""
+		if choice == "switch":
+			if not await _switch_partner_turn(a):
+				continue
+			return ""
+		if choice == "scan":
+			var target = await _pick_foe()
+			if target == null:
+				continue
+			var info: Dictionary = Game.foe_info(target["type"])
+			target["scanned"] = true
+			var atk_str := ", ".join(info.get("attacks", ["charge"]))
+			var desc := "%s: HP %d/%d | DEF %d, POW %d | Moves: %s" % [target["name"], _hp(target), target["max_hp"], target["def"], target["pow"], atk_str]
+			message.text = desc
+			_show_rating("Scanned!")
+			_refresh()
+			await _wait(2.2)
+			return ""
 		var target = await _pick_foe()
 		if target == null:
 			continue
@@ -390,8 +449,98 @@ func _ally_turn(a: Dictionary) -> String:
 
 
 ## A co-op Team Attack (coop_battle.gd); nothing in a normal battle.
-func _team_attack(_a: Dictionary, _target: Dictionary) -> void:
-	pass
+func _team_attack(a: Dictionary, target: Dictionary) -> void:
+	var p: Dictionary = Game.player
+	p["sp"] -= 8
+	_refresh()
+	message.text = "Bros. Strike!"
+	var partner: Dictionary = allies[1] if allies.size() > 1 else a
+	var anode: CharacterSprite = a["node"]
+	var pnode: CharacterSprite = partner["node"]
+	var fnode: CharacterSprite = target["node"]
+	var target_pos: Vector2 = fnode.position + Vector2(-32, 0)
+	await _walk(anode, target_pos + Vector2(-16, 0), 200.0)
+	if partner != a:
+		await _walk(pnode, target_pos + Vector2(16, 0), 200.0)
+
+	var timing1 := await _arc(anode, anode.position, fnode.position + Vector2(0, -28), 42.0, 0.45, true)
+	var r1 := _rate_landing(timing1)
+	_damage(target, a["pow"] + (3 if r1 == "Excellent" else 1))
+	_show_rating(r1)
+	_shake(3.0, 0.12)
+
+	if partner != a and _hp(target) > 0:
+		var timing2 := await _arc(pnode, pnode.position, fnode.position + Vector2(0, -32), 48.0, 0.45, true)
+		var r2 := _rate_landing(timing2)
+		_damage(target, partner["pow"] + (4 if r2 == "Excellent" else 1))
+		_show_rating("BROS FINISH!" if r2 == "Excellent" else r2)
+		_shake(4.2, 0.16)
+		_combo_hit()
+		_combo_hit()
+
+	await _walk(anode, a["home"], 180.0)
+	if partner != a:
+		await _walk(pnode, partner["home"], 180.0)
+		pnode.facing = Vector2.RIGHT
+	anode.facing = Vector2.RIGHT
+
+
+func _switch_partner_turn(_a: Dictionary) -> bool:
+	var p: Dictionary = Game.player
+	var reserve: Array = p["party"].filter(func(m):
+		for ally in allies:
+			if ally.get("member") == m:
+				return false
+		return true
+	)
+	if reserve.is_empty():
+		message.text = "No partners in reserve to switch with!"
+		await _wait(0.8)
+		return false
+	var labels := []
+	for m in reserve:
+		labels.append("%s (Lv.%d, %d/%d HP)" % [m["name"], m.get("level", 1), m["hp"], m["max_hp"]])
+	menu.max_rows = 4
+	_say("Switch which partner in? {b} to cancel.")
+	var i := await menu.choose(labels, "Switch", true)
+	message.text = ""
+	if i < 0:
+		return false
+	var new_member: Dictionary = reserve[i]
+
+	if allies.size() > 1:
+		var old_partner: Dictionary = allies[1]
+		message.text = "%s tags out!" % old_partner["name"]
+		var tw := create_tween()
+		tw.tween_property(old_partner["node"], "position:x", old_partner["node"].position.x - 60.0, 0.35)
+		tw.tween_property(old_partner["node"], "modulate:a", 0.0, 0.2)
+		await tw.finished
+		old_partner["node"].queue_free()
+
+		var node := CharacterSprite.new()
+		node.character_id = new_member.get("character", "toad")
+		node.facing = Vector2.RIGHT
+		node.scale = Vector2(SCALE, SCALE)
+		node.position = old_partner["home"] + Vector2(-60, 0)
+		node.modulate.a = 0.0
+		stage.add_child(node)
+
+		var tw_in := create_tween()
+		tw_in.tween_property(node, "position:x", old_partner["home"].x, 0.35)
+		tw_in.parallel().tween_property(node, "modulate:a", 1.0, 0.2)
+		await tw_in.finished
+
+		allies[1] = {
+			"name": new_member["name"], "node": node, "member": new_member, "ally": true,
+			"home": old_partner["home"], "pow": new_member["pow"], "def": new_member["def"]
+		}
+		message.text = "%s enters the battle!" % new_member["name"]
+		_show_rating("Tag In!")
+		_shake(2.0, 0.1)
+		await _wait(0.8)
+		_refresh()
+		return true
+	return false
 
 
 ## Returns the foe to hit, or null if the player backed out with X.
@@ -566,6 +715,7 @@ func _item_pop(who: Dictionary, id: String) -> void:
 ## At the start of an ally's turn: a dizzy ally loses the turn, a burning one
 ## gets hurt. True if the turn is over.
 func _ally_status(a: Dictionary) -> bool:
+	a["guarding"] = false
 	if a.get("dizzy", false):
 		a["dizzy"] = false
 		message.text = "%s is dizzy and can't move!" % a["name"]
@@ -742,6 +892,8 @@ func _ask(target: Dictionary) -> void:
 
 func _damage(target: Dictionary, amount: int) -> int:
 	var dmg := maxi(1, amount - int(target["def"]))
+	if target.get("guarding", false):
+		dmg = maxi(1, int(dmg * 0.5))
 	var boosted := false
 	if _extras() and not target["ally"] and combo >= 2:
 		dmg += ceili(dmg * COMBO_STEP * mini(combo, COMBO_MAX))
