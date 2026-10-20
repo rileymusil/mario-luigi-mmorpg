@@ -405,11 +405,13 @@ func _ally_turn(a: Dictionary) -> String:
 			return ""
 		if choice == "guard":
 			a["guarding"] = true
+			for ally in allies:
+				ally["def"] = int(ally.get("def", 5)) + 1
 			var p_ref: Dictionary = Game.player
 			p_ref["sp"] = mini(p_ref["max_sp"], p_ref["sp"] + 4)
 			_refresh()
-			message.text = "%s guards! (+4 SP, damage halved)" % a["name"]
-			_show_rating("Guarded! +4 SP")
+			message.text = "%s guards! (+4 SP, Party Defense Up!)" % a["name"]
+			_show_rating("Party Guarded!")
 			_burst(_middle(a), Color(0.4, 0.7, 1.0), 10.0)
 			await _wait(0.9)
 			return ""
@@ -475,8 +477,8 @@ func _team_attack(a: Dictionary, target: Dictionary) -> void:
 		_damage(target, partner["pow"] + (4 if r2 == "Excellent" else 1))
 		_show_rating("BROS FINISH!" if r2 == "Excellent" else r2)
 		_shake(4.2, 0.16)
-		_combo_hit()
-		_combo_hit()
+		_combo_up()
+		_combo_up()
 
 	await _walk(anode, a["home"], 180.0)
 	if partner != a:
@@ -1310,7 +1312,7 @@ func _land(f: Dictionary, target: Dictionary, dodged: bool, power: int) -> void:
 		if node.jump_height > 10.0:
 			var counter_dmg: int = maxi(2, int(target.get("pow", 5) * 0.8))
 			_damage(f, counter_dmg)
-			_combo_hit()
+			_combo_up()
 			_show_rating("Counter! %d" % counter_dmg)
 			_shake(2.5, 0.12)
 		else:
@@ -1441,6 +1443,10 @@ func _combo_up() -> void:
 	if combo % COMBO_SP_EVERY == 0 and Game.player["sp"] < Game.player["max_sp"]:
 		Game.player["sp"] += 1
 		_refresh()
+	if combo >= 2 and combo % 2 == 0:
+		for ally in allies:
+			ally["pow"] = int(ally.get("pow", 10)) + 1
+		_show_rating("Party ATK Up!")
 	_show_combo()
 
 
