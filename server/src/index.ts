@@ -159,7 +159,7 @@ export default {
       }
       return env.ZONES.get(env.ZONES.idFromName(zone)).fetch(request);
     }
-    const acct = url.pathname.match(/^\/account\/(register|login|save|load)$/);
+    const acct = url.pathname.match(/^\/account\/(register|login|save|load|check|lookup)$/);
     if (acct) return account(acct[1], request, env);
     if (url.pathname === "/score") return json(200, await scores(env).current());
     if (url.pathname === "/leaders") return json(200, await scores(env).leaders());

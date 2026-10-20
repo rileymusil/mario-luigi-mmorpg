@@ -1,0 +1,165 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://ui/player_lookup_screen.gd" id="1_lookup"]
+[ext_resource type="Script" path="res://scripts/character_sprite.gd" id="2_sprite"]
+
+[node name="PlayerLookupScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_lookup")
+
+[node name="Dim" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0.08, 0.6)
+
+[node name="Panel" type="PanelContainer" parent="."]
+layout_mode = 0
+offset_left = 22.0
+offset_top = 8.0
+offset_right = 362.0
+offset_bottom = 208.0
+theme_type_variation = &"NavyPanel"
+
+[node name="VBox" type="VBoxContainer" parent="Panel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Header" type="HBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+alignment = 1
+
+[node name="Title" type="Label" parent="Panel/VBox/Header"]
+layout_mode = 2
+theme_type_variation = &"OutlineLabel"
+text = "PLAYERS & DIRECTORY"
+horizontal_alignment = 1
+
+[node name="Tabs" type="HBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 6
+
+[node name="NearbyTab" type="Button" parent="Panel/VBox/Tabs"]
+layout_mode = 2
+text = "Nearby Players"
+
+[node name="SearchTab" type="Button" parent="Panel/VBox/Tabs"]
+layout_mode = 2
+text = "Search Online"
+
+[node name="NearbyBox" type="VBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Scroll" type="ScrollContainer" parent="Panel/VBox/NearbyBox"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="List" type="VBoxContainer" parent="Panel/VBox/NearbyBox/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="SearchBox" type="VBoxContainer" parent="Panel/VBox"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="SearchRow" type="HBoxContainer" parent="Panel/VBox/SearchBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Label" type="Label" parent="Panel/VBox/SearchBox/SearchRow"]
+layout_mode = 2
+theme_type_variation = &"LightLabel"
+text = "Name:"
+
+[node name="QueryLabel" type="Label" parent="Panel/VBox/SearchBox/SearchRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"LightLabel"
+text = "(Type username)"
+
+[node name="EditBtn" type="Button" parent="Panel/VBox/SearchBox/SearchRow"]
+layout_mode = 2
+text = "Edit"
+
+[node name="SearchBtn" type="Button" parent="Panel/VBox/SearchBox/SearchRow"]
+layout_mode = 2
+text = "Search"
+
+[node name="ProfileCard" type="PanelContainer" parent="Panel/VBox"]
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+theme_type_variation = &"FlatPanel"
+
+[node name="HBox" type="HBoxContainer" parent="Panel/VBox/ProfileCard"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SpriteAnchor" type="Control" parent="Panel/VBox/ProfileCard/HBox"]
+custom_minimum_size = Vector2(36, 36)
+layout_mode = 2
+
+[node name="Sprite" type="Node2D" parent="Panel/VBox/ProfileCard/HBox/SpriteAnchor"]
+position = Vector2(18, 30)
+script = ExtResource("2_sprite")
+
+[node name="Details" type="VBoxContainer" parent="Panel/VBox/ProfileCard/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 1
+
+[node name="Name" type="Label" parent="Panel/VBox/ProfileCard/HBox/Details"]
+layout_mode = 2
+theme_type_variation = &"GoldLabel"
+text = "Username"
+
+[node name="Meta" type="Label" parent="Panel/VBox/ProfileCard/HBox/Details"]
+layout_mode = 2
+theme_type_variation = &"LightLabel"
+text = "Mario Lv 1 (Good Side)"
+
+[node name="Status" type="Label" parent="Panel/VBox/ProfileCard/HBox/Details"]
+layout_mode = 2
+theme_type_variation = &"LightLabel"
+text = "Online in this zone"
+
+[node name="Actions" type="HBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 4
+
+[node name="PMBtn" type="Button" parent="Panel/VBox/Actions"]
+layout_mode = 2
+text = "Whisper / PM"
+
+[node name="TradeBtn" type="Button" parent="Panel/VBox/Actions"]
+layout_mode = 2
+text = "Trade Request"
+
+[node name="PartyBtn" type="Button" parent="Panel/VBox/Actions"]
+layout_mode = 2
+text = "Team Up"
+
+[node name="FeedbackLabel" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+theme_type_variation = &"LightLabel"
+text = "Select a player or search online."
+horizontal_alignment = 1
+
+[node name="CloseBtn" type="Button" parent="Panel/VBox"]
+layout_mode = 2
+text = "Close"

@@ -70,7 +70,29 @@ export class Account extends DurableObject {
       await this.ctx.storage.put("acct", stored);
       return { status: 200, body: { token, name: stored.name } };
     }
-    if (!acct) {
+        if (op === "check") {
+      return { status: 200, body: { available: !acct } };
+    }
+    if (op === "lookup") {
+      if (!acct) return { status: 404, body: { error: "not_found" } };
+      let saveObj: Record<string, unknown> = {};
+      try {
+        saveObj = JSON.parse(acct.save);
+      } catch {}
+      return {
+        status: 200,
+        body: {
+          exists: true,
+          name: acct.name,
+          character: saveObj.character ?? "mario",
+          level: saveObj.level ?? 1,
+          side: saveObj.side ?? "good",
+          coins: saveObj.coins ?? 0,
+          saved_at: acct.savedAt,
+        },
+      };
+    }
+if (!acct) {
       return op === "login" ? { status: 403, body: { error: "wrong" } } : { status: 401, body: { error: "token" } };
     }
     if (op === "login") {

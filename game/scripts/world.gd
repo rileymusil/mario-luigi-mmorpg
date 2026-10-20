@@ -67,6 +67,9 @@ var dungeon: Dungeon       # the map's puzzle pieces (Teehee Ruins), if it has a
 @onready var dialog: DialogueBox = $HUD/Dialogue
 @onready var menu: ChoiceMenu = $HUD/Menu
 @onready var pause_screen: PauseScreen = $HUD/PauseScreen
+@onready var account_modal: AccountModal = $HUD/AccountModal
+@onready var player_lookup_screen: PlayerLookupScreen = $HUD/PlayerLookupScreen
+
 @onready var party_screen: PartyScreen = $HUD/PartyScreen
 @onready var items_screen: ItemsScreen = $HUD/ItemsScreen
 @onready var trade_screen: TradeScreen = $HUD/TradeScreen
@@ -1066,7 +1069,7 @@ func _pause_menu() -> void:
 	var other := "Evil" if p["side"] == "good" else "Good"
 	while true:
 		pause_screen.open(p, Game.character_name(), map_info["name"])
-		var options := ["Items", "Gear", "Party", "Quests", "Friends", "Leaders", "Go %s" % other, "Save", "Quit", "Close"]
+		var options := ["Items", "Gear", "Party", "Quests", "Friends", "Leaders", "Players", "Account", "Go %s" % other, "Save", "Quit", "Close"]
 		pause_screen.menu.max_rows = 7  # the rest scroll; more would run into the place strip
 		var i := await pause_screen.menu.choose(options, "", true)
 		pause_screen.menu.max_rows = 0
@@ -1103,6 +1106,16 @@ func _pause_menu() -> void:
 					busy = false
 					online._type_chat("/w %s " % whisper_to)
 					return
+				continue
+			"Players":
+				pause_screen.close()
+				player_lookup_screen.open()
+				await player_lookup_screen.closed
+				continue
+			"Account":
+				pause_screen.close()
+				account_modal.open()
+				await account_modal.closed
 				continue
 			"Leaders":
 				pause_screen.close()

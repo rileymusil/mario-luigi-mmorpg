@@ -1,0 +1,161 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://ui/account_modal.gd" id="1_account"]
+
+[node name="AccountModal" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_account")
+
+[node name="Dim" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0.08, 0.6)
+
+[node name="Panel" type="PanelContainer" parent="."]
+layout_mode = 0
+offset_left = 52.0
+offset_top = 18.0
+offset_right = 332.0
+offset_bottom = 198.0
+theme_type_variation = &"NavyPanel"
+
+[node name="VBox" type="VBoxContainer" parent="Panel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Header" type="HBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+alignment = 1
+
+[node name="Title" type="Label" parent="Panel/VBox/Header"]
+layout_mode = 2
+theme_type_variation = &"OutlineLabel"
+text = "ONLINE ACCOUNT"
+horizontal_alignment = 1
+
+[node name="Tabs" type="HBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 6
+
+[node name="LoginTab" type="Button" parent="Panel/VBox/Tabs"]
+layout_mode = 2
+text = "Log In"
+
+[node name="RegisterTab" type="Button" parent="Panel/VBox/Tabs"]
+layout_mode = 2
+text = "Create Account"
+
+[node name="Form" type="VBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="UserRow" type="HBoxContainer" parent="Panel/VBox/Form"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Label" type="Label" parent="Panel/VBox/Form/UserRow"]
+custom_minimum_size = Vector2(65, 0)
+layout_mode = 2
+theme_type_variation = &"LightLabel"
+text = "User:"
+
+[node name="Value" type="Label" parent="Panel/VBox/Form/UserRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"LightLabel"
+text = "(Tap to enter)"
+
+[node name="EditBtn" type="Button" parent="Panel/VBox/Form/UserRow"]
+layout_mode = 2
+text = "Edit"
+
+[node name="PassRow" type="HBoxContainer" parent="Panel/VBox/Form"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Label" type="Label" parent="Panel/VBox/Form/PassRow"]
+custom_minimum_size = Vector2(65, 0)
+layout_mode = 2
+theme_type_variation = &"LightLabel"
+text = "Pass:"
+
+[node name="Value" type="Label" parent="Panel/VBox/Form/PassRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"LightLabel"
+text = "(Tap to enter)"
+
+[node name="EditBtn" type="Button" parent="Panel/VBox/Form/PassRow"]
+layout_mode = 2
+text = "Edit"
+
+[node name="Pass2Row" type="HBoxContainer" parent="Panel/VBox/Form"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Label" type="Label" parent="Panel/VBox/Form/Pass2Row"]
+custom_minimum_size = Vector2(65, 0)
+layout_mode = 2
+theme_type_variation = &"LightLabel"
+text = "Confirm:"
+
+[node name="Value" type="Label" parent="Panel/VBox/Form/Pass2Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"LightLabel"
+text = "(Tap to enter)"
+
+[node name="EditBtn" type="Button" parent="Panel/VBox/Form/Pass2Row"]
+layout_mode = 2
+text = "Edit"
+
+[node name="InfoBox" type="VBoxContainer" parent="Panel/VBox"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="AccountName" type="Label" parent="Panel/VBox/InfoBox"]
+layout_mode = 2
+theme_type_variation = &"GoldLabel"
+text = "Logged in as: User"
+horizontal_alignment = 1
+
+[node name="SyncStatus" type="Label" parent="Panel/VBox/InfoBox"]
+layout_mode = 2
+theme_type_variation = &"LightLabel"
+text = "Online Cloud Saves Active"
+horizontal_alignment = 1
+
+[node name="SyncBtn" type="Button" parent="Panel/VBox/InfoBox"]
+layout_mode = 2
+text = "Sync / Upload Save Now"
+
+[node name="LogoutBtn" type="Button" parent="Panel/VBox/InfoBox"]
+layout_mode = 2
+text = "Log Out of This Device"
+
+[node name="StatusLabel" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+theme_type_variation = &"LightLabel"
+text = "Enter username and password."
+horizontal_alignment = 1
+
+[node name="ActionBtn" type="Button" parent="Panel/VBox"]
+layout_mode = 2
+text = "Log In"
+
+[node name="CloseBtn" type="Button" parent="Panel/VBox"]
+layout_mode = 2
+text = "Back"

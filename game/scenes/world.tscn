@@ -11,6 +11,9 @@
 [ext_resource type="PackedScene" path="res://ui/items_screen.tscn" id="9_items"]
 [ext_resource type="PackedScene" path="res://ui/trade_screen.tscn" id="10_trade"]
 
+[ext_resource type="PackedScene" path="res://ui/account_modal.tscn" id="11_account"]
+[ext_resource type="PackedScene" path="res://ui/player_lookup_screen.tscn" id="12_lookup"]
+
 [node name="World" type="Node2D"]
 script = ExtResource("1_world")
 
@@ -86,3 +89,7 @@ texture = ExtResource("8_exclaim")
 [node name="Dialogue" parent="HUD" instance=ExtResource("4_dialogue")]
 
 [node name="TradeScreen" parent="HUD" instance=ExtResource("10_trade")]
+
+[node name="AccountModal" parent="HUD" instance=ExtResource("11_account")]
+
+[node name="PlayerLookupScreen" parent="HUD" instance=ExtResource("12_lookup")]

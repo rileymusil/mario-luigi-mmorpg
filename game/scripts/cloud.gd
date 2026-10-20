@@ -172,6 +172,23 @@ static func error_text(code: String) -> String:
 	return "Something went wrong saving online. Try again in a bit."
 
 
+
+## Checks if a username is available to register.
+func check_username(who: String) -> bool:
+	var res := await call_server("check", {"name": who}, 5.0)
+	if res["status"] == 200:
+		return bool(res["body"].get("available", false))
+	return false
+
+
+## Looks up public profile info for an account.
+func lookup_player(who: String) -> Dictionary:
+	var res := await call_server("lookup", {"name": who}, 5.0)
+	if res["status"] == 200:
+		return res["body"]
+	return {}
+
+
 func _error(res: Dictionary) -> String:
 	if res["status"] == 0:
 		return "offline"
