@@ -78,6 +78,7 @@ const COMBO_MAX := 5
 const COMBO_SP_EVERY := 3
 const GRADE_BONUS := {"S": 0.5, "A": 0.25, "B": 0.1, "C": 0.0}
 var combo := 0
+var lucky_chance := 0.14  # chance of a Lucky! hit (1.5x damage) on a foe
 var best_combo := 0
 var presses := {"Excellent": 0, "Good": 0, "Miss": 0}
 var hurt := 0           # damage your side took
@@ -615,6 +616,7 @@ func _item_turn(a: Dictionary) -> bool:
 		var id: String = ids[i]
 		var list := _item_targets(id)
 		var who = list[0]
+		var item: Dictionary = Game.ITEMS[id]
 		if list.size() > 1 and not item.get("party_all", false) and not item.get("target_all", false):
 			who = await _pick(list, "Use the %s on who?" % Game.ITEMS[id]["name"],
 				func(t): return "%s %d/%d" % [t["name"], _hp(t), t["member"]["max_hp"]])
@@ -900,7 +902,7 @@ func _damage(target: Dictionary, amount: int) -> int:
 	if _extras() and not target["ally"] and combo >= 2:
 		dmg += ceili(dmg * COMBO_STEP * mini(combo, COMBO_MAX))
 		boosted = true
-	if _extras() and not target["ally"] and randf() < 0.14:
+	if _extras() and not target["ally"] and randf() < lucky_chance:
 		dmg = int(dmg * 1.5) + 1
 		boosted = true
 		_show_rating("Lucky!")

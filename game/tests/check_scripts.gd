@@ -126,6 +126,7 @@ func _check_battle_fun() -> Array:
 	if battle.hurt <= 0 or battle.combo != 0:
 		errors.append("standing still didn't take the hit and end the combo")
 	battle.combo = 3
+	battle.lucky_chance = 0.0
 	f["def"] = 0
 	f["hp"] = 999
 	f["max_hp"] = 999

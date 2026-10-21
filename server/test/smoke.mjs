@@ -393,12 +393,17 @@ check(Array.isArray(lb.pvp) && lb.level.length <= 10, "leaderboards keep the top
 const w2 = open(wn.toUpperCase(), "luigi", 0, 0, { uid: "ccccccccccc3", level: 9, bosses: 1 }, `${zone}_w1`);
 await w2.ready;
 await w2.next("welcome");
-await new Promise((res) => setTimeout(res, 300));
 w2.ws.close();
-const lb2 = await (await fetch(`${base.replace(/^ws/, "http")}/leaders`)).json();
-const mine = lb2.level.filter((l) => l.name.toLowerCase() === wn.toLowerCase());
-check(mine.length === 1 && mine[0].level === 9 && lb2.bosses.find((l) => l.name.toLowerCase() === wn.toLowerCase()).bosses === 3,
-  "one leaderboard entry per username, with its best level and boss wins");
+// The join's report reaches the scores in the background: give it a few tries.
+let oneEntry = false;
+for (let i = 0; i < 15 && !oneEntry; i++) {
+  await new Promise((res) => setTimeout(res, 200));
+  const lb2 = await (await fetch(`${base.replace(/^ws/, "http")}/leaders`)).json();
+  const mine = lb2.level.filter((l) => l.name.toLowerCase() === wn.toLowerCase());
+  const boss = lb2.bosses.find((l) => l.name.toLowerCase() === wn.toLowerCase());
+  oneEntry = mine.length === 1 && mine[0].level === 9 && boss !== undefined && boss.bosses === 3;
+}
+check(oneEntry, "one leaderboard entry per username, with its best level and boss wins");
 
 // Bounties: a strong good hero has one; so does an evil player on a winning streak.
 const bz = `${zone}_bounty`;
