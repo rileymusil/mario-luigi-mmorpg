@@ -18,7 +18,7 @@ signal active_changed(active: bool)
 
 const A_ICON := preload("res://assets/ui/touch_a.png")
 const B_ICON := preload("res://assets/ui/touch_b.png")
-const ICON_SCALE := 1.5
+const ICON_SCALE := 1.65
 const LAYER := 90  # above every scene's HUD and the map editor (50)
 
 ## True when playing by touch (the controls are on screen).
@@ -42,12 +42,12 @@ func _ready() -> void:
 	_root.name = "Controls"
 	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_root.modulate.a = 0.85
+	_root.modulate.a = 0.92
 	add_child(_root)
 
 	stick = TouchStick.new()
-	a_button = TouchButton.new(&"action", A_ICON, ICON_SCALE, 24.0)
-	b_button = TouchButton.new(&"talk", B_ICON, ICON_SCALE, 22.0)
+	a_button = TouchButton.new(&"action", A_ICON, ICON_SCALE, 28.0)
+	b_button = TouchButton.new(&"talk", B_ICON, ICON_SCALE, 26.0)
 	sprint_button = _panel_button(&"sprint", _label("RUN"))
 	var s_label: Label = sprint_button.get_child(0).get_child(0) as Label
 	if s_label:
