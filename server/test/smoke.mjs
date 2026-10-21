@@ -2,6 +2,9 @@
 // SERVER=wss://mario-luigi-mmo.<you>.workers.dev npm test checks a deployed one.
 const base = process.env.SERVER ?? "ws://127.0.0.1:8787";
 const zone = `smoke_${Date.now() % 100000}`;
+// The live leaderboards keep every run's test players and real ones, so
+// whether a test player makes the top 10 is only checked on a fresh local server.
+const local = !process.env.SERVER;
 
 function open(name, character, x, y, extra = {}, z = zone) {
   const ws = new WebSocket(`${base}/zone/${z}`);
@@ -33,6 +36,11 @@ function open(name, character, x, y, extra = {}, z = zone) {
 function check(ok, what) {
   if (!ok) throw new Error(`FAIL: ${what}`);
   console.log(`ok - ${what}`);
+}
+
+function checkBoard(ok, what) {
+  if (local) check(ok, what);
+  else console.log(`skip - ${what} (live board)`);
 }
 
 const a = open("Ann", "mario", 100, 200);
@@ -386,7 +394,7 @@ w1.ws.close();
 
 // Leaderboards.
 const lb = await (await fetch(`${base.replace(/^ws/, "http")}/leaders`)).json();
-check(lb.level.some((l) => l.name === xn && l.level === 12) && lb.bosses.some((l) => l.name === wn && l.bosses === 3),
+checkBoard(lb.level.some((l) => l.name === xn && l.level === 12) && lb.bosses.some((l) => l.name === wn && l.bosses === 3),
   "leaderboards list players by level and boss wins");
 check(Array.isArray(lb.pvp) && lb.level.length <= 10, "leaderboards keep the top 10");
 // A second save with the same name (another uid, other letter case) is the same entry.
@@ -396,14 +404,14 @@ await w2.next("welcome");
 w2.ws.close();
 // The join's report reaches the scores in the background: give it a few tries.
 let oneEntry = false;
-for (let i = 0; i < 15 && !oneEntry; i++) {
+for (let i = 0; i < (local ? 15 : 0) && !oneEntry; i++) {
   await new Promise((res) => setTimeout(res, 200));
   const lb2 = await (await fetch(`${base.replace(/^ws/, "http")}/leaders`)).json();
   const mine = lb2.level.filter((l) => l.name.toLowerCase() === wn.toLowerCase());
   const boss = lb2.bosses.find((l) => l.name.toLowerCase() === wn.toLowerCase());
   oneEntry = mine.length === 1 && mine[0].level === 9 && boss !== undefined && boss.bosses === 3;
 }
-check(oneEntry, "one leaderboard entry per username, with its best level and boss wins");
+checkBoard(oneEntry, "one leaderboard entry per username, with its best level and boss wins");
 
 // Bounties: a strong good hero has one; so does an evil player on a winning streak.
 const bz = `${zone}_bounty`;
@@ -433,12 +441,12 @@ await duel(bh, bg2, "ddddddddddd3", bg2);
 await new Promise((res) => setTimeout(res, 300));
 check(!bh.inbox.some((m) => m.t === "bounty"), "a weak hero has no bounty");
 const lb3 = await (await fetch(`${base.replace(/^ws/, "http")}/leaders`)).json();
-check(lb3.bounties.some((l) => l.name === hunter && l.bounty === 40), "an evil player on a 2-win streak shows on the bounty board");
+checkBoard(lb3.bounties.some((l) => l.name === hunter && l.bounty === 40), "an evil player on a 2-win streak shows on the bounty board");
 await duel(bh, bg3, "ddddddddddd4", bh);
 const won = await bg3.next("bounty");
 check(won.name === hunter && won.coins === 40, "the hero who ends the streak collects the bounty");
 const lb4 = await (await fetch(`${base.replace(/^ws/, "http")}/leaders`)).json();
-check(!lb4.bounties.some((l) => l.name === hunter), "a broken streak takes the bounty down");
+checkBoard(!lb4.bounties.some((l) => l.name === hunter), "a broken streak takes the bounty down");
 for (const x of [bh, bg1, bg2, bg3]) x.ws.close();
 
 // Online saves.
