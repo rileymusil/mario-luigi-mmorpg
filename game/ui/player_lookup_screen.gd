@@ -246,7 +246,7 @@ func _send_trade() -> void:
 		return
 	var who: String = str(selected_player.get("name", ""))
 	var target_id := str(selected_player.get("id", ""))
-	Net.request_trade(target_id, who)
+	Net.request_trade(target_id)
 	feedback_label.text = "Trade request sent to %s!" % who
 	feedback_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.4))
 

@@ -70,7 +70,7 @@ export class Account extends DurableObject {
       await this.ctx.storage.put("acct", stored);
       return { status: 200, body: { token, name: stored.name } };
     }
-        if (op === "check") {
+    if (op === "check") {
       return { status: 200, body: { available: !acct } };
     }
     if (op === "lookup") {
@@ -92,7 +92,7 @@ export class Account extends DurableObject {
         },
       };
     }
-if (!acct) {
+    if (!acct) {
       return op === "login" ? { status: 403, body: { error: "wrong" } } : { status: 401, body: { error: "token" } };
     }
     if (op === "login") {
