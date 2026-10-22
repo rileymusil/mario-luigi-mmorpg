@@ -718,14 +718,34 @@ func _talk_to(n: Dictionary) -> void:
 		await _boss_talk(n)
 		return
 	var node: CharacterSprite = n["node"]
+	var speaker := DialogueData.speaker(n["talk"], n["id"])
+	busy = true
+	node.facing = (player.position - node.position).normalized()  # turn to whoever is talking
+
+	# Menu option when pressing X to speak: Talk or Free Chat (Type)
+	dialog.open("Speak with %s?" % speaker, speaker, node)
+	_place_menu.call_deferred()
+	var pick := await menu.choose(["Talk", "Free Chat (Type)", "Goodbye"], "", true)
+	dialog.close()
+	if pick == 1:
+		await _free_chat_with_npc(n, speaker, node)
+		node.facing = n["face"]
+		await get_tree().process_frame
+		await get_tree().process_frame
+		busy = false
+		return
+	elif pick < 0 or pick == 2:
+		node.facing = n["face"]
+		await get_tree().process_frame
+		await get_tree().process_frame
+		busy = false
+		return
+
 	if await _quest_talk(n):
 		return
 	var branch := DialogueData.pick(n["talk"], Game.player)
-	var speaker := DialogueData.speaker(n["talk"], n["id"])
 	var pages := DialogueData.pages(branch)
 	var choices: Array = branch.get("choices", [])
-	busy = true
-	node.facing = (player.position - node.position).normalized()  # turn to whoever is talking
 	for i in pages.size():
 		if i == pages.size() - 1 and not choices.is_empty():
 			break  # the last page stays up as the question
@@ -734,19 +754,33 @@ func _talk_to(n: Dictionary) -> void:
 	if not choices.is_empty():
 		var question: String = DialogueData.fill(pages.back()) if not pages.is_empty() else ""
 		joined = await _ask(n, branch, question, speaker)
-	elif NpcChat.has_topics(n.get("talk", "")):
-		var t: Dictionary = NpcChat.get_topics(n["talk"])
-		var q_list: Array = t["questions"]
-		_place_menu.call_deferred()
-		var pick_idx := await menu.choose(q_list, "Ask about...", true)
-		if pick_idx >= 0 and pick_idx < t["answers"].size():
-			await say(t["answers"][pick_idx], speaker, node)
 	if not joined:
 		node.facing = n["face"]
 	# Two frames, so the X that closed a menu can't start this talk again.
 	await get_tree().process_frame
 	await get_tree().process_frame
 	busy = false
+
+
+## Opens the text prompt for free typing chat with any NPC.
+func _free_chat_with_npc(n: Dictionary, speaker: String, node: CharacterSprite) -> void:
+	while true:
+		if save_prompt == null:
+			save_prompt = TextPrompt.new()
+			$HUD.add_child(save_prompt)
+		save_prompt.position = ((get_viewport_rect().size - Vector2(160, 40)) / 2.0).round()
+		var typed: String = await save_prompt.ask("Say to %s" % speaker, "", 80, "Enter: send   Esc: cancel")
+		if typed.strip_edges() == "":
+			break
+		var raw_reply := NpcChat.get_reply(n.get("talk", ""), speaker, typed)
+		var reply := DialogueData.fill(raw_reply)
+		await say(reply, speaker, node)
+		dialog.open("Chat more with %s?" % speaker, speaker, node)
+		_place_menu.call_deferred()
+		var more := await menu.choose(["Type again", "Done"], "", true)
+		dialog.close()
+		if more != 0:
+			break
 
 
 ## Quest talk (see Quests.talk_event): the giver offers a step, hands over a
