@@ -1094,14 +1094,16 @@ func _pause_menu() -> void:
 				await _party_menu()
 				continue
 			"Quests":
-				var q := await pause_screen.menu.choose(["Story", "Daily", "Achievements", "Back"], "", true)
+				var q := await pause_screen.menu.choose(["Main Story", "Side Quests", "Daily Challenges", "Achievements", "Back"], "", true)
 				pause_screen.close()
 				match q:
 					0:
 						await say(Quests.summary())
 					1:
-						await say(Quests.daily_summary())
+						await say(Quests.side_summary())
 					2:
+						await say(Quests.daily_summary())
+					3:
 						await _list_screen().show_pages(Achievements.pages())
 						await get_tree().process_frame
 				continue

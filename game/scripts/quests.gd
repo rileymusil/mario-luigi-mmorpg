@@ -434,3 +434,25 @@ static func daily_summary() -> String:
 	if lines.is_empty():
 		return "No daily quests taken. Look for the scroll over people in each area: they have a new one every day."
 	return "Daily quests: " + "  ".join(lines)
+
+
+## The side quests summary for the Quests page.
+static func side_summary() -> String:
+	var p: Dictionary = Game.player
+	var sides: Dictionary = p.get("side_quests", {})
+	var lines: Array = []
+	if sides.get("e_gadd_done", false):
+		lines.append("E. Gadd's Poltergust: Calibrated! Thanks for the samples.")
+	elif sides.get("e_gadd_started", false):
+		lines.append("E. Gadd's Poltergust: Collect 3 Boo samples (%d/3)." % int(sides.get("e_gadd_count", 0)))
+	if sides.get("chuckola_done", false):
+		lines.append("Chuckola Reserve: Vintage bottled!")
+	elif sides.get("chuckola_started", false):
+		lines.append("Chuckola Reserve: Forage 2 Chuckola fruits (%d/2)." % int(sides.get("chuckola_count", 0)))
+	if sides.get("boulders_done", false):
+		lines.append("Hoohoo Rock Smashers: 4/4 boulders cleared!")
+	elif sides.get("boulders_started", false):
+		lines.append("Hoohoo Rock Smashers: Shatter 4 boulders (%d/4)." % int(sides.get("boulders_count", 0)))
+	if lines.is_empty():
+		return "No active side quests. Speak with Professor E. Gadd, the Chuckola Winery brewer, or Hoohoo climbers to take on kingdom side adventures!"
+	return "Side quests: " + "  ".join(lines)
