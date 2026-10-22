@@ -734,6 +734,13 @@ func _talk_to(n: Dictionary) -> void:
 	if not choices.is_empty():
 		var question: String = DialogueData.fill(pages.back()) if not pages.is_empty() else ""
 		joined = await _ask(n, branch, question, speaker)
+	elif NpcChat.has_topics(n.get("talk", "")):
+		var t: Dictionary = NpcChat.get_topics(n["talk"])
+		var q_list: Array = t["questions"]
+		_place_menu.call_deferred()
+		var pick_idx := await menu.choose(q_list, "Ask about...", true)
+		if pick_idx >= 0 and pick_idx < t["answers"].size():
+			await say(t["answers"][pick_idx], speaker, node)
 	if not joined:
 		node.facing = n["face"]
 	# Two frames, so the X that closed a menu can't start this talk again.
