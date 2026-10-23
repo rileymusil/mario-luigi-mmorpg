@@ -772,7 +772,7 @@ func _free_chat_with_npc(n: Dictionary, speaker: String, node: CharacterSprite) 
 		var typed: String = await save_prompt.ask("Say to %s" % speaker, "", 80, "Enter: send   Esc: cancel")
 		if typed.strip_edges() == "":
 			break
-		var raw_reply := NpcChat.get_reply(n.get("talk", ""), speaker, typed)
+		var raw_reply := await _get_npc_response(n.get("talk", ""), speaker, typed)
 		var reply := DialogueData.fill(raw_reply)
 		await say(reply, speaker, node)
 		dialog.open("Chat more with %s?" % speaker, speaker, node)
@@ -781,6 +781,36 @@ func _free_chat_with_npc(n: Dictionary, speaker: String, node: CharacterSprite) 
 		dialog.close()
 		if more != 0:
 			break
+
+
+func _get_npc_response(talk_id: String, speaker: String, typed: String) -> String:
+	var server_reply := await _try_server_npc_chat(talk_id, speaker, typed)
+	if server_reply != "":
+		return server_reply
+	return NpcChat.get_reply(talk_id, speaker, typed)
+
+
+func _try_server_npc_chat(talk_id: String, speaker: String, typed: String) -> String:
+	var http := HTTPRequest.new()
+	http.timeout = 2.5
+	add_child(http)
+	var headers := ["Content-Type: application/json"]
+	var body := JSON.stringify({
+		"npcId": talk_id,
+		"characterName": Game.character_name(),
+		"messages": [{"role": "user", "content": typed}]
+	})
+	var err := http.request("http://127.0.0.1:3000/api/npc-chat", headers, HTTPClient.METHOD_POST, body)
+	if err != OK:
+		http.queue_free()
+		return ""
+	var res = await http.request_completed
+	http.queue_free()
+	if res.size() >= 4 and res[1] == 200:
+		var parsed = JSON.parse_string(res[3].get_string_from_utf8())
+		if parsed is Dictionary and parsed.has("reply"):
+			return str(parsed["reply"])
+	return ""
 
 
 ## Quest talk (see Quests.talk_event): the giver offers a step, hands over a
