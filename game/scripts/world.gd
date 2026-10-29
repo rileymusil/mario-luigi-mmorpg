@@ -718,14 +718,16 @@ func _talk_to(n: Dictionary) -> void:
 		await _boss_talk(n)
 		return
 	var node: CharacterSprite = n["node"]
-	var speaker := DialogueData.speaker(n["talk"], n["id"])
+	var talk_id: String = n.get("talk", "")
+	var speaker := DialogueData.speaker(talk_id, n["id"])
 	busy = true
 	node.facing = (player.position - node.position).normalized()  # turn to whoever is talking
 
-	# Menu option when pressing X to speak: Talk or Free Chat (Type)
-	dialog.open("Speak with %s?" % speaker, speaker, node)
+	# Menu option when pressing X to speak: Talk, Free Chat, Give Gift, Rumors & Riddle
+	var status := NpcChat.status_tag(talk_id, speaker)
+	dialog.open("Speak with %s?  [%s]" % [speaker, status], speaker, node)
 	_place_menu.call_deferred()
-	var pick := await menu.choose(["Talk", "Free Chat (Type)", "Goodbye"], "", true)
+	var pick := await menu.choose(["Talk", "Free Chat (Type)", "Give Gift", "Rumors & Riddle", "Goodbye"], "", true)
 	dialog.close()
 	if pick == 1:
 		await _free_chat_with_npc(n, speaker, node)
@@ -734,7 +736,21 @@ func _talk_to(n: Dictionary) -> void:
 		await get_tree().process_frame
 		busy = false
 		return
-	elif pick < 0 or pick == 2:
+	elif pick == 2:
+		await _give_gift_to_npc(n, speaker, node)
+		node.facing = n["face"]
+		await get_tree().process_frame
+		await get_tree().process_frame
+		busy = false
+		return
+	elif pick == 3:
+		await _rumors_with_npc(n, speaker, node)
+		node.facing = n["face"]
+		await get_tree().process_frame
+		await get_tree().process_frame
+		busy = false
+		return
+	elif pick < 0 or pick == 4:
 		node.facing = n["face"]
 		await get_tree().process_frame
 		await get_tree().process_frame
@@ -743,7 +759,7 @@ func _talk_to(n: Dictionary) -> void:
 
 	if await _quest_talk(n):
 		return
-	var branch := DialogueData.pick(n["talk"], Game.player)
+	var branch := DialogueData.pick(talk_id, Game.player)
 	var pages := DialogueData.pages(branch)
 	var choices: Array = branch.get("choices", [])
 	for i in pages.size():
@@ -762,6 +778,53 @@ func _talk_to(n: Dictionary) -> void:
 	busy = false
 
 
+## Opens the bag to give a gift item to an NPC, raising friendship and unlocking secret badges.
+func _give_gift_to_npc(n: Dictionary, speaker: String, node: CharacterSprite) -> void:
+	var ids := Game.owned_items()
+	if ids.is_empty():
+		await say("Your item bag is empty! Find or buy some Mushrooms, Syrup, or Chuckola Cola first.", speaker, node)
+		return
+	var labels := []
+	var infos := []
+	var icons := []
+	for id in ids:
+		var item: Dictionary = Game.goods(id)
+		labels.append("%s x%d" % [item["name"], Game.item_count(id)])
+		infos.append("Gift 1 %s to %s." % [item["name"], speaker])
+		icons.append(ItemsScreen.icon_of(id))
+	labels.append("Cancel")
+	infos.append("")
+	icons.append(null)
+	menu.max_rows = 5
+	dialog.open("Give which gift to %s?" % speaker, speaker, node)
+	_place_menu.call_deferred()
+	var i := await menu.choose(labels, "", true, [], infos, icons)
+	menu.max_rows = 0
+	dialog.close()
+	if i < 0 or i >= ids.size():
+		return
+	var gift_pages := NpcChat.give_gift(n.get("talk", ""), speaker, ids[i])
+	_update_hud()
+	for page in gift_pages:
+		await say(DialogueData.fill(str(page)), speaker, node)
+
+
+## Lets the player ask an NPC for a Kingdom Rumor or Riddle.
+func _rumors_with_npc(n: Dictionary, speaker: String, node: CharacterSprite) -> void:
+	var talk_id: String = n.get("talk", "")
+	dialog.open("What would you like to hear, {character}?", speaker, node)
+	_place_menu.call_deferred()
+	var c := await menu.choose(["Kingdom Rumor", "Ask me a Riddle", "Back"], "", true)
+	dialog.close()
+	if c == 0:
+		NpcChat.add_affinity(talk_id, speaker, 5)
+		await say(NpcChat.get_rumor(talk_id), speaker, node)
+	elif c == 1:
+		var r := NpcChat.get_riddle(talk_id)
+		await say("Here is a riddle for you: \"%s\"" % r["q"], speaker, node)
+		await say("Hint: %s (Type the answer in Free Chat!)" % r["hint"], speaker, node)
+
+
 ## Opens the text prompt for free typing chat with any NPC.
 func _free_chat_with_npc(n: Dictionary, speaker: String, node: CharacterSprite) -> void:
 	while true:
@@ -773,9 +836,11 @@ func _free_chat_with_npc(n: Dictionary, speaker: String, node: CharacterSprite) 
 		if typed.strip_edges() == "":
 			break
 		var raw_reply := await _get_npc_response(n.get("talk", ""), speaker, typed)
+		_update_hud()
 		var reply := DialogueData.fill(raw_reply)
 		await say(reply, speaker, node)
-		dialog.open("Chat more with %s?" % speaker, speaker, node)
+		var status := NpcChat.status_tag(n.get("talk", ""), speaker)
+		dialog.open("Chat more with %s? [%s]" % [speaker, status], speaker, node)
 		_place_menu.call_deferred()
 		var more := await menu.choose(["Type again", "Done"], "", true)
 		dialog.close()
@@ -784,9 +849,20 @@ func _free_chat_with_npc(n: Dictionary, speaker: String, node: CharacterSprite) 
 
 
 func _get_npc_response(talk_id: String, speaker: String, typed: String) -> String:
+	# Check secret codes, riddles, and jokes first so rewards always trigger
+	var secret := NpcChat._check_secret_or_riddle(talk_id, speaker, typed.strip_edges().to_lower())
+	if secret != "":
+		var delta := NpcChat.analyze_sentiment(talk_id, typed)
+		var gained := NpcChat.add_affinity(talk_id, speaker, delta)
+		var aff := NpcChat.get_affinity(talk_id, speaker)
+		return "%s  [+%d ♥ (%d/100)]" % [secret, maxi(gained, 5), aff]
 	var server_reply := await _try_server_npc_chat(talk_id, speaker, typed)
 	if server_reply != "":
-		return server_reply
+		var delta := NpcChat.analyze_sentiment(talk_id, typed)
+		var gained := NpcChat.add_affinity(talk_id, speaker, delta)
+		var aff := NpcChat.get_affinity(talk_id, speaker)
+		var tag := "  [+%d ♥ (%d/100)]" % [gained, aff] if gained >= 0 else "  [%d ♥ (%d/100)]" % [gained, aff]
+		return server_reply + tag
 	return NpcChat.get_reply(talk_id, speaker, typed)
 
 
@@ -938,7 +1014,7 @@ func _ask(n: Dictionary, branch: Dictionary, question: String, speaker: String) 
 		"recruit":
 			return await _recruit(n, speaker)
 		"shop":
-			await _shop(branch, speaker, node)
+			await _shop(branch, speaker, node, n.get("talk", ""))
 		"heal":
 			_heal_party()
 			await say(DialogueData.fill(choice.get("done", "Your HP and SP are full again!")))
@@ -1009,7 +1085,8 @@ func _recruit(n: Dictionary, speaker: String) -> bool:
 	if not Game.can_recruit():
 		await say("Your party is full, and so is your home base. Send someone home or swap them out first.")
 		return false
-	if randf() < info["recruit"]:
+	var bonus := NpcChat.recruit_bonus(n.get("talk", ""), speaker)
+	if randf() < float(info["recruit"]) + bonus:
 		var to := Game.add_member(Game.make_member("partner", n["id"]))
 		npcs.erase(n)
 		if to == "party":
@@ -1020,20 +1097,22 @@ func _recruit(n: Dictionary, speaker: String) -> bool:
 		await say("%s joined your party!" % info["name"] if to == "party" else
 			"%s joined! Your party is full, so %s will wait for you at %s." % [info["name"], info["name"], Game.home_name()])
 		return true
-	await say("Hmm... I'm not sure yet. Ask me again?", speaker, node)
+	await say("Hmm... I'm not sure yet. (Tip: Chat or Give Gifts to raise Friendship!) Ask me again?", speaker, node)
 	return false
 
 
 ## A shop counter: Buy from the branch's "shop" list and Sell what you carry,
-## until Done. Each stock entry: {item, count (a bundle, default 1), price
-## (default: the item's price times the branch's "markup", default 1),
-## thanks (said after buying)}. Shops buy anything back at half price.
-func _shop(branch: Dictionary, speaker: String, node: Node2D) -> void:
+## until Done. Befriending the shopkeeper gives up to 25% off!
+func _shop(branch: Dictionary, speaker: String, node: Node2D, talk_id := "") -> void:
 	var stock: Array = branch.get("shop", []).filter(func(s): return not Game.goods(s.get("item", "")).is_empty())
-	var markup := float(branch.get("markup", 1.0))
+	var discount_mult := NpcChat.shop_discount_multiplier(talk_id, speaker)
+	var disc_pct := NpcChat.shop_discount_percent(talk_id, speaker)
+	var markup := float(branch.get("markup", 1.0)) * discount_mult
 	menu.max_rows = 5
 	menu.info_width = 190.0
 	var question := "What can I do for you?"
+	if disc_pct > 0:
+		question = "Friend discount (%d%% off)! What can I do for you?" % disc_pct
 	while true:
 		dialog.open("%s You have %d coins." % [question, Game.player["coins"]], speaker)
 		_place_menu.call_deferred()
@@ -1052,8 +1131,8 @@ func _shop(branch: Dictionary, speaker: String, node: Node2D) -> void:
 
 func _stock_price(s: Dictionary, markup: float) -> int:
 	if s.has("price"):
-		return int(s["price"])
-	return int(ceil(Game.goods(s["item"])["price"] * int(s.get("count", 1)) * markup))
+		return maxi(1, int(ceil(float(s["price"]) * markup)))
+	return maxi(1, int(ceil(Game.goods(s["item"])["price"] * int(s.get("count", 1)) * markup)))
 
 
 func _shop_buy(stock: Array, markup: float, speaker: String) -> void:
